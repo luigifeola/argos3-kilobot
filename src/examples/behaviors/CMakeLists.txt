@@ -74,11 +74,24 @@ if(ARGOS_BUILD_FOR_SIMULATOR)
   add_executable(forager forager.c)  
   target_link_libraries(forager argos3plugin_simulator_kilolib)
 
+
+  #
+  # ARK loop function: navigation_experiment
+  #
+  add_executable(move_to_position move_to_position.c)  
+  target_link_libraries(move_to_position argos3plugin_simulator_kilolib)
+
   #
   # ARK loop function: clustering
   #
   add_executable(clustering clustering.c)  
   target_link_libraries(clustering argos3plugin_simulator_kilolib)
+
+  #
+  # ARK loop function: crwlevy
+  #
+  add_executable(crwlevy crwlevy.c)  
+  target_link_libraries(crwlevy argos3plugin_simulator_kilolib)
 
   #
   # Debugging example

@@ -2,4 +2,6 @@
 if(ARGOS_COMPILE_QTOPENGL)
   	add_subdirectory(demoC)
   	add_subdirectory(clustering)
+  	add_subdirectory(crwlevy)
+  	add_subdirectory(navigation)
 endif(ARGOS_COMPILE_QTOPENGL)
