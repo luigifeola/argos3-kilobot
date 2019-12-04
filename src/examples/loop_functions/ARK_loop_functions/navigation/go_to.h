@@ -74,7 +74,6 @@ public:
     void SetupInitialKilobotState(CKilobotEntity& c_kilobot_entity);
 
     /** Experiment configuration methods (From .argos files) */
-
     /** Setup virtual environment */
     void SetupVirtualEnvironments(TConfigurationNode& t_tree);
 
@@ -91,24 +90,30 @@ public:
     /** Get the message to send to a Kilobot according to its position */
     void UpdateVirtualSensor(CKilobotEntity& c_kilobot_entity);
 
+    /** Desired initial position and orientation */
+    void GoToWithOrientation(CKilobotEntity &c_kilobot_entity);
+
     /** Reassign initial position */
     void GreedyAssociation(std::vector<CVector2> actual_pos, std::vector<CVector2> desired_pos);
 
+    /** Print arrived Kilobots */
+    void PrintArrivedKilobot();
+
+    /** Print Kilobot Pose */
+    void PrintPose(UInt16 unKilobotID);
 
     /** Used to plot the Virtual environment on the floor */
     virtual CColor GetFloorColor(const CVector2& vec_position_on_plane);
 
+    /** Flag to check if kilobot is arrived in its initial desired position */
     std::vector<bool>  arrived;
 
     //std::vector <int> assignedTargets;
-    double distThreshold = 0.0005;
-    double angleThreshold = 0.06;
+    const double kDistThreshold = 0.0008;
+    const double kAngleThreshold = 0.17;
 
 private:
 
-    UInt32 num_robots_in_int_pose;
-    UInt32 num_robots_with_discovery;
-    UInt32 num_robots_with_info;
 
     /************************************/
     /*  Virtual Environment variables   */
@@ -138,21 +143,14 @@ private:
 
     SVirtualPerimeter m_WallStructure;
 
-    typedef enum
-    {
-        NOT_TARGET_FOUND=0,
-        TARGET_FOUND=1,
-        TARGET_COMMUNICATED=2,
-    } SRobotState;
-
-    /* used to store the state of each kilobot */
-    std::vector<SRobotState> m_vecKilobotStates;
 
     /* used to initialize the position of each kilobot uniformly */
     std::vector<std::pair<UInt32,UInt32>> index_vector;
     std::vector<CVector2> m_vecKilobotsPositions;
+    std::vector<CRadians> m_vecKilobotsOrientations;
     std::vector<CVector2> m_vecDesInitKilobotPosition;
     std::vector<CRadians> m_vecDesInitKilobotOrientation;
+    std::vector<command> m_vecCommandLog;
     
     /** Structure to contain data to evaluate first passage time and
      *  convergence time of the experiment
