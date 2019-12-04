@@ -47,7 +47,7 @@ void CNavigationALF::Destroy() {
 /****************************************/
 
 void CNavigationALF::SetupInitialKilobotStates() {
-    arrived.resize(m_tKilobotEntities.size());
+    v_arrived.resize(m_tKilobotEntities.size());
     /* Variables for go_to initial position */
     // index_vector.resize(m_tKilobotEntities.size());
     m_vecKilobotsPositions.resize(m_tKilobotEntities.size());
@@ -84,7 +84,7 @@ void CNavigationALF::SetupInitialKilobotStates() {
 void CNavigationALF::SetupInitialKilobotState(CKilobotEntity &c_kilobot_entity){
     /* The kilobots begins outside the clustering hub*/
     UInt16 unKilobotID=GetKilobotId(c_kilobot_entity);
-    arrived[unKilobotID] = false;
+    v_arrived[unKilobotID] = false;
     m_vecLastTimeMessaged[unKilobotID] = -1000;
 
     /* Get a non-colliding random position within the circular arena */
@@ -218,17 +218,17 @@ void CNavigationALF::UpdateKilobotState(CKilobotEntity &c_kilobot_entity){
 void CNavigationALF::GreedyAssociation(std::vector<CVector2> actual_pos, std::vector<CVector2> desired_pos)
 {
     // std::cerr<<"KBOTs POSITION\n";
-    // for(int k = 0; k<actual_pos.size(); k++)
+    // for(const auto& a_pos : actual_pos)
     // {
-    //     std::cerr << actual_pos[k]<< std::endl;
-    // }    
+    //     std::cerr<<a_pos<<std::endl;
+    // }
     // std::cerr<<"\n\n\n\n\n";
 
     // std::cerr<<"DESIRED INITIAL POSITION\n";
-    // for(int y = 0; y<desired_pos.size(); y++)
+    // for(const auto& d_pos : desired_pos)
     // {
-    //     std::cerr << desired_pos[y]<< std::endl;
-    // }    
+    //     std::cerr<<d_pos<<std::endl;
+    // }   
     // std::cerr<<"\n\n\n\n\n";
 
     std::vector<Real> v_distances;
@@ -262,9 +262,9 @@ void CNavigationALF::GreedyAssociation(std::vector<CVector2> actual_pos, std::ve
 
     std::sort(index_vector.begin(), index_vector.end());
 
-    // for(int z = 0; z<index_vector.size(); z++)
+    // for(const auto& idx : index_vector)
     // {
-    //     std::cerr << index_vector[z].first<<","<<index_vector[z].second<<"\t"<<v_distances[z]<< std::endl;
+    //     std::cerr << idx.first<<","<<idx.second<<"\t"<< std::endl;
     // }    
     // std::cerr<<"\n\n\n\n\n";
 
@@ -285,9 +285,9 @@ void CNavigationALF::PrintArrivedKilobot()
 {
     /* Print arrived kilobot */ 
     std::cerr<<"arrived kilobots: ";
-    for(int i=0; i<arrived.size(); i++)
+    for(const auto& arrived : v_arrived)
     {
-        std::cerr<<arrived[i]<<", ";
+        std::cerr<<arrived<<", ";
     }
     std::cerr<<std::endl<<std::endl;
 }
@@ -342,12 +342,12 @@ void CNavigationALF::GoToWithOrientation(CKilobotEntity &c_kilobot_entity)
     CRadians angle_offset = desired_orientation - kiloOrientation; //because both angles are defined in [-pi,pi]
     
 
-    if (!arrived[unKilobotID])
+    if (!v_arrived[unKilobotID])
     {
         if(SquareDistance(init_d_position , kiloPos) <= kDistThreshold) //0.0009
         {
             // PrintPose(unKilobotID);
-            //PrintArrivedKilobot();
+            // PrintArrivedKilobot();
             if(angle_offset.GetAbsoluteValue() > kAngleThreshold)
             {            
                 if(angle_offset.GetValue() > 0) 
@@ -364,12 +364,12 @@ void CNavigationALF::GoToWithOrientation(CKilobotEntity &c_kilobot_entity)
             else
             {
                 cmd = STOP;
-                arrived[unKilobotID] = true;            
+                v_arrived[unKilobotID] = true;            
             }
 
             
             // cmd = STOP;
-            // arrived[unKilobotID] = true;           
+            // v_arrived[unKilobotID] = true;           
         }
 
         else 
@@ -402,7 +402,7 @@ void CNavigationALF::GoToWithOrientation(CKilobotEntity &c_kilobot_entity)
     {
         if(SquareDistance(init_d_position , kiloPos) > kDistThreshold + 0.0002)
         {
-            arrived[unKilobotID] = false;
+            v_arrived[unKilobotID] = false;
         }
     }
     

@@ -106,7 +106,7 @@ public:
     virtual CColor GetFloorColor(const CVector2& vec_position_on_plane);
 
     /** Flag to check if kilobot is arrived in its initial desired position */
-    std::vector<bool>  arrived;
+    std::vector<bool>  v_arrived;
 
     //std::vector <int> assignedTargets;
     const double kDistThreshold = 0.0008;
