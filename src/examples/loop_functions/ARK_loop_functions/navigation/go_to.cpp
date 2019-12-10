@@ -47,7 +47,8 @@ void CNavigationALF::Destroy() {
 /****************************************/
 
 void CNavigationALF::SetupInitialKilobotStates() {
-    v_arrived.resize(m_tKilobotEntities.size());
+    v_arrivedInPosition.resize(m_tKilobotEntities.size());
+    v_arrivedInOrientation.resize(m_tKilobotEntities.size());
     /* Variables for go_to initial position */
     // index_vector.resize(m_tKilobotEntities.size());
     m_vecKilobotsPositions.resize(m_tKilobotEntities.size());
@@ -84,7 +85,8 @@ void CNavigationALF::SetupInitialKilobotStates() {
 void CNavigationALF::SetupInitialKilobotState(CKilobotEntity &c_kilobot_entity){
     /* The kilobots begins outside the clustering hub*/
     UInt16 unKilobotID=GetKilobotId(c_kilobot_entity);
-    v_arrived[unKilobotID] = false;
+    v_arrivedInPosition[unKilobotID] = false;
+    v_arrivedInOrientation[unKilobotID] = false;
     m_vecLastTimeMessaged[unKilobotID] = -1000;
 
     /* Get a non-colliding random position within the circular arena */
@@ -130,6 +132,7 @@ void CNavigationALF::SetupInitialKilobotState(CKilobotEntity &c_kilobot_entity){
     m_vecDesInitKilobotPosition[unKilobotID] = rand_init_pos;
     m_vecCommandLog[unKilobotID] = STOP;
     rand_angle = c_rng->Uniform(CRange<Real>(-CRadians::PI.GetValue(), CRadians::PI.GetValue()));     // Angle in [-pi,pi]
+    //TODO : FIX RANDOM ANGLE
     m_vecDesInitKilobotOrientation[unKilobotID] = CRadians(rand_angle);
 
     // GreedyAssociation(m_vecKilobotsPositions, m_vecDesInitKilobotPosition);
@@ -285,7 +288,7 @@ void CNavigationALF::PrintArrivedKilobot()
 {
     /* Print arrived kilobot */ 
     std::cerr<<"arrived kilobots: ";
-    for(const auto& arrived : v_arrived)
+    for(const auto& arrived : v_arrivedInPosition)
     {
         std::cerr<<arrived<<", ";
     }
@@ -295,10 +298,31 @@ void CNavigationALF::PrintArrivedKilobot()
 /****************************************/
 /****************************************/
 
-void CNavigationALF::PrintPose(UInt16 unKilobotID)
+void CNavigationALF::PrintPose(UInt16& unKilobotID, command& cmd)
 {
+    // std::cerr<<"Desired angles ";
+    // for(const auto& angle : m_vecDesInitKilobotOrientation)
+    // {
+    //     std::cerr<<angle<<", ";
+    // }
+    // std::cerr<<std::endl<<std::endl;
 
-    if(unKilobotID != 3) return;
+    std::string s_cmd ("ERROR not used variable");
+    switch (cmd)
+    {
+        case FORWARD:
+            s_cmd = "Forward";
+            break;
+        case LEFT:
+            s_cmd = "Turn left";
+            break;
+        case RIGHT:
+            s_cmd = "Turn right";
+            break;
+        case STOP:
+            s_cmd = "Stop";
+            break;
+    }
 
     CVector2 kiloPos = m_vecKilobotsPositions[unKilobotID];// GetKilobotPosition(c_kilobot_entity);
     CVector2 init_d_position = m_vecDesInitKilobotPosition[index_vector[unKilobotID].second];
@@ -306,14 +330,14 @@ void CNavigationALF::PrintPose(UInt16 unKilobotID)
     CRadians kiloOrientation = m_vecKilobotsOrientations[unKilobotID]; //GetKilobotOrientation(c_kilobot_entity);
     CRadians desired_orientation = m_vecDesInitKilobotOrientation[index_vector[unKilobotID].second];
     
-    // std::cout<<"SquareDistance: "<<SquareDistance(init_d_position , kiloPos)<<std::endl;
-    // std::cout<<"Kilobot position: "<<kiloPos<<std::endl;
-    // std::cout<<"Desired position: "<<init_d_position<<std::endl;
-    
-    std::cout<<"Angle displacement: "<<desired_orientation - kiloOrientation<<std::endl;
-    std::cout<<"Kilobot orientation: "<<kiloOrientation<<std::endl;
-    std::cout<<"Desired orientation: "<<desired_orientation<<std::endl;
-    std::cout<<"\n\n";
+    std::cerr<<"KId: "<<unKilobotID<<", command: "<<s_cmd<<std::endl;
+    // std::cerr<<"SquareDistance: "<<SquareDistance(init_d_position , kiloPos)<<std::endl;
+    // std::cerr<<"Kilobot position: "<<kiloPos<<std::endl;
+    // std::cerr<<"Desired position: "<<init_d_position<<std::endl;
+    // std::cerr<<"Angle displacement: "<<desired_orientation - kiloOrientation<<std::endl;
+    std::cerr<<"Kilobot orientation: "<<kiloOrientation<<std::endl;
+    // std::cerr<<"Desired orientation: "<<desired_orientation<<std::endl;
+    std::cerr<<"\n";
 }
 
 /****************************************/
@@ -321,13 +345,13 @@ void CNavigationALF::PrintPose(UInt16 unKilobotID)
 
 void CNavigationALF::GoToWithOrientation(CKilobotEntity &c_kilobot_entity)
 {
-    /* Get the kilobot ID and state (Only Position in this example) */
+    /* Get the kilobot ID and state */
     UInt16 unKilobotID=GetKilobotId(c_kilobot_entity);
 
-    /* check if enough time has passed from the last message otherwise*/
-    //if (m_fTimeInSeconds - m_vecLastTimeMessaged[unKilobotID] < m_fMinTimeBetweenTwoMsg) return;
+    /* Check if enough time has passed from the last message otherwise*/
+    // if (m_fTimeInSeconds - m_vecLastTimeMessaged[unKilobotID] < m_fMinTimeBetweenTwoMsg) return;
 
-    /*Motion command to send to the kilobot*/
+    /* Motion command to send to the kilobot */
     command cmd = STOP;
     message_t msg;
     msg.type = 254;
@@ -336,52 +360,32 @@ void CNavigationALF::GoToWithOrientation(CKilobotEntity &c_kilobot_entity)
     /* Variable for Kilobots position and orientation */
     CVector2 kiloPos = m_vecKilobotsPositions[unKilobotID];// GetKilobotPosition(c_kilobot_entity);
     CVector2 init_d_position = m_vecDesInitKilobotPosition[index_vector[unKilobotID].second];
-
     CRadians kiloOrientation = m_vecKilobotsOrientations[unKilobotID];//GetKilobotOrientation(c_kilobot_entity);
     CRadians desired_orientation = m_vecDesInitKilobotOrientation[index_vector[unKilobotID].second];
     CRadians angle_offset = desired_orientation - kiloOrientation; //because both angles are defined in [-pi,pi]
-    
+    angle_offset += (angle_offset>CRadians::PI) ? -CRadians::TWO_PI : (angle_offset<-CRadians::PI) ? CRadians::TWO_PI : CRadians(0.0);
 
-    if (!v_arrived[unKilobotID])
+    if (!v_arrivedInPosition[unKilobotID])
     {
-        if(SquareDistance(init_d_position , kiloPos) <= kDistThreshold) //0.0009
-        {
-            // PrintPose(unKilobotID);
-            // PrintArrivedKilobot();
-            if(angle_offset.GetAbsoluteValue() > kAngleThreshold)
-            {            
-                if(angle_offset.GetValue() > 0) 
-                {
-                    cmd = LEFT;
-                }
-
-                else
-                {
-                    cmd = RIGHT;
-                }  
-            }
-
-            else
-            {
-                cmd = STOP;
-                v_arrived[unKilobotID] = true;            
-            }
-
-            
+        if(SquareDistance(init_d_position , kiloPos) <= kDistThreshold) 
+        {            
+            /*Following 2 lines if no initial orientation considered*/
             // cmd = STOP;
-            // v_arrived[unKilobotID] = true;           
+            v_arrivedInPosition[unKilobotID] = true;           
         }
 
         else 
         {
-            CRadians pathOrientation = ATan2(init_d_position.GetY() - kiloPos.GetY(), init_d_position.GetX()-kiloPos.GetX()) - GetKilobotOrientation(c_kilobot_entity);
-            if(pathOrientation.GetAbsoluteValue() < 0.5)
+            std::cerr<<"Go Forward!"<<std::endl;
+            CRadians pathOrientation = ATan2(init_d_position.GetY() - kiloPos.GetY(), init_d_position.GetX()-kiloPos.GetX()) - kiloOrientation;
+            if(pathOrientation.GetAbsoluteValue() < 0.78)
             {
                 cmd = FORWARD;
             }
             else
             {
                 pathOrientation.SignedNormalize(); //map angle in [-pi,pi]
+                // normalise the pathOrientation between -pi and pi
                 
                 if (pathOrientation < CRadians::ZERO)
                 {
@@ -395,18 +399,57 @@ void CNavigationALF::GoToWithOrientation(CKilobotEntity &c_kilobot_entity)
             }
 
         }
+
+        // if(unKilobotID == 21)
+        // {
+        //     PrintPose(unKilobotID, cmd);
+        // }
+        // PrintArrivedKilobot();
     }
 
     //if the kilobot for some reason is moved from goal position...
     else
     {
-        if(SquareDistance(init_d_position , kiloPos) > kDistThreshold + 0.0002)
+        if(SquareDistance(init_d_position , kiloPos) > kDistThreshold + kDistPushed)
         {
-            v_arrived[unKilobotID] = false;
+            v_arrivedInPosition[unKilobotID] = false;
+        }
+
+        else if(!v_arrivedInOrientation[unKilobotID])
+        {
+            /* Kilobot angle test, just to test angle variation in Argos */
+            // cmd = LEFT;
+            // std::cerr<<"Angle displacement: "<<angle_offset<<std::endl;
+            // std::cerr<<"Desired orientation: "<<desired_orientation<<std::endl;
+            // std::cerr<<"Kilobot orientation: "<<kiloOrientation<<std::endl;
+            // std::cerr<<"\n\n";
+            
+            /*Following if-else if also initial orientation is considered */
+            // std::cerr<<"Angle displacement: "<<angle_offset<<std::endl;
+            // std::cerr<<"Kilobot orientation: "<<kiloOrientation<<std::endl;
+            // std::cerr<<"Desired orientation: "<<desired_orientation<<std::endl;
+            if(angle_offset.GetAbsoluteValue() > kAngleThreshold)
+            {
+                std::cerr<<"Apply Rotation!"<<std::endl;            
+                if(angle_offset.GetValue() > 0) 
+                {
+                    cmd = LEFT;
+                }
+                else
+                {
+                    cmd = RIGHT;
+                }  
+            }
+            else
+            {
+                std::cerr<<"Arrived!"<<std::endl;
+                cmd = STOP;
+                v_arrivedInOrientation[unKilobotID] = true;            
+            }
         }
     }
     
-    if (m_vecCommandLog[unKilobotID] != cmd)
+    if (m_vecCommandLog[unKilobotID] != cmd )//|| cmd == STOP)
     {
         m_vecCommandLog[unKilobotID] = cmd;
         msg.data[0] = uint8_t (cmd);

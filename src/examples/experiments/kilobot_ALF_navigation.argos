@@ -8,7 +8,7 @@
         <system threads="4" />
         <experiment length="400"
         ticks_per_second="10"
-        random_seed="6" />
+        random_seed="89" />
     </framework>
     
     <!-- *************** -->
@@ -21,8 +21,6 @@
                 <differential_steering implementation="default"
                 bias_avg="0.0"
                 bias_stddev="0.0"
-                factor_avg="1"
-                factor_stddev="0.00010"
                 />
                 <kilobot_led implementation="default" />
             </actuators>
@@ -72,7 +70,7 @@
             </Target2>
             <Target3 position="-0.5,0.5" radius="0.05" color="0,125,0,125" >
             </Target3>
-            <Perimeter radius="0.5" width="0.01" height="0.1" walls="100">
+            <Perimeter radius="1" width="0.01" height="0.1" walls="100">
             </Perimeter>
         </environments>
     
@@ -101,7 +99,7 @@
         <distribute>
             <position method="uniform" min="0.2,0.2,0" max="0.7,0.7,0" />
             <orientation method="uniform" min="0,0,0" max="360,0,0" />
-            <entity quantity="5" max_trials="100">
+            <entity quantity="60" max_trials="100">
                 <kilobot id="kb">
                     <controller config="listener"/> <dynamics2d friction="0.7" />
                 </kilobot>

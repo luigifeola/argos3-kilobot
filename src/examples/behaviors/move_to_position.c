@@ -81,21 +81,23 @@ void set_motion(motion_t new_motion_type)
     {
     case FORWARD:
       spinup_motors();
-      // set_motors(kilo_straight_left, kilo_straight_right);
-      set_motors(1, 1);
+      set_motors(kilo_straight_left, kilo_straight_right);
+      // set_motors(1, 1);
       break;
     case TURN_LEFT:
       spinup_motors();
-      //set_motors(kilo_turn_left, 0);
-      set_motors(1, 0);
+      set_motors(kilo_turn_left, 0);
+      // set_motors(1, 0);
       break;
     case TURN_RIGHT:
       spinup_motors();
-      // set_motors(0, kilo_turn_right);
-      set_motors(0, 1);
+      set_motors(0, kilo_turn_right);
+      // set_motors(0, 1);
       break;
     case STOP:
       set_motors(0, 0);
+      break;
+      
     default:
       set_motors(0, 0);
     }
