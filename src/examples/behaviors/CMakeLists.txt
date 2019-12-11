@@ -94,6 +94,12 @@ if(ARGOS_BUILD_FOR_SIMULATOR)
   target_link_libraries(crwlevy argos3plugin_simulator_kilolib)
 
   #
+  # ARK loop function: crwlevy_with_positioning
+  #
+  add_executable(crwlevy_with_positioning crwlevy_with_positioning.c)  
+  target_link_libraries(crwlevy_with_positioning argos3plugin_simulator_kilolib)
+
+  #
   # Debugging example
   #
   add_executable(test_debug test_debug.h test_debug.c)

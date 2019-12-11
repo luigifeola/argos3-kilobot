@@ -43,10 +43,14 @@ typedef enum {
 motion_t current_motion_type = STOP;
 
 /* current state */
+uint8_t received_command = STOP;
 state_t current_state = OUTSIDE_TARGET;
 
 /* Message send to the other kilobots */
 message_t messageA;
+
+/* Flag to start the experiment after the positioning */
+bool start_experiment = false;
 
 /* Flag for decision to send a word */
 bool sending_msg = false;
@@ -105,16 +109,14 @@ void set_motion(motion_t new_motion_type)
       set_motors(0, kilo_turn_right);
       break;
     case STOP:
+      set_motors(0, 0);
+      break;
     default:
       set_motors(0, 0);
     }
     current_motion_type = new_motion_type;
   }
-  else
-  {
-    set_motors(0, 0);
-    //set_color(RGB(0, 0, 3));
-  }
+
 }
 
 /*-------------------------------------------------------------------*/
@@ -131,7 +133,7 @@ void setup()
   srand(seed);
   
   /* Initialise motion variables */
-  set_motion(FORWARD);
+  set_motion(STOP);
 
   /* Initialise KBots message */
   messageA.type = 1;
@@ -171,13 +173,28 @@ void message_tx_success() {
 /* and a CRC (2 bytes).                                              */
 /*-------------------------------------------------------------------*/
 void message_rx(message_t *msg, distance_measurement_t *d) {
+  
+  /* For testing communication */
+  // if (msg->type == 253)
+  // {
+  //   set_color(RGB(1,1,1));
+  // }
+  
+  if (msg->type == 254)
+  {
+    received_command = msg->data[0];
+    start_experiment = msg->data[1];
+  }
+
+
   if (msg->type == 255)
   {
     crw_exponent = (double)msg->data[0]/100;
     levy_exponent = (double)msg->data[1]/100;
-    //printf("CRW: %f \n", crw_exponent);
-    //printf("LEVY: %f \n", levy_exponent);
-    return;
+    // printf("CRW: %f \n", crw_exponent);
+    // printf("LEVY: %f \n", levy_exponent);
+    set_color(RGB(1, 0, 0));
+    
   }
 
   uint8_t cur_distance = estimate_distance(d);
@@ -187,12 +204,12 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
   }
 
   /* get id (always firt byte) */
-  uint8_t id = msg->data[0];
+  // id = msg->data[0];
   
   /* ----------------------------------*/
   /* smart arena message               */
   /* ----------------------------------*/
-  if (msg->type == 0 && id==kilo_uid) 
+  if (msg->type == 0 && msg->data[0]==kilo_uid) 
   {
     current_state = DISCOVERED_TARGET;
     new_information = true;
@@ -203,7 +220,7 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
   /* ----------------------------------*/
   /* KB interactive message            */
   /* ----------------------------------*/
-  else if (msg->type==1 && id!=kilo_uid && msg->crc==message_crc(msg)) {
+  else if (msg->type==1 && msg->data[0]!=kilo_uid && msg->crc==message_crc(msg)) {
     new_information = true;
     if (current_state != DISCOVERED_TARGET)
     {
@@ -229,60 +246,42 @@ void broadcast()
 /*-------------------------------------------------------------------*/
 /* Function implementing the crwlevy random walk                     */
 /*-------------------------------------------------------------------*/
-void random_walk()
-{
-  if (crw_exponent && levy_exponent)
-  {
-    switch (current_motion_type)
-    {
-    case TURN_LEFT:
-    case TURN_RIGHT:
-      if (kilo_ticks > last_motion_ticks + turning_ticks)
-      {
-        /* start moving forward */
-        last_motion_ticks = kilo_ticks;
-        set_motion(FORWARD);
-      }
-      break;
-    case FORWARD:
-      if (kilo_ticks > last_motion_ticks + straight_ticks)
-      {
-        /* perform a random turn */
-        last_motion_ticks = kilo_ticks;
-        if (rand_soft() % 2)
-        {
-          set_motion(TURN_LEFT);
-        }
-        else
-        {
-          set_motion(TURN_RIGHT);
-        }
-        double angle = 0;
-        if (crw_exponent == 0)
-        {
-
-          angle = (uniform_distribution(0, (M_PI)));
-          // my_printf("%" PRIu32 "\n", turning_ticks);
-          // my_printf("%u" "\n", rand());
-        }
-        else
-        {
-          angle = fabs(wrapped_cauchy_ppf(crw_exponent));
-        }
-        turning_ticks = (uint32_t)((angle / M_PI) * max_turning_ticks);
-        straight_ticks = (uint32_t)(fabs(levy(std_motion_steps, levy_exponent)));
-        // my_printf("%u" "\n", straight_ticks);
-      }
-      break;
-
-    case STOP:
-    default:
+void random_walk(){
+  switch (current_motion_type) {
+  case TURN_LEFT:
+  case TURN_RIGHT:
+    /* if turned for enough time move forward */
+    if (kilo_ticks > last_motion_ticks + turning_ticks) {
+      /* start moving forward */
+      last_motion_ticks = kilo_ticks;
       set_motion(FORWARD);
     }
-  }
-  else
-  {
-    set_motion(STOP);
+    break;
+  case FORWARD:
+    /* if moved forward for enough time turn */
+    if (kilo_ticks > last_motion_ticks + straight_ticks) {
+      /* perform a random turn */
+      last_motion_ticks = kilo_ticks;
+      if (rand_hard() % 2) {
+        set_motion(TURN_LEFT);
+      } else {
+        set_motion(TURN_RIGHT);
+      }
+      // compute turning time
+      double angle = 0;
+      if(crw_exponent == 0) {
+          angle = (uniform_distribution(0, (M_PI)));
+      } else {
+        angle = fabs(wrapped_cauchy_ppf(crw_exponent));
+      }
+      turning_ticks = (uint32_t)((angle / M_PI) * max_turning_ticks);
+      straight_ticks = (uint32_t)(fabs(levy(std_motion_steps, levy_exponent)));
+    }
+    break;
+
+  case STOP:
+  default:
+    set_motion(FORWARD);
   }
 }
 
@@ -306,13 +305,38 @@ void check_reset()
 void loop()
 {
   check_reset();
-  if (!levy_exponent && !crw_exponent)
+
+  
+  // printf("CRW1234: %f \n", crw_exponent);
+  // printf("LEVY1234: %f \n", levy_exponent);
+
+  // printf("Stato NON arrivato\n");
+  // printf("%" PRIu32 "\n", received_command);
+
+  if (levy_exponent && crw_exponent)
   {
-    return;
+    printf("Random Walk\n");
+    /* Randomness in the movement to avoid collision */
+    if (!(rand()%30) && received_command == FORWARD)
+    {
+      received_command = TURN_RIGHT;
+    }
+
+    set_motion(received_command);
+    if(received_command == TURN_LEFT || received_command == TURN_RIGHT)
+    {
+      set_color(RGB(0, 3, 0));
+      delay(500);
+      set_color(RGB(3, 0, 0));
+      delay(500);
+    }
+    if(start_experiment)
+    {
+      random_walk();
+      broadcast();  
+    }
   }
   
-  random_walk();
-  broadcast();
 }
 
 /*-------------------------------------------------------------------*/
