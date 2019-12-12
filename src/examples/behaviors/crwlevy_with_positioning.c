@@ -175,15 +175,18 @@ void message_tx_success() {
 void message_rx(message_t *msg, distance_measurement_t *d) {
   
   /* For testing communication */
-  // if (msg->type == 253)
-  // {
-  //   set_color(RGB(1,1,1));
-  // }
+  if (msg->type == 253)
+  {
+    /* Blinking behaviour */
+    set_color(RGB(0, 3, 0));
+    delay(50);
+    set_color(RGB(3, 0, 0));
+    delay(50);
+  }
   
   if (msg->type == 254)
   {
     received_command = msg->data[0];
-    start_experiment = msg->data[1];
   }
 
 
@@ -191,9 +194,10 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
   {
     crw_exponent = (double)msg->data[0]/100;
     levy_exponent = (double)msg->data[1]/100;
+    start_experiment = msg->data[2]; // TODO: questo lo metterei in msg->type 255
     // printf("CRW: %f \n", crw_exponent);
     // printf("LEVY: %f \n", levy_exponent);
-    set_color(RGB(1, 0, 0));
+    set_color(RED(3));
     
   }
 
@@ -213,7 +217,7 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
   {
     current_state = DISCOVERED_TARGET;
     new_information = true;
-    set_color(RGB(3, 0, 0));
+    set_color(RGB(0, 0, 3));
 
   }
 
@@ -306,16 +310,14 @@ void loop()
 {
   check_reset();
 
+  // printf("CRW: %f \n", crw_exponent);
+  // printf("LEVY: %f \n", levy_exponent);
   
-  // printf("CRW1234: %f \n", crw_exponent);
-  // printf("LEVY1234: %f \n", levy_exponent);
-
   // printf("Stato NON arrivato\n");
   // printf("%" PRIu32 "\n", received_command);
-
-  if (levy_exponent && crw_exponent)
+  
+  if(!start_experiment)
   {
-    printf("Random Walk\n");
     /* Randomness in the movement to avoid collision */
     if (!(rand()%30) && received_command == FORWARD)
     {
@@ -323,6 +325,7 @@ void loop()
     }
 
     set_motion(received_command);
+    /* Blinking behaviour */
     if(received_command == TURN_LEFT || received_command == TURN_RIGHT)
     {
       set_color(RGB(0, 3, 0));
@@ -330,12 +333,16 @@ void loop()
       set_color(RGB(3, 0, 0));
       delay(500);
     }
-    if(start_experiment)
-    {
-      random_walk();
-      broadcast();  
-    }
+
   }
+
+  else
+  {
+    random_walk();
+    broadcast();  
+  }
+  
+  
   
 }
 

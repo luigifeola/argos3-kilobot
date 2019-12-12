@@ -100,6 +100,13 @@ public:
     /** Get the message to send to a Kilobot according to its position */
     void UpdateKilobotState(CKilobotEntity& c_kilobot_entity);
 
+    /*Set experiment*/
+    void SetExperiment(bool start){
+        start_experiment = start;
+    }
+
+    /** Send CRW-LEVY exponents*/
+    void Broadcast_exponents();
 
     /** Get the message to send to a Kilobot according to its position */
     void UpdateVirtualSensor(CKilobotEntity& c_kilobot_entity);
@@ -166,6 +173,7 @@ private:
         NOT_TARGET_FOUND=0,
         TARGET_FOUND=1,
         TARGET_COMMUNICATED=2,
+        READY = 3,
     } SRobotState;
 
 
@@ -200,6 +208,9 @@ private:
     /* crwlevy exponents */
     Real crw_exponent;
     Real levy_exponent;
+
+    /* Flag to start the experiment */
+    bool start_experiment;
 
     /* output file for data acquisition */
     std::ofstream m_cOutput;
