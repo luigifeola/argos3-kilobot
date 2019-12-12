@@ -100,11 +100,6 @@ public:
     /** Get the message to send to a Kilobot according to its position */
     void UpdateKilobotState(CKilobotEntity& c_kilobot_entity);
 
-    /*Set experiment*/
-    void SetExperiment(bool start){
-        start_experiment = start;
-    }
-
     /** Send CRW-LEVY exponents*/
     void Broadcast_exponents();
 
@@ -134,7 +129,7 @@ public:
     std::vector<bool>  v_arrivedInOrientation;
 
     //std::vector <int> assignedTargets;
-    const double kDistThreshold = 0.0002;   //0.002
+    const double kDistThreshold = 0.0001;   //0.002
     const double kDistPushed = 0.001; //0.0001
     const double kAngleThreshold = 0.17;    //0.17 Radians 9,740283 Degrees
 
@@ -142,6 +137,7 @@ private:
 
     UInt32 num_robots_with_discovery;
     UInt32 num_robots_with_info;
+    
     
     /************************************/
     /*  Virtual Environment variables   */

@@ -54,5 +54,6 @@
         "typeindex": "cpp",
         "typeinfo": "cpp",
         "kilolib.h": "c"
-    }
+    },
+    "C_Cpp.errorSquiggles": "Disabled"
 }
