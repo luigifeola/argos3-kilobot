@@ -81,6 +81,8 @@ public:
 
     virtual void Destroy();
 
+    virtual void PostStep();
+
     /** Setup the initial state of the Kilobots in the space */
     void SetupInitialKilobotStates();
 
@@ -207,12 +209,17 @@ private:
 
     /* Flag to start the experiment */
     bool start_experiment;
+    Real start_experiment_time;
 
     /* output file for data acquisition */
     std::ofstream m_cOutput;
+    /* positions file for data acquisition */
+    std::ofstream m_cOutputPositions;
 
     /* output file name*/
     std::string m_strOutputFileName;
+    /* stored position file name*/
+    std::string m_strPositionsFileName;
 
     /* data acquisition frequency in ticks */
     UInt16 m_unDataAcquisitionFrequency;
@@ -221,6 +228,8 @@ private:
     UInt32 m_unFullInformationTime;
     Real m_fFractionWithInformation;
     Real m_fFractionWithDiscovery;
+
+    int sampling_period;
 };
 
 #endif

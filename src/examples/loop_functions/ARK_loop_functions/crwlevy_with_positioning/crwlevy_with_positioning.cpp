@@ -10,6 +10,7 @@ num_robots_with_info(0)
     {
         c_rng = CRandom::CreateRNG("argos");
         start_experiment = false;
+        start_experiment_time = 0;
     }
 
 /****************************************/
@@ -26,6 +27,7 @@ void CCrwlevyALFPositioning::Init(TConfigurationNode& t_node) {
     CALF::Init(t_node);
     /* Other initializations: Varibales, Log file opening... */
     m_cOutput.open(m_strOutputFileName, std::ios_base::trunc | std::ios_base::out);
+    m_cOutputPositions.open(m_strPositionsFileName, std::ios_base::trunc | std::ios_base::out);
 }
 
 /****************************************/
@@ -34,8 +36,10 @@ void CCrwlevyALFPositioning::Init(TConfigurationNode& t_node) {
 void CCrwlevyALFPositioning::Reset() {
     /* Close data file */
     m_cOutput.close();
+    m_cOutputPositions.close();
     /* Reopen the file, erasing its contents */
     m_cOutput.open(m_strOutputFileName, std::ios_base::trunc | std::ios_base::out);
+    m_cOutputPositions.open(m_strPositionsFileName, std::ios_base::trunc | std::ios_base::out);
 }
 
 /****************************************/
@@ -44,6 +48,7 @@ void CCrwlevyALFPositioning::Reset() {
 void CCrwlevyALFPositioning::Destroy() {
     /* Close data file */
     m_cOutput.close();
+    m_cOutputPositions.close();
 }
 
 /****************************************/
@@ -188,6 +193,10 @@ void CCrwlevyALFPositioning::GetExperimentVariables(TConfigurationNode& t_tree){
     /* Get the crwlevy exponents */
     GetNodeAttribute(tExperimentVariablesNode, "crw", crw_exponent);
     GetNodeAttribute(tExperimentVariablesNode, "levy", levy_exponent);
+    /*Get the sampling period in ticks*/
+    GetNodeAttribute(tExperimentVariablesNode, "sampling_period_in_ticks", sampling_period);
+    /* Get the positions datafile name to store Kilobot positions in time */
+    GetNodeAttribute(tExperimentVariablesNode, "positionsfilename", m_strPositionsFileName);
     /* Get the output datafile name and open it */
     GetNodeAttribute(tExperimentVariablesNode, "datafilename", m_strOutputFileName);
     /* Get the frequency of data saving */
@@ -203,12 +212,15 @@ void CCrwlevyALFPositioning::GetExperimentVariables(TConfigurationNode& t_tree){
 /****************************************/
 void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity){
     /* Update the state of the kilobots (target not found, found directly or communicated)*/
+    // std::cerr<<"UpdateKilobotState\n";
     UInt16 unKilobotID=GetKilobotId(c_kilobot_entity);
     m_vecKilobotsPositions[unKilobotID] = GetKilobotPosition(c_kilobot_entity);
     m_vecKilobotsOrientations[unKilobotID] = GetKilobotOrientation(c_kilobot_entity);
     // TODO: attento prima di essere TARGET_FOUND deve essere READY
     if(start_experiment)
     {
+        
+        // std::cerr<<"UpdateKilobotState running experiment\n";
         Real fDistance = Distance(m_vecKilobotsPositions[unKilobotID], m_sClusteringHub.Center);
 
         if(m_vecKilobotStates[unKilobotID] == TARGET_FOUND){
@@ -312,6 +324,7 @@ void CCrwlevyALFPositioning::GreedyAssociation(std::vector<CVector2> actual_pos,
 /****************************************/
 
 void CCrwlevyALFPositioning::Broadcast_exponents(){
+    // std::cerr<<"Broadcast_exponents\n";
     /* Broadcastin of experiment exponents*/
     message_t m_tArkBroadcastMessage;// = new message_t();
     /* Prepare the inividual kilobot's message */
@@ -321,6 +334,7 @@ void CCrwlevyALFPositioning::Broadcast_exponents(){
     m_tArkBroadcastMessage.data[1] = (UInt8)(levy_exponent*100);
     
     start_experiment = true;
+    start_experiment_time = m_fTimeInSeconds;
     GetSimulator().GetMedium<CKilobotCommunicationMedium>("kilocomm").SendOHCMessageTo(m_tKilobotEntities,&m_tArkBroadcastMessage);
 }
 
@@ -349,11 +363,13 @@ void CCrwlevyALFPositioning::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entit
     {
         // std::cerr<<"Sending exponents\n";
         /* If led red -> kilo_ready ->if all led, start experiment */
+        std::cerr<<"Sending Parameters\n";
         Broadcast_exponents();
     }
 
     else 
     {
+        // std::cerr<<"Experiment is running\n";
         /* check if enough time has passed from the last message otherwise*/
         // TODO: check if needed the following rows
         if (m_fTimeInSeconds - m_vecLastTimeMessaged[unKilobotID]< m_fMinTimeBetweenTwoMsg){
@@ -376,8 +392,36 @@ void CCrwlevyALFPositioning::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entit
 
 /****************************************/
 /****************************************/
+void CCrwlevyALFPositioning::PostStep()
+{
+    Real actual_time_experiment;
+    // std::cout<<"Time in seconds:"<<actual_time_experiment<<std::endl;
+    actual_time_experiment = m_fTimeInSeconds - start_experiment_time;
+    Real integer_digits = -1;
+    Real floating_digits = std::modf(actual_time_experiment, &integer_digits);
+    
+        // if(!((int)integer_digits%10) && (std::fabs(floating_digits - 0.1) < EPSILON ))
+        //     std::cout<<"actual_time_experiment:"<<actual_time_experiment<<std::endl;
+    
+    if(start_experiment && !((int)integer_digits%10) && (std::fabs(floating_digits - 0.1) < EPSILON ))
+    {
+        m_cOutputPositions<</*std::fixed<<std::setprecision(1)<<*/actual_time_experiment;
+        for(const auto& pos : m_vecKilobotsPositions)
+        {
+            m_cOutputPositions<<'\t'<<std::fixed<<std::setprecision(3)<<pos;
+        }
+        m_cOutputPositions<<std::endl;
+    }
+}
+
+/****************************************/
+/****************************************/
 void CCrwlevyALFPositioning::UpdateResults(){
-    Reset();
+    /* Close data file */
+    m_cOutput.close();
+    /* Reopen the file, erasing its contents */
+    m_cOutput.open(m_strOutputFileName, std::ios_base::trunc | std::ios_base::out);
+
     std::map<UInt16,std::pair<UInt32,UInt32>>::const_iterator itr = m_KilobotResults.begin();
     m_cOutput << "#Kid" << "\t#fpt" << "\t#fit"<<std::endl;
     for (; itr!=m_KilobotResults.end(); ++itr){
@@ -564,6 +608,7 @@ void CCrwlevyALFPositioning::GoToWithOrientation(CKilobotEntity &c_kilobot_entit
     }
     
 }
+
 /****************************************/
 /****************************************/
 

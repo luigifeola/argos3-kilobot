@@ -53,6 +53,8 @@
         <variables
             crw = "0.8"
             levy = "1.5"
+            sampling_period_in_ticks = "100"
+            positionsfilename="positions_file.txt"
             datafilename="data_file.txt"
             dataacquisitionfrequency="100"  
             environmentplotupdatefrequency="1"
