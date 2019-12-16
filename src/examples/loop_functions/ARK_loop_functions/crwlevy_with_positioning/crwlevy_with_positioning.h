@@ -113,6 +113,7 @@ public:
 
     /** Reassign initial position */
     void GreedyAssociation(std::vector<CVector2> actual_pos, std::vector<CVector2> desired_pos);
+    bool DistantEnough(CVector2 &random_position, CVector2 &elem_position);
 
     /** Print arrived Kilobots */
     void PrintArrivedKilobot();
@@ -196,6 +197,11 @@ private:
     std::vector<Real> m_vecLastTimeMessaged;
     Real m_fMinTimeBetweenTwoMsg;
 
+    /* Flag to start the experiment */
+    bool start_experiment;
+    Real start_experiment_time;
+    int internal_counter;
+
     /************************************/
     /*       Experiment variables       */
     /************************************/
@@ -207,9 +213,8 @@ private:
     Real crw_exponent;
     Real levy_exponent;
 
-    /* Flag to start the experiment */
-    bool start_experiment;
-    Real start_experiment_time;
+    /* Flag for initialization */
+    bool initialization;
 
     /* output file for data acquisition */
     std::ofstream m_cOutput;

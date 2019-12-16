@@ -6,11 +6,12 @@
 CCrwlevyALFPositioning::CCrwlevyALFPositioning() :
 m_unDataAcquisitionFrequency(10),
 num_robots_with_discovery(0),
-num_robots_with_info(0)
+num_robots_with_info(0),
+internal_counter(0),
+start_experiment(false),
+start_experiment_time(0)
     {
         c_rng = CRandom::CreateRNG("argos");
-        start_experiment = false;
-        start_experiment_time = 0;
     }
 
 /****************************************/
@@ -63,6 +64,7 @@ void CCrwlevyALFPositioning::SetupInitialKilobotStates() {
     m_vecKilobotsPositions.resize(m_tKilobotEntities.size());
     m_vecKilobotsOrientations.resize(m_tKilobotEntities.size());
     m_vecDesInitKilobotPosition.resize(m_tKilobotEntities.size());
+    m_vecDesInitKilobotPosition.assign(m_vecDesInitKilobotPosition.size(), CVector2(100,100)); // Set an initial impossible position
     m_vecDesInitKilobotOrientation.resize(m_tKilobotEntities.size());
     m_vecLastTimeMessaged.resize(m_tKilobotEntities.size());
     m_vecCommandLog.resize(m_tKilobotEntities.size());
@@ -75,6 +77,14 @@ void CCrwlevyALFPositioning::SetupInitialKilobotStates() {
     
     GreedyAssociation(m_vecKilobotsPositions, m_vecDesInitKilobotPosition);
 
+}
+
+/****************************************/
+/****************************************/
+
+bool CCrwlevyALFPositioning::DistantEnough(CVector2 &random_position, CVector2 &elem_position)
+{
+    return Distance(random_position, elem_position) < 1;
 }
 
 /****************************************/
@@ -110,7 +120,7 @@ void CCrwlevyALFPositioning::SetupInitialKilobotState(CKilobotEntity &c_kilobot_
         distant_enough = MoveEntity(c_kilobot_entity.GetEmbodiedEntity(), rand_pos, random_rotation, false);
         
         if(tries == maxTries-1) {
-        // std::cerr << "ERROR: too many tries and not an available spot for the area" << std::endl;
+            std::cerr << "ERROR: too many tries and not an available spot for the area" << std::endl;
         }
     } while(!distant_enough);
     
@@ -119,29 +129,40 @@ void CCrwlevyALFPositioning::SetupInitialKilobotState(CKilobotEntity &c_kilobot_
      * RANDOM GENERATED INITIAL DESIRED POSITION
      * 
      */
+    maxTries = 999;
+    rand_rot_angle = CRadians(c_rng->Uniform(CRange<Real>(-CRadians::PI.GetValue(), CRadians::PI.GetValue())));
+    random_rotation.FromEulerAngles(rand_rot_angle, CRadians::ZERO, CRadians::ZERO);
+    do{
+        rand_angle = c_rng->Uniform(CRange<Real>(-CRadians::PI.GetValue(), CRadians::PI.GetValue()));   // Angle in [-pi,pi]
+        rand_displacement.SetX(c_rng->Uniform(CRange<Real>(0, m_WallStructure.circular_arena_radius)));
+        rand_displacement.SetY(c_rng->Uniform(CRange<Real>(0, m_WallStructure.circular_arena_radius)));
+        rand_init_pos = CVector2(rand_displacement.GetX()*sin(rand_angle),rand_displacement.GetY()*cos(rand_angle));
+        rand_pos = CVector3(rand_init_pos.GetX(), rand_init_pos.GetY(), 0);
+        distant_enough = MoveEntity(c_kilobot_entity.GetEmbodiedEntity(), rand_pos, random_rotation, initialization); //if initialization == true, you check just for non collision position
+        
+        if(tries == maxTries-1) {
+            std::cerr << "ERROR: too many tries and not an available spot for the area" << std::endl;
+        }
+    } while(!distant_enough);
     
-    rand_angle = c_rng->Uniform(CRange<Real>(-CRadians::PI.GetValue(), CRadians::PI.GetValue()));
-    // do
-    rand_displacement.SetX(c_rng->Uniform(CRange<Real>(0, m_WallStructure.circular_arena_radius)));
-    rand_displacement.SetY(c_rng->Uniform(CRange<Real>(0, m_WallStructure.circular_arena_radius)));
-    rand_init_pos = CVector2(rand_displacement.GetX()*sin(rand_angle),rand_displacement.GetY()*cos(rand_angle));
-    // while each pos distant enough each others
+    
     m_vecKilobotsPositions[unKilobotID] = GetKilobotPosition(c_kilobot_entity);
     m_vecKilobotsOrientations[unKilobotID] = GetKilobotOrientation(c_kilobot_entity);
     m_vecDesInitKilobotPosition[unKilobotID] = rand_init_pos;
-    m_vecCommandLog[unKilobotID] = STOP;
-    rand_angle = c_rng->Uniform(CRange<Real>(-CRadians::PI.GetValue(), CRadians::PI.GetValue()));     // Angle in [-pi,pi]
-    //TODO : FIX RANDOM ANGLE
-    m_vecDesInitKilobotOrientation[unKilobotID] = CRadians(rand_angle);
+    m_vecCommandLog[unKilobotID] = STOP;    
+    m_vecDesInitKilobotOrientation[unKilobotID] = rand_rot_angle;
 
     // GreedyAssociation(m_vecKilobotsPositions, m_vecDesInitKilobotPosition);
 
 
-    SVirtualArea temp_area2;
-    temp_area2.Center = CVector2(rand_init_pos.GetX(), rand_init_pos.GetY());
-    temp_area2.Radius = 0.05;
-    temp_area2.Color = CColor::GREEN;
-    m_TargetAreas.push_back(temp_area2);
+    if(initialization)
+    {
+        SVirtualArea temp_area2;
+        temp_area2.Center = CVector2(rand_init_pos.GetX(), rand_init_pos.GetY());
+        temp_area2.Radius = 0.033;
+        temp_area2.Color = CColor::GREEN;
+        m_TargetAreas.push_back(temp_area2);
+    }
 }
 
 /****************************************/
@@ -193,6 +214,8 @@ void CCrwlevyALFPositioning::GetExperimentVariables(TConfigurationNode& t_tree){
     /* Get the crwlevy exponents */
     GetNodeAttribute(tExperimentVariablesNode, "crw", crw_exponent);
     GetNodeAttribute(tExperimentVariablesNode, "levy", levy_exponent);
+    /* Get the initialization flag */
+    GetNodeAttribute(tExperimentVariablesNode, "initialization", initialization);
     /*Get the sampling period in ticks*/
     GetNodeAttribute(tExperimentVariablesNode, "sampling_period_in_ticks", sampling_period);
     /* Get the positions datafile name to store Kilobot positions in time */
@@ -351,9 +374,7 @@ void CCrwlevyALFPositioning::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entit
     //     std::cerr<<kilo_state<<", ";
     // }
     // std::cerr<<std::endl<<std::endl;
-
-    //TODO: Be very careful here, insert flags
-    if (!std::all_of(v_arrivedInOrientation.begin(), v_arrivedInOrientation.end(), [](bool arrived){return arrived;}))
+    if(!std::all_of(v_arrivedInOrientation.begin(), v_arrivedInOrientation.end(), [](bool arrived){return arrived;}))
     {
         // std::cerr<<"Sending commands\n";
         GoToWithOrientation(c_kilobot_entity);
@@ -386,7 +407,7 @@ void CCrwlevyALFPositioning::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entit
             
             GetSimulator().GetMedium<CKilobotCommunicationMedium>("kilocomm").SendOHCMessageTo(c_kilobot_entity,&m_tMessages[unKilobotID]);
         }
-        // UpdateResults();
+        UpdateResults();
     }
 }
 
@@ -397,21 +418,44 @@ void CCrwlevyALFPositioning::PostStep()
     Real actual_time_experiment;
     // std::cout<<"Time in seconds:"<<actual_time_experiment<<std::endl;
     actual_time_experiment = m_fTimeInSeconds - start_experiment_time;
-    Real integer_digits = -1;
-    Real floating_digits = std::modf(actual_time_experiment, &integer_digits);
     
-        // if(!((int)integer_digits%10) && (std::fabs(floating_digits - 0.1) < EPSILON ))
-        //     std::cout<<"actual_time_experiment:"<<actual_time_experiment<<std::endl;
-    
-    if(start_experiment && !((int)integer_digits%10) && (std::fabs(floating_digits - 0.1) < EPSILON ))
+    if(start_experiment)
     {
-        m_cOutputPositions<</*std::fixed<<std::setprecision(1)<<*/actual_time_experiment;
-        for(const auto& pos : m_vecKilobotsPositions)
+        
+        if(internal_counter == 0 || internal_counter == sampling_period)
         {
-            m_cOutputPositions<<'\t'<<std::fixed<<std::setprecision(3)<<pos;
+            m_cOutputPositions<</*std::fixed<<std::setprecision(1)<<*/(int)actual_time_experiment;
+            for(const auto& pos : m_vecKilobotsPositions)
+            {
+                m_cOutputPositions<<'\t'<<std::fixed<<std::setprecision(3)<<pos;
+            }
+            m_cOutputPositions<<std::endl;  
+
+            if(internal_counter == sampling_period)
+            {
+                internal_counter = 0; 
+            }        
         }
-        m_cOutputPositions<<std::endl;
+
+        internal_counter +=1;
     }
+
+
+    // Real integer_digits = -1;
+    // Real floating_digits = std::modf(actual_time_experiment, &integer_digits);
+    
+    //     // if(!((int)integer_digits%10) && (std::fabs(floating_digits - 0.1) < EPSILON ))
+    //     //     std::cout<<"actual_time_experiment:"<<actual_time_experiment<<std::endl;
+    
+    // if(start_experiment && !((int)integer_digits%10) && (std::fabs(floating_digits - 0.1) < EPSILON ))
+    // {
+    //     m_cOutputPositions<</*std::fixed<<std::setprecision(1)<<*/actual_time_experiment;
+    //     for(const auto& pos : m_vecKilobotsPositions)
+    //     {
+    //         m_cOutputPositions<<'\t'<<std::fixed<<std::setprecision(3)<<pos;
+    //     }
+    //     m_cOutputPositions<<std::endl;
+    // }
 }
 
 /****************************************/
