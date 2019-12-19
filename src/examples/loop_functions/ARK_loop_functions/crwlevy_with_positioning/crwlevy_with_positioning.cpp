@@ -77,14 +77,22 @@ void CCrwlevyALFPositioning::SetupInitialKilobotStates() {
     
     GreedyAssociation(m_vecKilobotsPositions, m_vecDesInitKilobotPosition);
 
-}
+    Real c_random_angle;
+    CVector2 & c_position = m_sClusteringHub.Center;
+    Real & c_radius = m_sClusteringHub.Radius;
+    std::vector<CVector2>::iterator kilobot_on_the_top;
+    do{
+        c_random_angle = c_rng->Uniform(CRange<Real>(-CRadians::PI.GetValue(), CRadians::PI.GetValue()));
+        c_position.SetX(c_rng->Uniform(CRange<Real>(0, m_WallStructure.circular_arena_radius - c_radius)) * sin(c_random_angle));
+        c_position.SetY(c_rng->Uniform(CRange<Real>(0, m_WallStructure.circular_arena_radius - c_radius)) * cos(c_random_angle));
+        
+        kilobot_on_the_top = 
+        std::find_if(m_vecDesInitKilobotPosition.begin(), m_vecDesInitKilobotPosition.end(), [&c_position, &c_radius](CVector2 const &position) {
+            return Distance(c_position, position) < c_radius ;
+            });
+        
+    }while(kilobot_on_the_top != m_vecDesInitKilobotPosition.end());
 
-/****************************************/
-/****************************************/
-
-bool CCrwlevyALFPositioning::DistantEnough(CVector2 &random_position, CVector2 &elem_position)
-{
-    return Distance(random_position, elem_position) < 1;
 }
 
 /****************************************/
@@ -152,13 +160,12 @@ void CCrwlevyALFPositioning::SetupInitialKilobotState(CKilobotEntity &c_kilobot_
     m_vecCommandLog[unKilobotID] = STOP;    
     m_vecDesInitKilobotOrientation[unKilobotID] = rand_rot_angle;
 
-    // GreedyAssociation(m_vecKilobotsPositions, m_vecDesInitKilobotPosition);
 
 
     if(initialization)
     {
         SVirtualArea temp_area2;
-        temp_area2.Center = CVector2(rand_init_pos.GetX(), rand_init_pos.GetY());
+        temp_area2.Center = rand_init_pos;
         temp_area2.Radius = 0.033;
         temp_area2.Color = CColor::GREEN;
         m_TargetAreas.push_back(temp_area2);
@@ -216,8 +223,6 @@ void CCrwlevyALFPositioning::GetExperimentVariables(TConfigurationNode& t_tree){
     GetNodeAttribute(tExperimentVariablesNode, "levy", levy_exponent);
     /* Get the initialization flag */
     GetNodeAttribute(tExperimentVariablesNode, "initialization", initialization);
-    /*Get the sampling period in ticks*/
-    GetNodeAttribute(tExperimentVariablesNode, "sampling_period_in_ticks", sampling_period);
     /* Get the positions datafile name to store Kilobot positions in time */
     GetNodeAttribute(tExperimentVariablesNode, "positionsfilename", m_strPositionsFileName);
     /* Get the output datafile name and open it */
@@ -384,7 +389,7 @@ void CCrwlevyALFPositioning::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entit
     {
         // std::cerr<<"Sending exponents\n";
         /* If led red -> kilo_ready ->if all led, start experiment */
-        std::cerr<<"Sending Parameters\n";
+        // std::cerr<<"Sending Parameters\n";
         Broadcast_exponents();
     }
 
@@ -422,7 +427,7 @@ void CCrwlevyALFPositioning::PostStep()
     if(start_experiment)
     {
         
-        if(internal_counter == 0 || internal_counter == sampling_period)
+        if(internal_counter == 0 || internal_counter == m_unDataAcquisitionFrequency)
         {
             m_cOutputPositions<</*std::fixed<<std::setprecision(1)<<*/(int)actual_time_experiment;
             for(const auto& pos : m_vecKilobotsPositions)
@@ -431,7 +436,7 @@ void CCrwlevyALFPositioning::PostStep()
             }
             m_cOutputPositions<<std::endl;  
 
-            if(internal_counter == sampling_period)
+            if(internal_counter == m_unDataAcquisitionFrequency)
             {
                 internal_counter = 0; 
             }        
@@ -521,11 +526,11 @@ void CCrwlevyALFPositioning::PrintPose(UInt16& unKilobotID, command& cmd)
             break;
     }
 
-    CVector2 kiloPos = m_vecKilobotsPositions[unKilobotID];// GetKilobotPosition(c_kilobot_entity);
-    CVector2 init_d_position = m_vecDesInitKilobotPosition[index_vector[unKilobotID].second];
+    // CVector2 kiloPos = m_vecKilobotsPositions[unKilobotID];// GetKilobotPosition(c_kilobot_entity);
+    // CVector2 init_d_position = m_vecDesInitKilobotPosition[index_vector[unKilobotID].second];
 
     CRadians kiloOrientation = m_vecKilobotsOrientations[unKilobotID]; //GetKilobotOrientation(c_kilobot_entity);
-    CRadians desired_orientation = m_vecDesInitKilobotOrientation[index_vector[unKilobotID].second];
+    // CRadians desired_orientation = m_vecDesInitKilobotOrientation[index_vector[unKilobotID].second];
     
     std::cerr<<"KId: "<<unKilobotID<<", command: "<<s_cmd<<std::endl;
     // std::cerr<<"SquareDistance: "<<SquareDistance(init_d_position , kiloPos)<<std::endl;
@@ -637,14 +642,14 @@ void CCrwlevyALFPositioning::GoToWithOrientation(CKilobotEntity &c_kilobot_entit
             }
             else
             {
-                std::cerr<<"Arrived!"<<std::endl;
+                // std::cerr<<"Arrived!"<<std::endl;
                 cmd = STOP;
                 v_arrivedInOrientation[unKilobotID] = true;            
             }
         }
     }
     
-    if (m_vecCommandLog[unKilobotID] != cmd )//|| cmd == STOP)
+    if (m_vecCommandLog[unKilobotID] != cmd )
     {
         m_vecCommandLog[unKilobotID] = cmd;
         msg.data[0] = uint8_t (cmd);

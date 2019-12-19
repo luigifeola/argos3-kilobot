@@ -113,7 +113,6 @@ public:
 
     /** Reassign initial position */
     void GreedyAssociation(std::vector<CVector2> actual_pos, std::vector<CVector2> desired_pos);
-    bool DistantEnough(CVector2 &random_position, CVector2 &elem_position);
 
     /** Print arrived Kilobots */
     void PrintArrivedKilobot();
@@ -234,7 +233,6 @@ private:
     Real m_fFractionWithInformation;
     Real m_fFractionWithDiscovery;
 
-    int sampling_period;
 };
 
 #endif

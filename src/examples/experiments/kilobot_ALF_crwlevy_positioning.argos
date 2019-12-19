@@ -8,7 +8,7 @@
         <system threads="4" />
         <experiment length="400"
         ticks_per_second="10"
-        random_seed="5" />
+        random_seed="150" />
     </framework>
     
     <!-- *************** -->
@@ -54,7 +54,6 @@
             crw = "0.8"
             levy = "1.5"
             initialization = "false"
-            sampling_period_in_ticks = "100"
             positionsfilename="positions_file.txt"
             datafilename="data_file.txt"
             dataacquisitionfrequency="100"  
@@ -63,9 +62,9 @@
         </variables>
     
         <environments>
-            <Area position="0,0" radius="0.033" color="255,0,0,125" >
+            <Area position="0,0" radius="0.1" color="255,0,0,125" >
             </Area>
-            <Perimeter radius="1" width="0.01" height="0.1" walls="100">
+            <Perimeter radius="0.5" width="0.05" height="0.05" walls="100">
             </Perimeter>
         </environments>
     
@@ -80,7 +79,7 @@
         <distribute>
             <position method="uniform" min="0.2,0.2,0" max="0.7,0.7,0" />
             <orientation method="uniform" min="0,0,0" max="360,0,0" />
-            <entity quantity="60" max_trials="100">
+            <entity quantity="30" max_trials="100">
                 <kilobot id="kb">
                     <controller config="listener"/> <dynamics2d friction="0.7" />
                 </kilobot>
@@ -89,7 +88,7 @@
 
         <floor id="floor"
         source="loop_functions"
-        pixels_per_meter="100" />
+        pixels_per_meter="200" />
         
     </arena>
     

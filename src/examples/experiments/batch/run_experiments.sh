@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ "$#" -ne 2 ]; then
-    echo "Usage: run_experiments.sh <base_config_dir> <base_config_file>"
+    echo "Usage: run_experiments.sh <base_config_dir> <base_config_file_name>"
     exit 11
 fi
 
@@ -29,9 +29,8 @@ for par1 in $levy; do
         for it in $(seq 1 $RUNS); do
             filename=`printf 'config_levy%02d_crw%03d_seed%03d.argos' $par1 $par2 $it`
             config=`printf 'config_levy%02d_crw%03d_seed%03d.argos' $par1 $par2 $it`
+            echo config $config
             cp $base_config $config
-            echo arg1 $1
-            echo arg1_config $1$config
             sed -i "s|__SEED__|$it|g" $config
             sed -i "s|__CRW__|$par2|g" $config
             sed -i "s|__LEVY__|$par1|g" $config
@@ -45,4 +44,5 @@ for par1 in $levy; do
 done
 
 rm *.argos
+
 
