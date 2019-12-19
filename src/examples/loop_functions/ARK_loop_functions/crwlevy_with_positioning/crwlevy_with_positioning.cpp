@@ -88,7 +88,7 @@ void CCrwlevyALFPositioning::SetupInitialKilobotStates() {
         
         kilobot_on_the_top = 
         std::find_if(m_vecDesInitKilobotPosition.begin(), m_vecDesInitKilobotPosition.end(), [&c_position, &c_radius](CVector2 const &position) {
-            return Distance(c_position, position) < c_radius ;
+            return Distance(c_position, position) < (c_radius + 0.001) ;    //LOOK: 1mm costant
             });
         
     }while(kilobot_on_the_top != m_vecDesInitKilobotPosition.end());

@@ -28,10 +28,12 @@ if(ARGOS_BUILD_FOR_SIMULATOR)
   target_link_libraries(test_listener argos3plugin_simulator_kilolib)
 
   #
-  # Custom Test to check sending message maximum frequency
+  # Custom Test to check sending message maximum frequency Speaker-Listener
   #
   add_executable(custom_test_speaker custom_test_speaker.c)
   target_link_libraries(custom_test_speaker argos3plugin_simulator_kilolib)
+  add_executable(custom_test_listener custom_test_listener.c)
+  target_link_libraries(custom_test_listener argos3plugin_simulator_kilolib)
 
   #
   # Lab2.3-2.4: Modified Test Speaker and Test Listener
