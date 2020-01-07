@@ -418,6 +418,43 @@ void CCrwlevyALFPositioning::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entit
 
 /****************************************/
 /****************************************/
+void CCrwlevyALFPositioning::UpdateResults(){
+    /* Close data file */
+    m_cOutput.close();
+    /* Reopen the file, erasing its contents */
+    m_cOutput.open(m_strOutputFileName, std::ios_base::trunc | std::ios_base::out);
+
+    // std::map<UInt16,std::pair<UInt32,UInt32>>::const_iterator itr = m_KilobotResults.begin();
+    m_cOutput << "#Kid" << "\t#fpt" << "\t#fit"<<std::endl;
+    
+    //for loop to store all the elements even if no info is available
+    for(int i=0; i<m_vecKilobotStates.size(); i++)
+    {
+        std::map<UInt16,std::pair<UInt32,UInt32>>::const_iterator itr = m_KilobotResults.find(i);
+        if(itr != m_KilobotResults.end())
+        {
+           m_cOutput<< itr->first << '\t' << itr->second.first << '\t' << itr->second.second <<std::endl;
+        }
+        else
+        {
+            m_cOutput<< i << '\t' << 0.0 << '\t' << 0.0 <<std::endl;
+        }
+        
+    }
+
+    //for loop to store existing elements
+    // for (; itr!=m_KilobotResults.end(); ++itr){
+    //     m_cOutput<< itr->first << '\t' << itr->second.first << '\t' << itr->second.second <<std::endl;
+    // }
+
+    // m_cOutput<<"FRACTION with Discovery:"<<(Real)num_robots_with_discovery / (Real)m_tKilobotEntities.size()<< std::endl;
+    // m_cOutput<<"FRACTION with Information:"<<(Real)num_robots_with_info / (Real)m_tKilobotEntities.size()<< std::endl;
+    // m_cOutput<<"FRACTION with Information:"<<(Real)m_KilobotResults.size() / (Real)m_tKilobotEntities.size()<< std::endl;
+}
+
+
+/****************************************/
+/****************************************/
 void CCrwlevyALFPositioning::PostStep()
 {
     Real actual_time_experiment;
@@ -462,26 +499,6 @@ void CCrwlevyALFPositioning::PostStep()
     //     m_cOutputPositions<<std::endl;
     // }
 }
-
-/****************************************/
-/****************************************/
-void CCrwlevyALFPositioning::UpdateResults(){
-    /* Close data file */
-    m_cOutput.close();
-    /* Reopen the file, erasing its contents */
-    m_cOutput.open(m_strOutputFileName, std::ios_base::trunc | std::ios_base::out);
-
-    std::map<UInt16,std::pair<UInt32,UInt32>>::const_iterator itr = m_KilobotResults.begin();
-    m_cOutput << "#Kid" << "\t#fpt" << "\t#fit"<<std::endl;
-    for (; itr!=m_KilobotResults.end(); ++itr){
-        m_cOutput<< itr->first << '\t' << itr->second.first << '\t' << itr->second.second <<std::endl;
-    }
-
-    // m_cOutput<<"FRACTION with Discovery:"<<(Real)num_robots_with_discovery / (Real)m_tKilobotEntities.size()<< std::endl;
-    // m_cOutput<<"FRACTION with Information:"<<(Real)num_robots_with_info / (Real)m_tKilobotEntities.size()<< std::endl;
-    // m_cOutput<<"FRACTION with Information:"<<(Real)m_KilobotResults.size() / (Real)m_tKilobotEntities.size()<< std::endl;
-}
-
 
 /****************************************/
 /****************************************/

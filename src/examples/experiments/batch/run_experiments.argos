@@ -6,7 +6,7 @@
     <!-- ************************* -->
     <framework>
         <system threads="4" />
-        <experiment length="30"
+        <experiment length="9000"
         ticks_per_second="10"
         random_seed="__SEED__" />
     </framework>
@@ -30,7 +30,7 @@
             <sensors>
                 <kilobot_communication implementation="default" medium="kilocomm" show_rays="true" />
             </sensors>
-            <params behavior="build/examples/behaviors/crwlevy" />
+            <params behavior="build/examples/behaviors/crwlevy_with_positioning" />
         </kilobot_controller>
         
     </controllers>
@@ -40,8 +40,8 @@
     <!-- ****************** -->
 
     <loop_functions 
-        library="build/examples/loop_functions/ARK_loop_functions/crwlevy/libALF_crwlevy_loop_function"
-        label="ALF_crwlevy_loop_function" >
+        library="build/examples/loop_functions/ARK_loop_functions/crwlevy_with_positioning/libALF_crwlevy_positioning_loop_function"
+        label="ALF_crwlevy_positioning_loop_function" >
      
         <tracking
             position="true" 
@@ -52,6 +52,8 @@
         
         <variables
             datafilename="__OUTPUT__.txt"
+            positionsfilename="__POSOUTPUT__.txt"
+            initialization = "false"
             dataacquisitionfrequency="100"  
             environmentplotupdatefrequency="1"
             timeforonemessage="0.05"
@@ -60,9 +62,9 @@
         </variables>
     
         <environments>
-            <Area position="0,0" radius="0.1" color="255,0,0,125" >
+            <Area position="0,0" radius="0.033" color="255,0,0,125" >
             </Area>
-            <Perimeter radius="1" width="0.01" height="0.1" walls="100">
+            <Perimeter radius="0.5" width="0.05" height="0.05" walls="100">
             </Perimeter>
         </environments>
     
@@ -77,7 +79,7 @@
         <distribute>
             <position method="uniform" min="0.2,0.2,0" max="0.7,0.7,0" />
             <orientation method="uniform" min="0,0,0" max="360,0,0" />
-            <entity quantity="70" max_trials="100">
+            <entity quantity="50" max_trials="100">
                 <kilobot id="kb">
                     <controller config="listener"/> <dynamics2d friction="0.7" />
                 </kilobot>
@@ -86,7 +88,7 @@
 
         <floor id="floor"
         source="loop_functions"
-        pixels_per_meter="100" />
+        pixels_per_meter="200" />
         
     </arena>
     

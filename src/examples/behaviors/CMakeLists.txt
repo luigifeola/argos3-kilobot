@@ -12,6 +12,11 @@ if(ARGOS_BUILD_FOR_SIMULATOR)
   #
   add_executable(simple_movement simple_movement.c)
   target_link_libraries(simple_movement argos3plugin_simulator_kilolib)
+  #
+  # Checking max_turning_ticks
+  #
+  add_executable(simple_rotation simple_rotation.c)
+  target_link_libraries(simple_rotation argos3plugin_simulator_kilolib)
 
   #
   # Lab1.3: Non-blocked Movement

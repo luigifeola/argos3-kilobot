@@ -1,0 +1,91 @@
+<?xml version="1.0" ?>
+<argos-configuration>
+
+  <!-- ************************* -->
+  <!-- * General configuration * -->
+  <!-- ************************* -->
+  <framework>
+    <system threads="4" />
+    <experiment length="100"
+                ticks_per_second="10"
+                random_seed="5" />
+  </framework>
+
+  <!-- *************** -->
+  <!-- * Controllers * -->
+  <!-- *************** -->
+  <controllers>
+
+    <kilobot_controller id="speaker">
+      <actuators>
+        <kilobot_led implementation="default" />
+        <kilobot_communication implementation="default" />
+      </actuators>
+      <sensors>
+        <kilobot_communication implementation="default" medium="kilocomm" show_rays="true" />
+      </sensors>
+      <params behavior="build/examples/behaviors/custom_test_speaker" />
+    </kilobot_controller>
+
+    <kilobot_controller id="listener">
+      <actuators>
+        <kilobot_led implementation="default" />
+        <kilobot_communication implementation="default" />
+      </actuators>
+      <sensors>
+        <kilobot_communication implementation="default" medium="kilocomm" show_rays="true" />
+      </sensors>
+      <params behavior="build/examples/behaviors/custom_test_listener" />
+    </kilobot_controller>
+
+  </controllers>
+
+  
+    <!-- *********************** -->
+    <!-- * Arena configuration * -->
+    <!-- *********************** -->
+    <arena size="2, 2, 1" center="0,0,0.5">
+    <kilobot id="kb_speak">
+      <body position="0,0,0" orientation="0,0,0" />
+      <controller config="speaker" />>
+    </kilobot>
+
+    <distribute>
+            <position method="uniform" min="-0.2,0,0" max="0.2,0,0" />
+            <orientation method="uniform" min="0,0,0" max="360,0,0" />
+            <entity quantity="2" max_trials="100">
+                <kilobot id="kb_listen">
+                    <controller config="listener"/> <dynamics2d friction="0.7" />
+                </kilobot>
+            </entity>
+        </distribute>
+
+  </arena>
+
+  <!-- ******************* -->
+  <!-- * Physics engines * -->
+  <!-- ******************* -->
+  <physics_engines>
+    <dynamics2d id="dyn2d" />
+  </physics_engines>
+    
+    <!-- ********* -->
+    <!-- * Media * -->
+    <!-- ********* -->
+    <media>
+        <kilobot_communication id="kilocomm" />
+    </media>
+
+  <!-- ****************** -->
+  <!-- * Visualization * -->
+  <!-- ****************** -->
+  <visualization>
+    <qt-opengl>
+      <camera>
+        <placement idx="0" position="0,0,0.02" look_at="0,0,0" lens_focal_length="20" />
+        <placement idx="1" position="-0.0229259,-0.177184,0.0725521" look_at="0.0273839,0.812385,-0.0624333" lens_focal_length="20" />
+      </camera>
+    </qt-opengl>
+  </visualization>
+
+</argos-configuration>

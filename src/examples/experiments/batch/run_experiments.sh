@@ -19,10 +19,10 @@ base_dir=`dirname $base_config`
 echo base_dir $base_dir
 echo "$CONFIGURATION_FILE" | egrep "^$SHARED_DIR" &> /dev/null || exit 1
 
-crw="0.3"
-levy="1"
+levy="1.2 1.6 2.0"
+crw="0 0.3 0.6 0.9"
 
-RUNS=2
+RUNS=30
 
 for par1 in $levy; do
     for par2 in $crw; do
@@ -34,8 +34,13 @@ for par1 in $levy; do
             sed -i "s|__SEED__|$it|g" $config
             sed -i "s|__CRW__|$par2|g" $config
             sed -i "s|__LEVY__|$par1|g" $config
-            output_file=$par1"_"$par2"_"$it
+            output_file="infotime_"$par1"_"$par2"_"$it
             sed -i "s|__OUTPUT__|$output_file|g" $config
+
+            positions_file="pos_"$par1"_"$par2"_"$it
+            sed -i "s|__POSOUTPUT__.txt|$positions_file|g" $config
+
+            
             echo "Running next configuration LEVY $par1 CRW $par2"
             echo "argos3 -c $1$config"
             argos3 -c './'$config

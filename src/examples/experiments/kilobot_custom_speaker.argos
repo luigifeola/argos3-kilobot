@@ -1,23 +1,29 @@
 <?xml version="1.0" ?>
 <argos-configuration>
-    
+
     <!-- ************************* -->
     <!-- * General configuration * -->
     <!-- ************************* -->
     <framework>
         <system threads="4" />
-        <experiment length="400"
+        <experiment length="100"
         ticks_per_second="10"
         random_seed="5" />
     </framework>
-    
+
     <!-- *************** -->
     <!-- * Controllers * -->
     <!-- *************** -->
     <controllers>
-        
+
         <kilobot_controller id="speaker">
             <actuators>
+                <differential_steering implementation="default"
+                bias_avg="0.0"
+                bias_stddev="0.0"
+                factor_avg="1"
+                factor_stddev="0.00010"
+                />
                 <kilobot_led implementation="default" />
                 <kilobot_communication implementation="default" />
             </actuators>
@@ -27,95 +33,41 @@
             <params behavior="build/examples/behaviors/custom_test_speaker" />
         </kilobot_controller>
 
-        <kilobot_controller id="listener">
-      <actuators>
-        <kilobot_led implementation="default" />
-        <kilobot_communication implementation="default" />
-      </actuators>
-      <sensors>
-        <kilobot_communication implementation="default" medium="kilocomm" show_rays="true" />
-      </sensors>
-      <params behavior="build/examples/behaviors/custom_test_listener" />
-    </kilobot_controller>
-        
     </controllers>
-
-    <!-- ****************** -->
-    <!-- * Loop functions * -->
-    <!-- ****************** -->
-
-    <loop_functions 
-        library="build/examples/loop_functions/ARK_loop_functions/crwlevy_with_positioning/libALF_crwlevy_positioning_loop_function"
-        label="ALF_crwlevy_positioning_loop_function" >
-     
-        <tracking
-            position="true" 
-            orientation="false"
-            color="true">
-        </tracking>
-        
-        <variables
-            crw = "0.8"
-            levy = "1.5"
-            initialization = "false"
-            positionsfilename="positions_file.txt"
-            datafilename="data_file.txt"
-            dataacquisitionfrequency="100"  
-            environmentplotupdatefrequency="1"
-            timeforonemessage="0.05">
-        </variables>
-    
-        <environments>
-            <Area position="0.3,0.3" radius="0.033" color="255,0,0,125" >
-            </Area>
-            <Perimeter radius="1" width="0.01" height="0.1" walls="100">
-            </Perimeter>
-        </environments>
-    
-    </loop_functions>
 
 
     <!-- *********************** -->
     <!-- * Arena configuration * -->
     <!-- *********************** -->
     <arena size="2, 2, 1" center="0,0,0.5" pixel_per_meter="200">
-        
-        <kilobot id="kb1">
-            <body position="0,0,0" orientation="0,0,0" />
-            <controller config="speaker" />>
-        </kilobot>
 
-        <kilobot id="kb2">
-            <body position="0.04,0,0" orientation="0,0,0" />
-            <controller config="listener" />>
-        </kilobot>
+        <distribute>
+            <position method="uniform" min="0,0,0" max="0.1,0.05,0" />
+            <orientation method="uniform" min="0,0,0" max="360,0,0" />
+            <entity quantity="3" max_trials="100">
+                <kilobot id="kb_sp">
+                    <controller config="speaker"/> <dynamics2d friction="0.7" />
+                </kilobot>
+            </entity>
+        </distribute> 
 
-        <kilobot id="kb3">
-            <body position="-0.08,0,0" orientation="0,0,0" />
-            <controller config="listener" />>
-        </kilobot>
-
-        <floor id="floor"
-        source="loop_functions"
-        pixels_per_meter="100" />
-        
     </arena>
-    
+
     <!-- ******************* -->
     <!-- * Physics engines * -->
     <!-- ******************* -->
     <physics_engines>
         <dynamics2d id="dyn2d" />
     </physics_engines>
-    
+
     <!-- ********* -->
     <!-- * Media * -->
     <!-- ********* -->
-    
+
     <media>
         <kilobot_communication id="kilocomm" />
     </media>
-    
+
     <!-- ****************** -->
     <!-- * Visualization  * -->
     <!-- ****************** -->
@@ -136,5 +88,5 @@
             </camera>
         </qt-opengl>
     </visualization>
-    
+
 </argos-configuration>
