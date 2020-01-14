@@ -83,6 +83,8 @@ public:
 
     virtual void PostStep();
 
+    virtual void PostExperiment();
+
     /** Setup the initial state of the Kilobots in the space */
     void SetupInitialKilobotStates();
 
@@ -97,7 +99,6 @@ public:
     void GetExperimentVariables(TConfigurationNode& t_tree);
 
     /** Virtual environment visualization updating */
-
 
     /** Get the message to send to a Kilobot according to its position */
     void UpdateKilobotState(CKilobotEntity& c_kilobot_entity);
@@ -181,6 +182,7 @@ private:
     /* used to initialize the position of each kilobot uniformly */
     std::vector<std::pair<UInt32,UInt32>> index_vector;
     std::vector<CVector2> m_vecKilobotsPositions;
+    std::vector<std::vector<CVector2>> m_vecKilobotsPositionsHistory;
     std::vector<CRadians> m_vecKilobotsOrientations;
     std::vector<CVector2> m_vecDesInitKilobotPosition;
     std::vector<CRadians> m_vecDesInitKilobotOrientation;
@@ -211,6 +213,9 @@ private:
     /* crwlevy exponents */
     Real crw_exponent;
     Real levy_exponent;
+
+    /* simulator seed */
+    uint m_random_seed;
 
     /* Flag for initialization */
     bool initialization;

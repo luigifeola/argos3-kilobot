@@ -9,7 +9,8 @@ num_robots_with_discovery(0),
 num_robots_with_info(0),
 internal_counter(0),
 start_experiment(false),
-start_experiment_time(0)
+start_experiment_time(0),
+m_random_seed(0)
     {
         c_rng = CRandom::CreateRNG("argos");
     }
@@ -75,6 +76,7 @@ void CCrwlevyALFPositioning::SetupInitialKilobotStates() {
         SetupInitialKilobotState(*m_tKilobotEntities[it]);
     }
     
+    m_vecKilobotsPositionsHistory.push_back(m_vecKilobotsPositions);
     GreedyAssociation(m_vecKilobotsPositions, m_vecDesInitKilobotPosition);
 
     Real c_random_angle;
@@ -176,7 +178,10 @@ void CCrwlevyALFPositioning::SetupInitialKilobotState(CKilobotEntity &c_kilobot_
 /****************************************/
 
 void CCrwlevyALFPositioning::SetupVirtualEnvironments(TConfigurationNode& t_tree){
-    // generate circular arena
+    /*Simulator variables*/
+    CSimulator &simulator = GetSimulator();
+    m_random_seed = simulator.GetRandomSeed();
+
     /* Get the virtual environments node from .argos file*/
     TConfigurationNode& tVirtualEnvironmentsNode = GetNode(t_tree,"environments");
     /* Get the node defining the walls parametres*/
@@ -425,7 +430,7 @@ void CCrwlevyALFPositioning::UpdateResults(){
     m_cOutput.open(m_strOutputFileName, std::ios_base::trunc | std::ios_base::out);
 
     // std::map<UInt16,std::pair<UInt32,UInt32>>::const_iterator itr = m_KilobotResults.begin();
-    m_cOutput << "#Kid" << "\t#fpt" << "\t#fit"<<std::endl;
+    m_cOutput << "Robot id\tFirst discovery time\tFirst information time" << std::endl;
     
     //for loop to store all the elements even if no info is available
     for(int i=0; i<m_vecKilobotStates.size(); i++)
@@ -433,11 +438,11 @@ void CCrwlevyALFPositioning::UpdateResults(){
         std::map<UInt16,std::pair<UInt32,UInt32>>::const_iterator itr = m_KilobotResults.find(i);
         if(itr != m_KilobotResults.end())
         {
-           m_cOutput<< itr->first << '\t' << itr->second.first << '\t' << itr->second.second <<std::endl;
+           m_cOutput<< (itr->first)+1 << '\t' << itr->second.first << '\t' << itr->second.second <<std::endl;
         }
         else
         {
-            m_cOutput<< i << '\t' << 0.0 << '\t' << 0.0 <<std::endl;
+            m_cOutput<< i+1 << '\t' << 0.0 << '\t' << 0.0 <<std::endl;
         }
         
     }
@@ -457,29 +462,20 @@ void CCrwlevyALFPositioning::UpdateResults(){
 /****************************************/
 void CCrwlevyALFPositioning::PostStep()
 {
+
     Real actual_time_experiment;
     // std::cout<<"Time in seconds:"<<actual_time_experiment<<std::endl;
     actual_time_experiment = m_fTimeInSeconds - start_experiment_time;
     
     if(start_experiment)
     {
-        
-        if(internal_counter == 0 || internal_counter == m_unDataAcquisitionFrequency)
+        internal_counter+=1;
+        if(internal_counter == m_unDataAcquisitionFrequency)
         {
-            m_cOutputPositions<</*std::fixed<<std::setprecision(1)<<*/(int)actual_time_experiment;
-            for(const auto& pos : m_vecKilobotsPositions)
-            {
-                m_cOutputPositions<<'\t'<<std::fixed<<std::setprecision(3)<<pos;
-            }
-            m_cOutputPositions<<std::endl;  
-
-            if(internal_counter == m_unDataAcquisitionFrequency)
-            {
-                internal_counter = 0; 
-            }        
+            m_vecKilobotsPositionsHistory.push_back(m_vecKilobotsPositions);
+            internal_counter = 0;   
         }
 
-        internal_counter +=1;
     }
 
 
@@ -498,6 +494,101 @@ void CCrwlevyALFPositioning::PostStep()
     //     }
     //     m_cOutputPositions<<std::endl;
     // }
+}
+
+
+/****************************************/
+/****************************************/
+
+const std::string currentDateTime()
+{
+      time_t now = time(0);
+      struct tm tstruct;
+      char buf[80];
+      tstruct = *localtime(&now);
+      strftime(buf, sizeof(buf), "%Y%m%d-%X-%M", &tstruct);
+
+      return buf;
+}
+
+const std::string currentDate()
+{
+      time_t now = time(0);
+      struct tm tstruct;
+      char buf[80];
+      tstruct = *localtime(&now);
+      strftime(buf, sizeof(buf), "%Y%m%d", &tstruct);
+
+      return buf;
+}
+
+void CCrwlevyALFPositioning::PostExperiment()
+{
+	m_cOutputPositions<< "Robot id";
+
+    for (uint j = 0; j < m_vecKilobotsPositionsHistory.size(); j++)
+    {
+        m_cOutputPositions << "\tt = " << j*m_unDataAcquisitionFrequency;
+    }
+    m_cOutputPositions<< std::endl;
+
+    for (int i = 0; i < m_vecKilobotsPositionsHistory[0].size(); i++)
+	{
+        m_cOutputPositions << i;
+		for (int j = 0; j < m_vecKilobotsPositionsHistory.size(); j++)
+		{
+			m_cOutputPositions <<'\t'<< std::fixed<<std::setprecision(3)<< m_vecKilobotsPositionsHistory[j][i];
+		}
+		m_cOutputPositions<<std::endl;
+	}
+
+
+
+    // m_cOutputPositions << "Robot id";
+    // for (uint j = 0; j < m_vecKilobotsPositionsHistory[1].size(); j++)
+    // {
+    //         int t = j;
+    //         m_cOutputPositions << "\tt = " << t;
+    // }
+    // m_cOutputPositions<<std::endl;
+    // for (uint i = 1; i <= m_vecKilobotsPositions.size(); i++)
+    // {
+    //         m_cOutputPositions << i;
+
+    //         for (uint j = 0; j < m_vecKilobotsPositionsHistory[i].size(); j++)
+    //         {
+    //             m_cOutputPositions << '\t' << std::setprecision(3) << (m_vecKilobotsPositionsHistory[i])[j];
+    //         }
+    //         m_cOutputPositions << std::endl;
+    // }
+    // std::string dateTime = currentDateTime();
+    // std::string date = currentDate();
+    // char numRobotStr[10];
+    // sprintf(numRobotStr, "%d", m_tKilobotEntities.size());
+    // char alpha[10];
+    // sprintf(alpha, "%.1f", m_alpha);
+    // char rho[10];
+    // sprintf(rho, "%.2f", m_rho);
+
+    // std::string folder = "experiments/" + date + "_robots=" + numRobotStr + "_alpha=" + alpha + "_rho=" + rho + "_experiments";
+    // if (opendir(folder.c_str()) == NULL)
+    // {
+    //     const int dir_err = mkdir(folder.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    //     if (-1 == dir_err)
+    //     {
+    //             printf("Error creating directory!\n");
+    //             exit(1);
+    //     }
+    // }
+    // char randomStr[5];
+    // int randomInt = m_pcRNG->Uniform(CRange<int>((int)0, (int)99999));
+    // sprintf(randomStr, "_%05d_%d_", randomInt, m_random_seed);
+    // std::string prefix = folder + "/" + dateTime + randomStr;
+
+    // std::string position_file = prefix + "position.tsv";
+    // std::string time_results_file = prefix + "time_results.tsv";
+
+
 }
 
 /****************************************/

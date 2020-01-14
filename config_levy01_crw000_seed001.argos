@@ -5,10 +5,10 @@
     <!-- * General configuration * -->
     <!-- ************************* -->
     <framework>
-        <system threads="4" />
-        <experiment length="900"
+        <system threads="2" />
+        <experiment length="2000"
         ticks_per_second="10"
-        random_seed="__SEED__" />
+        random_seed="1" />
     </framework>
     
     <!-- *************** -->
@@ -51,14 +51,14 @@
 
         
         <variables
-            datafilename="__OUTPUT__"
-            positionsfilename="__POSOUTPUT__"
+            datafilename="time_results.tsv"
+            positionsfilename="position.tsv"
             initialization = "false"
             dataacquisitionfrequency="100"  
             environmentplotupdatefrequency="1"
             timeforonemessage="0.05"
-            crw = "__CRW__"
-            levy = "__LEVY__">
+            crw = "0.6"
+            levy = "1.2">
         </variables>
     
         <environments>
@@ -79,7 +79,7 @@
         <distribute>
             <position method="uniform" min="0.2,0.2,0" max="0.7,0.7,0" />
             <orientation method="uniform" min="0,0,0" max="360,0,0" />
-            <entity quantity="__NUMROBOTS__" max_trials="100">
+            <entity quantity="6" max_trials="100">
                 <kilobot id="kb">
                     <controller config="listener"/> <dynamics2d friction="0.7" />
                 </kilobot>

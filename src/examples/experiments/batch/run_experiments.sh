@@ -15,35 +15,50 @@ if [ ! -e $base_config ]; then
     fi
 fi
 
+res_dir=$wdir/"results"
+if [[ ! -e $res_dir ]]; then
+    mkdir $res_dir
+fi
+
 base_dir=`dirname $base_config`
 echo base_dir $base_dir
 echo "$CONFIGURATION_FILE" | egrep "^$SHARED_DIR" &> /dev/null || exit 1
 
 levy="1.2 1.6 2.0"
 crw="0 0.3 0.6 0.9"
+numrobots="50"
+date_time=`date "+%Y-%m-%d-%T"`
 
 RUNS=30
 
 for par1 in $levy; do
     for par2 in $crw; do
+	param_dir=$res_dir/$date_time"_robots="$numrobots"_alpha="$par1"_rho="$par2
+	if [[ ! -e $param_dir ]]; then
+	    mkdir $param_dir
+	fi
+
         for it in $(seq 1 $RUNS); do
-            filename=`printf 'config_levy%02d_crw%03d_seed%03d.argos' $par1 $par2 $it`
+
             config=`printf 'config_levy%02d_crw%03d_seed%03d.argos' $par1 $par2 $it`
             echo config $config
             cp $base_config $config
+            sed -i "s|__NUMROBOTS__|$numrobots|g" $config
             sed -i "s|__SEED__|$it|g" $config
             sed -i "s|__CRW__|$par2|g" $config
             sed -i "s|__LEVY__|$par1|g" $config
-            output_file="infotime_"$par1"_"$par2"_"$it
+            output_file="time_results.tsv"
             sed -i "s|__OUTPUT__|$output_file|g" $config
 
-            positions_file="pos_"$par1"_"$par2"_"$it
-            sed -i "s|__POSOUTPUT__.txt|$positions_file|g" $config
+            positions_file="position.tsv"
+            sed -i "s|__POSOUTPUT__|$positions_file|g" $config
 
             
             echo "Running next configuration LEVY $par1 CRW $par2"
             echo "argos3 -c $1$config"
             argos3 -c './'$config
+	    seed_res_dir=$param_dir/"seed="$it
+	    mkdir -p $seed_res_dir && mv $output_file $seed_res_dir && mv $positions_file $seed_res_dir
         done
     done
 done
