@@ -24,12 +24,12 @@ base_dir=`dirname $base_config`
 echo base_dir $base_dir
 echo "$CONFIGURATION_FILE" | egrep "^$SHARED_DIR" &> /dev/null || exit 1
 
-levy="1.2 1.6 2.0"
-crw="0 0.3 0.6 0.9"
+levy="1.2 1.6"
+crw="0 0.3"
 numrobots="50"
-experiment_length="900"
+experiment_length="90"
 date_time=`date "+%Y-%m-%d"`
-RUNS=30
+RUNS=3
 
 for par1 in $levy; do
     for par2 in $crw; do
