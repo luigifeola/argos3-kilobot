@@ -3,6 +3,8 @@
 /****************************************/
 /****************************************/
 
+double KiloRadius = 0.033;
+
 CCrwlevyALFPositioning::CCrwlevyALFPositioning() :
 m_unDataAcquisitionFrequency(10),
 num_robots_with_discovery(0),
@@ -94,7 +96,6 @@ void CCrwlevyALFPositioning::SetupInitialKilobotStates() {
             });
         
     }while(kilobot_on_the_top != m_vecDesInitKilobotPosition.end());
-
 }
 
 /****************************************/
@@ -110,68 +111,89 @@ void CCrwlevyALFPositioning::SetupInitialKilobotState(CKilobotEntity &c_kilobot_
 
     /* Get a non-colliding random position within the circular arena */
     bool distant_enough = false;
-    Real rand_angle;
+    Real rand_angle, random_dist;
     CVector2 rand_displacement, rand_init_pos;
     CVector3 rand_pos;
 
     UInt16 maxTries = 999;
     UInt16 tries = 0;
 
+    /*Check for possible border robot position*/
+    // CQuaternion random_rotation;
+    // rand_angle = CRadians::ZERO.GetValue();/*CRadians::PI_OVER_TWO.GetValue();*/
+    // random_dist = 0.46769;//676999999999;//m_WallStructure.circular_arena_radius-0.1;
+    // rand_pos = CVector3(random_dist*sin(rand_angle),random_dist*cos(rand_angle),0);
+    
+    // CRadians rand_rot_angle = -CRadians::PI_OVER_TWO;
+    // random_rotation.FromEulerAngles(rand_rot_angle, CRadians::ZERO, CRadians::ZERO);
+    
+    // distant_enough = MoveEntity(c_kilobot_entity.GetEmbodiedEntity(), rand_pos, random_rotation, false);
+
+    // if(distant_enough)
+    // {
+    //     std::cout<<"Piazzato!!!!!\n";
+    // }
+    // else
+    // {
+    //     std::cout<<"Problema il robot non può essere messo lì\n";
+    // }
+    /*A qui*/
+    
     /* Get a random orientation for the kilobot */
     CQuaternion random_rotation;
     CRadians rand_rot_angle(c_rng->Uniform(CRange<Real>(-CRadians::PI.GetValue(), CRadians::PI.GetValue())));
     random_rotation.FromEulerAngles(rand_rot_angle, CRadians::ZERO, CRadians::ZERO);
 
+    //NEW
     do {
         rand_angle = c_rng->Uniform(CRange<Real>(-CRadians::PI.GetValue(), CRadians::PI.GetValue()));
-        rand_displacement.SetX(c_rng->Uniform(CRange<Real>(0, m_WallStructure.circular_arena_radius)));
-        rand_displacement.SetY(c_rng->Uniform(CRange<Real>(0, m_WallStructure.circular_arena_radius)));
-        rand_pos = CVector3(rand_displacement.GetX()*sin(rand_angle),rand_displacement.GetY()*cos(rand_angle),0);
+	    random_dist = c_rng->Uniform(CRange<Real>(0, m_WallStructure.circular_arena_radius - m_WallStructure.circular_arena_width/2 - KiloRadius/2 - 0.0001));
+	    rand_pos = CVector3(random_dist*sin(rand_angle),random_dist*cos(rand_angle),0);
+        
         distant_enough = MoveEntity(c_kilobot_entity.GetEmbodiedEntity(), rand_pos, random_rotation, false);
         
         if(tries == maxTries-1) {
             std::cerr << "ERROR: too many tries and not an available spot for the area" << std::endl;
         }
     } while(!distant_enough);
-    
+
     /**
      * 
      * RANDOM GENERATED INITIAL DESIRED POSITION
-     * 
+     * if there are desired initial positions
      */
-    maxTries = 999;
-    rand_rot_angle = CRadians(c_rng->Uniform(CRange<Real>(-CRadians::PI.GetValue(), CRadians::PI.GetValue())));
-    random_rotation.FromEulerAngles(rand_rot_angle, CRadians::ZERO, CRadians::ZERO);
-    do{
-        rand_angle = c_rng->Uniform(CRange<Real>(-CRadians::PI.GetValue(), CRadians::PI.GetValue()));   // Angle in [-pi,pi]
-        rand_displacement.SetX(c_rng->Uniform(CRange<Real>(0, m_WallStructure.circular_arena_radius)));
-        rand_displacement.SetY(c_rng->Uniform(CRange<Real>(0, m_WallStructure.circular_arena_radius)));
-        rand_init_pos = CVector2(rand_displacement.GetX()*sin(rand_angle),rand_displacement.GetY()*cos(rand_angle));
-        rand_pos = CVector3(rand_init_pos.GetX(), rand_init_pos.GetY(), 0);
-        distant_enough = MoveEntity(c_kilobot_entity.GetEmbodiedEntity(), rand_pos, random_rotation, initialization); //if initialization == true, you check just for non collision position
-        
-        if(tries == maxTries-1) {
-            std::cerr << "ERROR: too many tries and not an available spot for the area" << std::endl;
-        }
-    } while(!distant_enough);
-    
-    
-    m_vecKilobotsPositions[unKilobotID] = GetKilobotPosition(c_kilobot_entity);
-    m_vecKilobotsOrientations[unKilobotID] = GetKilobotOrientation(c_kilobot_entity);
-    m_vecDesInitKilobotPosition[unKilobotID] = rand_init_pos;
-    m_vecCommandLog[unKilobotID] = STOP;    
-    m_vecDesInitKilobotOrientation[unKilobotID] = rand_rot_angle;
-
-
-
     if(initialization)
     {
-        SVirtualArea temp_area2;
-        temp_area2.Center = rand_init_pos;
-        temp_area2.Radius = 0.033;
-        temp_area2.Color = CColor::GREEN;
-        m_TargetAreas.push_back(temp_area2);
+        maxTries = 999;
+        rand_rot_angle = CRadians(c_rng->Uniform(CRange<Real>(-CRadians::PI.GetValue(), CRadians::PI.GetValue())));
+        random_rotation.FromEulerAngles(rand_rot_angle, CRadians::ZERO, CRadians::ZERO);
+        //NEW
+        do{
+            rand_angle = c_rng->Uniform(CRange<Real>(-CRadians::PI.GetValue(), CRadians::PI.GetValue()));   // Angle in [-pi,pi]
+            random_dist = c_rng->Uniform(CRange<Real>(0, m_WallStructure.circular_arena_radius - m_WallStructure.circular_arena_width/2 - KiloRadius/2 - 0.0001));
+            rand_pos = CVector3(random_dist*sin(rand_angle),random_dist*cos(rand_angle),0);
+            distant_enough = MoveEntity(c_kilobot_entity.GetEmbodiedEntity(), rand_pos, random_rotation, initialization); //if initialization == true, you check just for non collision position
+            
+            if(tries == maxTries-1) {
+                std::cerr << "ERROR: too many tries and not an available spot for the area" << std::endl;
+            }
+        } while(!distant_enough);
+        
+
+
+        //Paint desired position on the floor
+        SVirtualArea desired_pos_area;
+        desired_pos_area.Center = CVector2(rand_pos.GetX(), rand_pos.GetY());
+        desired_pos_area.Radius = 0.033;
+        desired_pos_area.Color = CColor::GREEN;
+        m_TargetAreas.push_back(desired_pos_area);
     }
+
+    m_vecDesInitKilobotPosition[unKilobotID] = CVector2(rand_pos.GetX(), rand_pos.GetY());
+    m_vecDesInitKilobotOrientation[unKilobotID] = rand_rot_angle;
+    m_vecKilobotsPositions[unKilobotID] = GetKilobotPosition(c_kilobot_entity);
+    m_vecKilobotsOrientations[unKilobotID] = GetKilobotOrientation(c_kilobot_entity);
+    m_vecCommandLog[unKilobotID] = STOP;    
 }
 
 /****************************************/
@@ -201,6 +223,7 @@ void CCrwlevyALFPositioning::SetupVirtualEnvironments(TConfigurationNode& t_tree
         entity_id << "wall_" << i;
 
         CRadians wall_rotation = wall_angle * i;
+        // CVector3 wall_position((m_WallStructure.circular_arena_radius) * Cos(wall_rotation), (m_WallStructure.circular_arena_radius) * Sin(wall_rotation), 0);
         CVector3 wall_position(m_WallStructure.circular_arena_radius * Cos(wall_rotation), m_WallStructure.circular_arena_radius * Sin(wall_rotation), 0);
         CQuaternion wall_orientation;
         wall_orientation.FromEulerAngles(wall_rotation, CRadians::ZERO, CRadians::ZERO);

@@ -6,9 +6,9 @@
     <!-- ************************* -->
     <framework>
         <system threads="4" />
-        <experiment length="200"
+        <experiment length="900"
         ticks_per_second="10"
-        random_seed="150" />
+        random_seed="10" />
     </framework>
     
     <!-- *************** -->
@@ -51,8 +51,8 @@
 
         
         <variables
-            crw = "0.8"
-            levy = "1.5"
+            crw = "0.3"
+            levy = "1.2"
             initialization = "false"
             positionsfilename="positions_file.tsv"
             datafilename="data_file.tsv"
@@ -62,7 +62,7 @@
         </variables>
     
         <environments>
-            <Area position="0,0" radius="0.033" color="255,0,0,125" >
+            <Area position="0,0.475" radius="0.033" color="255,0,0,125" >
             </Area>
             <Perimeter radius="0.5" width="0.05" height="0.05" walls="100">
             </Perimeter>
@@ -79,7 +79,7 @@
         <distribute>
             <position method="uniform" min="0.2,0.2,0" max="0.7,0.7,0" />
             <orientation method="uniform" min="0,0,0" max="360,0,0" />
-            <entity quantity="5" max_trials="100">
+            <entity quantity="129" max_trials="100">
                 <kilobot id="kb">
                     <controller config="listener"/> <dynamics2d friction="0.7" />
                 </kilobot>
@@ -113,7 +113,7 @@
     <visualization>
         <qt-opengl>
             <camera>
-                <placement idx="0" position="0,0,1" look_at="0,0,0" lens_focal_length="12" />
+                <placement idx="0" position="0,0,0.5" look_at="0,0,0" lens_focal_length="12" />
                 <placement idx="1" position="0,0,1" look_at="0,0,0" lens_focal_length="12" />
                 <placement idx="2" position="0,1,1" look_at="0,0,0" lens_focal_length="15" />
                 <placement idx="3" position="1,1,1" look_at="0,0,0" lens_focal_length="15" />
