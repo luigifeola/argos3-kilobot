@@ -6,7 +6,7 @@
 double KiloRadius = 0.033;
 
 CCrwlevyALFPositioning::CCrwlevyALFPositioning() :
-m_unDataAcquisitionFrequency(10),
+m_unDataAcquisitionFrequency(10),   //each 10 seconds store kilobots positione
 num_robots_with_discovery(0),
 num_robots_with_info(0),
 internal_counter(0),
@@ -44,6 +44,22 @@ void CCrwlevyALFPositioning::Reset() {
     /* Reopen the file, erasing its contents */
     m_cOutput.open(m_strOutputFileName, std::ios_base::trunc | std::ios_base::out);
     m_cOutputPositions.open(m_strPositionsFileName, std::ios_base::trunc | std::ios_base::out);
+
+
+    std::fill(m_vecKilobotStates.begin(), m_vecKilobotStates.end(), NOT_TARGET_FOUND);
+    std::fill(v_arrivedInPosition.begin(), v_arrivedInPosition.end(), false);
+    std::fill(v_arrivedInOrientation.begin(), v_arrivedInOrientation.end(), false);
+    std::fill(m_vecLastTimeMessaged.begin(), m_vecLastTimeMessaged.end(), -1000);
+    // std::fill(m_vecDesInitKilobotOrientation.begin(), m_vecDesInitKilobotOrientation.end(), CRadians::ZERO);
+    std::fill(m_vecCommandLog.begin(), m_vecCommandLog.end(), STOP);
+
+    for(UInt16 it=0;it< m_tKilobotEntities.size();it++){
+        /* Setup the virtual states of a kilobot(e.g. has food state)*/
+        SetupInitialKilobotState(*m_tKilobotEntities[it]);
+    }
+    
+    m_vecKilobotsPositionsHistory.push_back(m_vecKilobotsPositions);
+
 }
 
 /****************************************/
@@ -62,12 +78,11 @@ void CCrwlevyALFPositioning::SetupInitialKilobotStates() {
     m_vecKilobotStates.resize(m_tKilobotEntities.size());
     v_arrivedInPosition.resize(m_tKilobotEntities.size());
     v_arrivedInOrientation.resize(m_tKilobotEntities.size());
-    /* Variables for go_to initial position */
-    // index_vector.resize(m_tKilobotEntities.size());
     m_vecKilobotsPositions.resize(m_tKilobotEntities.size());
+    m_vecKilobotsPositionsHistory.resize(m_tKilobotEntities.size());
     m_vecKilobotsOrientations.resize(m_tKilobotEntities.size());
     m_vecDesInitKilobotPosition.resize(m_tKilobotEntities.size());
-    m_vecDesInitKilobotPosition.assign(m_vecDesInitKilobotPosition.size(), CVector2(100,100)); // Set an initial impossible position
+    m_vecDesInitKilobotPosition.assign(m_vecDesInitKilobotPosition.size(), CVector2(100,100)); // Set initial positions to impossible values
     m_vecDesInitKilobotOrientation.resize(m_tKilobotEntities.size());
     m_vecLastTimeMessaged.resize(m_tKilobotEntities.size());
     m_vecCommandLog.resize(m_tKilobotEntities.size());
@@ -79,8 +94,14 @@ void CCrwlevyALFPositioning::SetupInitialKilobotStates() {
     }
     
     m_vecKilobotsPositionsHistory.push_back(m_vecKilobotsPositions);
-    GreedyAssociation(m_vecKilobotsPositions, m_vecDesInitKilobotPosition);
+    
+    if(!initialization)
+    {
+        GreedyAssociation(m_vecKilobotsPositions, m_vecDesInitKilobotPosition); //Association between initial position <-> desired position
+    }
 
+    //The experiment must start with no kilobot on top
+    //In the following there is the collision check between target and each kilobot
     Real c_random_angle;
     CVector2 & c_position = m_sClusteringHub.Center;
     Real & c_radius = m_sClusteringHub.Radius;
@@ -96,6 +117,8 @@ void CCrwlevyALFPositioning::SetupInitialKilobotStates() {
             });
         
     }while(kilobot_on_the_top != m_vecDesInitKilobotPosition.end());
+
+    
 }
 
 /****************************************/
@@ -144,7 +167,6 @@ void CCrwlevyALFPositioning::SetupInitialKilobotState(CKilobotEntity &c_kilobot_
     CRadians rand_rot_angle(c_rng->Uniform(CRange<Real>(-CRadians::PI.GetValue(), CRadians::PI.GetValue())));
     random_rotation.FromEulerAngles(rand_rot_angle, CRadians::ZERO, CRadians::ZERO);
 
-    //NEW
     do {
         rand_angle = c_rng->Uniform(CRange<Real>(-CRadians::PI.GetValue(), CRadians::PI.GetValue()));
 	    random_dist = c_rng->Uniform(CRange<Real>(0, m_WallStructure.circular_arena_radius - m_WallStructure.circular_arena_width/2 - KiloRadius/2 - 0.0001));
@@ -674,6 +696,7 @@ void CCrwlevyALFPositioning::PrintPose(UInt16& unKilobotID, command& cmd)
 }
 
 /****************************************/
+/* Send control command to the Kilobots */
 /****************************************/
 
 void CCrwlevyALFPositioning::GoToWithOrientation(CKilobotEntity &c_kilobot_entity)

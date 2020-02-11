@@ -74,12 +74,12 @@
     <!-- *********************** -->
     <!-- * Arena configuration * -->
     <!-- *********************** -->
-    <arena size="2, 2, 4" center="0,0,0.5" pixel_per_meter="200">
+    <arena size="2, 2, 4" center="0,0,0.5" pixel_per_meter="100">
         
         <distribute>
             <position method="uniform" min="0.2,0.2,0" max="0.7,0.7,0" />
             <orientation method="uniform" min="0,0,0" max="360,0,0" />
-            <entity quantity="129" max_trials="100">
+            <entity quantity="10" max_trials="100">
                 <kilobot id="kb">
                     <controller config="listener"/> <dynamics2d friction="0.7" />
                 </kilobot>
@@ -88,7 +88,7 @@
 
         <floor id="floor"
         source="loop_functions"
-        pixels_per_meter="200" />
+        pixels_per_meter="100" />
         
     </arena>
     

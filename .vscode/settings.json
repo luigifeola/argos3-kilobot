@@ -53,7 +53,8 @@
         "utility": "cpp",
         "typeindex": "cpp",
         "typeinfo": "cpp",
-        "kilolib.h": "c"
+        "kilolib.h": "c",
+        "*.txx": "cpp"
     },
     "C_Cpp.errorSquiggles": "Disabled"
 }
