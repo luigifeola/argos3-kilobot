@@ -45,20 +45,16 @@ void CCrwlevyALFPositioning::Reset() {
     m_cOutput.open(m_strOutputFileName, std::ios_base::trunc | std::ios_base::out);
     m_cOutputPositions.open(m_strPositionsFileName, std::ios_base::trunc | std::ios_base::out);
 
+    //TODO : update reset function
+    // std::fill(m_vecKilobotStates.begin(), m_vecKilobotStates.end(), NOT_TARGET_FOUND);
+    // std::fill(m_vecLastTimeMessaged.begin(), m_vecLastTimeMessaged.end(), -1000);
 
-    std::fill(m_vecKilobotStates.begin(), m_vecKilobotStates.end(), NOT_TARGET_FOUND);
-    std::fill(v_arrivedInPosition.begin(), v_arrivedInPosition.end(), false);
-    std::fill(v_arrivedInOrientation.begin(), v_arrivedInOrientation.end(), false);
-    std::fill(m_vecLastTimeMessaged.begin(), m_vecLastTimeMessaged.end(), -1000);
-    // std::fill(m_vecDesInitKilobotOrientation.begin(), m_vecDesInitKilobotOrientation.end(), CRadians::ZERO);
-    std::fill(m_vecCommandLog.begin(), m_vecCommandLog.end(), STOP);
-
-    for(UInt16 it=0;it< m_tKilobotEntities.size();it++){
-        /* Setup the virtual states of a kilobot(e.g. has food state)*/
-        SetupInitialKilobotState(*m_tKilobotEntities[it]);
-    }
+    // for(UInt16 it=0;it< m_tKilobotEntities.size();it++){
+    //     /* Setup the virtual states of a kilobot(e.g. has food state)*/
+    //     SetupInitialKilobotState(*m_tKilobotEntities[it]);
+    // }
     
-    m_vecKilobotsPositionsHistory.push_back(m_vecKilobotsPositions);
+    // m_vecKilobotsPositionsHistory.push_back(m_vecKilobotsPositions);
 
 }
 
@@ -76,16 +72,12 @@ void CCrwlevyALFPositioning::Destroy() {
 
 void CCrwlevyALFPositioning::SetupInitialKilobotStates() {
     m_vecKilobotStates.resize(m_tKilobotEntities.size());
-    v_arrivedInPosition.resize(m_tKilobotEntities.size());
-    v_arrivedInOrientation.resize(m_tKilobotEntities.size());
     m_vecKilobotsPositions.resize(m_tKilobotEntities.size());
     m_vecKilobotsPositionsHistory.resize(m_tKilobotEntities.size());
     m_vecKilobotsOrientations.resize(m_tKilobotEntities.size());
-    m_vecDesInitKilobotPosition.resize(m_tKilobotEntities.size());
-    m_vecDesInitKilobotPosition.assign(m_vecDesInitKilobotPosition.size(), CVector2(100,100)); // Set initial positions to impossible values
-    m_vecDesInitKilobotOrientation.resize(m_tKilobotEntities.size());
+    v_recivedCoefficients.resize(m_tKilobotEntities.size());
+    std::fill(v_recivedCoefficients.begin(), v_recivedCoefficients.end(), false);
     m_vecLastTimeMessaged.resize(m_tKilobotEntities.size());
-    m_vecCommandLog.resize(m_tKilobotEntities.size());
     m_fMinTimeBetweenTwoMsg = Max<Real>(1.0, m_tKilobotEntities.size() * m_fTimeForAMessage / 3.0);
 
     for(UInt16 it=0;it< m_tKilobotEntities.size();it++){
@@ -94,11 +86,6 @@ void CCrwlevyALFPositioning::SetupInitialKilobotStates() {
     }
     
     m_vecKilobotsPositionsHistory.push_back(m_vecKilobotsPositions);
-    
-    if(!initialization)
-    {
-        GreedyAssociation(m_vecKilobotsPositions, m_vecDesInitKilobotPosition); //Association between initial position <-> desired position
-    }
 
     //The experiment must start with no kilobot on top
     //In the following there is the collision check between target and each kilobot
@@ -112,11 +99,11 @@ void CCrwlevyALFPositioning::SetupInitialKilobotStates() {
         c_position.SetY(c_rng->Uniform(CRange<Real>(0, m_WallStructure.circular_arena_radius - c_radius)) * cos(c_random_angle));
         
         kilobot_on_the_top = 
-        std::find_if(m_vecDesInitKilobotPosition.begin(), m_vecDesInitKilobotPosition.end(), [&c_position, &c_radius](CVector2 const &position) {
+        std::find_if(m_vecKilobotsPositions.begin(), m_vecKilobotsPositions.end(), [&c_position, &c_radius](CVector2 const &position) {
             return Distance(c_position, position) < (c_radius + 0.001) ;    //LOOK: 1mm costant
             });
         
-    }while(kilobot_on_the_top != m_vecDesInitKilobotPosition.end());
+    }while(kilobot_on_the_top != m_vecKilobotsPositions.end());
 
     
 }
@@ -128,8 +115,6 @@ void CCrwlevyALFPositioning::SetupInitialKilobotState(CKilobotEntity &c_kilobot_
     /* The kilobots begins outside the clustering hub*/
     UInt16 unKilobotID=GetKilobotId(c_kilobot_entity);
     m_vecKilobotStates[unKilobotID] = NOT_TARGET_FOUND;
-    v_arrivedInPosition[unKilobotID] = false;
-    v_arrivedInOrientation[unKilobotID] = false;
     m_vecLastTimeMessaged[unKilobotID] = -1000;
 
     /* Get a non-colliding random position within the circular arena */
@@ -179,43 +164,8 @@ void CCrwlevyALFPositioning::SetupInitialKilobotState(CKilobotEntity &c_kilobot_
         }
     } while(!distant_enough);
 
-    /**
-     * 
-     * RANDOM GENERATED INITIAL DESIRED POSITION
-     * if there are desired initial positions
-     */
-    if(initialization)
-    {
-        maxTries = 999;
-        rand_rot_angle = CRadians(c_rng->Uniform(CRange<Real>(-CRadians::PI.GetValue(), CRadians::PI.GetValue())));
-        random_rotation.FromEulerAngles(rand_rot_angle, CRadians::ZERO, CRadians::ZERO);
-        //NEW
-        do{
-            rand_angle = c_rng->Uniform(CRange<Real>(-CRadians::PI.GetValue(), CRadians::PI.GetValue()));   // Angle in [-pi,pi]
-            random_dist = c_rng->Uniform(CRange<Real>(0, m_WallStructure.circular_arena_radius - m_WallStructure.circular_arena_width/2 - KiloRadius/2 - 0.0001));
-            rand_pos = CVector3(random_dist*sin(rand_angle),random_dist*cos(rand_angle),0);
-            distant_enough = MoveEntity(c_kilobot_entity.GetEmbodiedEntity(), rand_pos, random_rotation, initialization); //if initialization == true, you check just for non collision position
-            
-            if(tries == maxTries-1) {
-                std::cerr << "ERROR: too many tries and not an available spot for the area" << std::endl;
-            }
-        } while(!distant_enough);
-        
-
-
-        //Paint desired position on the floor
-        SVirtualArea desired_pos_area;
-        desired_pos_area.Center = CVector2(rand_pos.GetX(), rand_pos.GetY());
-        desired_pos_area.Radius = 0.033;
-        desired_pos_area.Color = CColor::GREEN;
-        m_TargetAreas.push_back(desired_pos_area);
-    }
-
-    m_vecDesInitKilobotPosition[unKilobotID] = CVector2(rand_pos.GetX(), rand_pos.GetY());
-    m_vecDesInitKilobotOrientation[unKilobotID] = rand_rot_angle;
     m_vecKilobotsPositions[unKilobotID] = GetKilobotPosition(c_kilobot_entity);
     m_vecKilobotsOrientations[unKilobotID] = GetKilobotOrientation(c_kilobot_entity);
-    m_vecCommandLog[unKilobotID] = STOP;    
 }
 
 /****************************************/
@@ -271,8 +221,6 @@ void CCrwlevyALFPositioning::GetExperimentVariables(TConfigurationNode& t_tree){
     /* Get the crwlevy exponents */
     GetNodeAttribute(tExperimentVariablesNode, "crw", crw_exponent);
     GetNodeAttribute(tExperimentVariablesNode, "levy", levy_exponent);
-    /* Get the initialization flag */
-    GetNodeAttribute(tExperimentVariablesNode, "initialization", initialization);
     /* Get the positions datafile name to store Kilobot positions in time */
     GetNodeAttribute(tExperimentVariablesNode, "positionsfilename", m_strPositionsFileName);
     /* Get the output datafile name and open it */
@@ -292,19 +240,21 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
     /* Update the state of the kilobots (target not found, found directly or communicated)*/
     // std::cerr<<"UpdateKilobotState\n";
     UInt16 unKilobotID=GetKilobotId(c_kilobot_entity);
-    m_vecKilobotsPositions[unKilobotID] = GetKilobotPosition(c_kilobot_entity);
-    m_vecKilobotsOrientations[unKilobotID] = GetKilobotOrientation(c_kilobot_entity);
     // TODO: attento prima di essere TARGET_FOUND deve essere READY
     if(start_experiment)
     {
+        m_vecKilobotsPositions[unKilobotID] = GetKilobotPosition(c_kilobot_entity);
+        m_vecKilobotsOrientations[unKilobotID] = GetKilobotOrientation(c_kilobot_entity);
         
-        // std::cerr<<"UpdateKilobotState running experiment\n";
-        Real fDistance = Distance(m_vecKilobotsPositions[unKilobotID], m_sClusteringHub.Center);
-
+        //If the kilobot has discovered yet the target no state update is needed anymore
         if(m_vecKilobotStates[unKilobotID] == TARGET_FOUND){
             return;
         }
 
+        
+        Real fDistance = Distance(m_vecKilobotsPositions[unKilobotID], m_sClusteringHub.Center);
+
+        //If the kilobot is in the target area
         if(fDistance<(m_sClusteringHub.Radius)){//*0.9
             m_vecKilobotStates[unKilobotID]=TARGET_FOUND;
             std::map<UInt16,std::pair<UInt32,UInt32>>::iterator itr = m_KilobotResults.find(unKilobotID);
@@ -324,7 +274,7 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
             
             
         }
-        else if(GetKilobotLedColor(c_kilobot_entity) == CColor::RED){
+        else if(GetKilobotLedColor(c_kilobot_entity) == CColor::GREEN){
             m_vecKilobotStates[unKilobotID]=TARGET_COMMUNICATED;
             std::map<UInt16,std::pair<UInt32,UInt32>>::const_iterator itr = m_KilobotResults.find(unKilobotID);
             if (itr!=m_KilobotResults.end()){
@@ -343,132 +293,81 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
 
 /****************************************/
 /****************************************/
-void CCrwlevyALFPositioning::GreedyAssociation(std::vector<CVector2> actual_pos, std::vector<CVector2> desired_pos)
-{
-    // std::cerr<<"KBOTs POSITION\n";
-    // for(const auto& a_pos : actual_pos)
-    // {
-    //     std::cerr<<a_pos<<std::endl;
-    // }
-    // std::cerr<<"\n\n\n\n\n";
-
-    // std::cerr<<"DESIRED INITIAL POSITION\n";
-    // for(const auto& d_pos : desired_pos)
-    // {
-    //     std::cerr<<d_pos<<std::endl;
-    // }   
-    // std::cerr<<"\n\n\n\n\n";
-
-    std::vector<Real> v_distances;
-    
-    do
-    {
-        Real distance = 1000;
-        std::pair <UInt32,UInt32> idxs;
-        for(UInt32 i = 0; i < actual_pos.size(); i++ )
-        {
-            for (UInt32 j=0; j < desired_pos.size(); j++)
-            {
-                // std::cerr<<"Distances k_pos, des_pos: "<<i<<","<<j<<"\t"<< SquareDistance(actual_pos[i], desired_pos[j])<<std::endl;
-                if (distance > SquareDistance(actual_pos[i], desired_pos[j]))
-                {
-                    distance = SquareDistance(actual_pos[i], desired_pos[j]);
-                    idxs = std::make_pair(i,j);
-                }
-
-            }
-
-        }
-            index_vector.push_back(idxs);
-            v_distances.push_back(distance);
-
-            actual_pos[idxs.first].SetX(std::numeric_limits<Real>::max());
-            actual_pos[idxs.first].SetY(std::numeric_limits<Real>::max());
-            desired_pos[idxs.second].SetX(-1*std::numeric_limits<Real>::max());
-            desired_pos[idxs.second].SetY(-1*std::numeric_limits<Real>::max());
-    } while (index_vector.size() != actual_pos.size());
-
-    std::sort(index_vector.begin(), index_vector.end());
-
-    // for(const auto& idx : index_vector)
-    // {
-    //     std::cerr << idx.first<<","<<idx.second<<"\t"<< std::endl;
-    // }    
-    // std::cerr<<"\n\n\n\n\n";
-
-}
-
-/****************************************/
-/****************************************/
-
-void CCrwlevyALFPositioning::Broadcast_exponents(){
-    // std::cerr<<"Broadcast_exponents\n";
-    /* Broadcastin of experiment exponents*/
-    message_t m_tArkBroadcastMessage;// = new message_t();
-    /* Prepare the inividual kilobot's message */
-    m_tArkBroadcastMessage.type = 255;  // using type 255 to signal ark broadcast messages
-    /* Fill up the ARK message */
-    m_tArkBroadcastMessage.data[0] = (UInt8)(crw_exponent*100); 
-    m_tArkBroadcastMessage.data[1] = (UInt8)(levy_exponent*100);
-    
-    start_experiment = true;
-    start_experiment_time = m_fTimeInSeconds;
-    GetSimulator().GetMedium<CKilobotCommunicationMedium>("kilocomm").SendOHCMessageTo(m_tKilobotEntities,&m_tArkBroadcastMessage);
-}
-
-/****************************************/
-/****************************************/
 
 void CCrwlevyALFPositioning::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity){
-    
+    /*Create ARK-type messages variables*/
+    m_tALFKilobotMessage tKilobotMessage,tEmptyMessage,tMessage;
+    /* Get the kilobot ID and state (Only Position in this example) */
     UInt16 unKilobotID=GetKilobotId(c_kilobot_entity);
-    /* See if ready to start the experiment*/
-    // std::cerr<<"Ready kilobots: ";
-    // for(const auto& kilo_state : m_vecKilobotStates)
-    // {
-    //     std::cerr<<kilo_state<<", ";
-    // }
-    // std::cerr<<std::endl<<std::endl;
-    if(!std::all_of(v_arrivedInOrientation.begin(), v_arrivedInOrientation.end(), [](bool arrived){return arrived;}))
-    {
-        // std::cerr<<"Sending commands\n";
-        GoToWithOrientation(c_kilobot_entity);
+   
+    /* check if enough time has passed from the last message otherwise*/
+    if (m_fTimeInSeconds - m_vecLastTimeMessaged[unKilobotID]< m_fMinTimeBetweenTwoMsg){
+        return; // if the time is too short, the kilobot cannot receive a message
     }
 
-    else if(!start_experiment)
+    tKilobotMessage.m_sID = unKilobotID;
+    
+    if(!start_experiment)
     {
-        // std::cerr<<"Sending exponents\n";
-        /* If led red -> kilo_ready ->if all led, start experiment */
-        // std::cerr<<"Sending Parameters\n";
-        Broadcast_exponents();
+        UInt8 crw = (UInt8)(crw_exponent*10);
+        UInt8 levy = (UInt8)(levy_exponent*10);
+        m_tMessages[unKilobotID].type = 255;
+        tKilobotMessage.m_sType = 0;
+        tKilobotMessage.m_sData = (crw << 5);
+        tKilobotMessage.m_sData = tKilobotMessage.m_sData | levy;
     }
-
+    
     else 
     {
-        // std::cerr<<"Experiment is running\n";
-        /* check if enough time has passed from the last message otherwise*/
-        // TODO: check if needed the following rows
-        if (m_fTimeInSeconds - m_vecLastTimeMessaged[unKilobotID]< m_fMinTimeBetweenTwoMsg){
-            return; // if the time is too short, the kilobot cannot receive a message
-        }
-        /* ARK sends message to kilobot only when it find the target */
-        else if (m_vecKilobotStates[unKilobotID] == TARGET_FOUND){
-            /* Prepare the inividual kilobot's message */
-            m_tMessages[unKilobotID].type = 0; // using type 0 to signal ark messages
-            /* Save time for next messages */
-            m_vecLastTimeMessaged[unKilobotID] = m_fTimeInSeconds;
-            /* Fill up the kb message */
-            m_tMessages[unKilobotID].data[0] = unKilobotID;
-            
-            GetSimulator().GetMedium<CKilobotCommunicationMedium>("kilocomm").SendOHCMessageTo(c_kilobot_entity,&m_tMessages[unKilobotID]);
-        }
-        UpdateResults();
+        m_tMessages[unKilobotID].type = 0;
+        tKilobotMessage.m_sType = (int)m_vecKilobotStates[unKilobotID];
+        tKilobotMessage.m_sData = 0;
     }
+        
+    /*  Set the message sending flag to True */
+    m_vecLastTimeMessaged[unKilobotID] = m_fTimeInSeconds;
+    
+
+    /* Send the message to the kilobot using the ARK messaging protocol (addressing 3 kilobots per one standard kilobot message)*/
+    for (int i = 0; i < 9; ++i) {
+        m_tMessages[unKilobotID].data[i]=0;
+    }
+    // Prepare an empty ARK-type message to fill the gap in the full kilobot message
+    tEmptyMessage.m_sID=1023;
+    tEmptyMessage.m_sType=0;
+    tEmptyMessage.m_sData=0;
+    // Fill the kilobot message by the ARK-type messages
+    for (int i = 0; i < 3; ++i) {
+        if( i == 0){
+            tMessage = tKilobotMessage;
+        } else{
+            tMessage = tEmptyMessage;
+        }
+        m_tMessages[unKilobotID].data[i*3] = (tMessage.m_sID >> 2);
+        m_tMessages[unKilobotID].data[1+i*3] = (tMessage.m_sID << 6);
+        m_tMessages[unKilobotID].data[1+i*3] = m_tMessages[unKilobotID].data[1+i*3] | (tMessage.m_sType << 2);
+        m_tMessages[unKilobotID].data[1+i*3] = m_tMessages[unKilobotID].data[1+i*3] | (tMessage.m_sData >> 8);
+        m_tMessages[unKilobotID].data[2+i*3] = tMessage.m_sData;
+    }
+    
+    if(!start_experiment)
+    {
+        v_recivedCoefficients[unKilobotID]=true;
+        if(std::all_of(v_recivedCoefficients.begin(), v_recivedCoefficients.end(), [](bool received){return received;}))
+        {
+            start_experiment = true;
+            start_experiment_time = m_fTimeInSeconds;
+        }
+    }
+    /* Sending the message */
+    GetSimulator().GetMedium<CKilobotCommunicationMedium>("kilocomm").SendOHCMessageTo(c_kilobot_entity,&m_tMessages[unKilobotID]);
+    
+    UpdateTimeResults();
 }
 
 /****************************************/
 /****************************************/
-void CCrwlevyALFPositioning::UpdateResults(){
+void CCrwlevyALFPositioning::UpdateTimeResults(){
     /* Close data file */
     m_cOutput.close();
     /* Reopen the file, erasing its contents */
@@ -634,182 +533,6 @@ void CCrwlevyALFPositioning::PostExperiment()
     // std::string time_results_file = prefix + "time_results.tsv";
 
 
-}
-
-/****************************************/
-/****************************************/
-
-void CCrwlevyALFPositioning::PrintArrivedKilobot()
-{
-    /* Print arrived kilobot */ 
-    std::cerr<<"arrived kilobots: ";
-    for(const auto& arrived : v_arrivedInPosition)
-    {
-        std::cerr<<arrived<<", ";
-    }
-    std::cerr<<std::endl<<std::endl;
-}
-
-/****************************************/
-/****************************************/
-
-void CCrwlevyALFPositioning::PrintPose(UInt16& unKilobotID, command& cmd)
-{
-    // std::cerr<<"Desired angles ";
-    // for(const auto& angle : m_vecDesInitKilobotOrientation)
-    // {
-    //     std::cerr<<angle<<", ";
-    // }
-    // std::cerr<<std::endl<<std::endl;
-
-    std::string s_cmd ("ERROR not used variable");
-    switch (cmd)
-    {
-        case FORWARD:
-            s_cmd = "Forward";
-            break;
-        case LEFT:
-            s_cmd = "Turn left";
-            break;
-        case RIGHT:
-            s_cmd = "Turn right";
-            break;
-        case STOP:
-            s_cmd = "Stop";
-            break;
-    }
-
-    // CVector2 kiloPos = m_vecKilobotsPositions[unKilobotID];// GetKilobotPosition(c_kilobot_entity);
-    // CVector2 init_d_position = m_vecDesInitKilobotPosition[index_vector[unKilobotID].second];
-
-    CRadians kiloOrientation = m_vecKilobotsOrientations[unKilobotID]; //GetKilobotOrientation(c_kilobot_entity);
-    // CRadians desired_orientation = m_vecDesInitKilobotOrientation[index_vector[unKilobotID].second];
-    
-    std::cerr<<"KId: "<<unKilobotID<<", command: "<<s_cmd<<std::endl;
-    // std::cerr<<"SquareDistance: "<<SquareDistance(init_d_position , kiloPos)<<std::endl;
-    // std::cerr<<"Kilobot position: "<<kiloPos<<std::endl;
-    // std::cerr<<"Desired position: "<<init_d_position<<std::endl;
-    // std::cerr<<"Angle displacement: "<<desired_orientation - kiloOrientation<<std::endl;
-    std::cerr<<"Kilobot orientation: "<<kiloOrientation<<std::endl;
-    // std::cerr<<"Desired orientation: "<<desired_orientation<<std::endl;
-    std::cerr<<"\n";
-}
-
-/****************************************/
-/* Send control command to the Kilobots */
-/****************************************/
-
-void CCrwlevyALFPositioning::GoToWithOrientation(CKilobotEntity &c_kilobot_entity)
-{
-    /* Get the kilobot ID and state */
-    UInt16 unKilobotID=GetKilobotId(c_kilobot_entity);
-
-    /* Check if enough time has passed from the last message otherwise*/
-    // if (m_fTimeInSeconds - m_vecLastTimeMessaged[unKilobotID] < m_fMinTimeBetweenTwoMsg) return;
-
-    /* Motion command to send to the kilobot */
-    command cmd = STOP;
-    message_t msg;
-    msg.type = 254;
-    m_vecLastTimeMessaged[unKilobotID] = m_fTimeInSeconds;
-        
-    /* Variable for Kilobots position and orientation */
-    CVector2 kiloPos = m_vecKilobotsPositions[unKilobotID];// GetKilobotPosition(c_kilobot_entity);
-    CVector2 init_d_position = m_vecDesInitKilobotPosition[index_vector[unKilobotID].second];
-    CRadians kiloOrientation = m_vecKilobotsOrientations[unKilobotID];//GetKilobotOrientation(c_kilobot_entity);
-    CRadians desired_orientation = m_vecDesInitKilobotOrientation[index_vector[unKilobotID].second];
-    CRadians angle_offset = desired_orientation - kiloOrientation; //because both angles are defined in [-pi,pi]
-    angle_offset += (angle_offset>CRadians::PI) ? -CRadians::TWO_PI : (angle_offset<-CRadians::PI) ? CRadians::TWO_PI : CRadians(0.0);
-
-    if (!v_arrivedInPosition[unKilobotID])
-    {
-        if(SquareDistance(init_d_position , kiloPos) <= kDistThreshold) 
-        {            
-            /*Following 2 lines if no initial orientation considered*/
-            // cmd = STOP;
-            v_arrivedInPosition[unKilobotID] = true;           
-        }
-
-        else 
-        {
-            // std::cerr<<"Go Forward!"<<std::endl;
-            CRadians pathOrientation = ATan2(init_d_position.GetY() - kiloPos.GetY(), init_d_position.GetX()-kiloPos.GetX()) - kiloOrientation;
-            if(pathOrientation.GetAbsoluteValue() < 0.78)
-            {
-                cmd = FORWARD;
-                // std::cerr<<"Forward command\n";
-            }
-            else
-            {
-                pathOrientation.SignedNormalize(); //map angle in [-pi,pi]
-                // normalise the pathOrientation between -pi and pi
-                
-                if (pathOrientation < CRadians::ZERO)
-                {
-                    cmd = RIGHT;
-                    // std::cerr<<"Right Forward command\n";
-                } 
-                else 
-                {
-                    cmd = LEFT;
-                    // std::cerr<<"Left Forward command\n";
-                }      
-
-            }
-
-        }
-    }
-
-    //if the kilobot for some reason is moved from goal position...
-    else
-    {
-        if(SquareDistance(init_d_position , kiloPos) > kDistThreshold + kDistPushed)
-        {
-            v_arrivedInPosition[unKilobotID] = false;
-        }
-
-        else if(!v_arrivedInOrientation[unKilobotID])
-        {
-            /* Kilobot angle test, just to test angle variation in Argos */
-            // cmd = LEFT;
-            // std::cerr<<"Angle displacement: "<<angle_offset<<std::endl;
-            // std::cerr<<"Desired orientation: "<<desired_orientation<<std::endl;
-            // std::cerr<<"Kilobot orientation: "<<kiloOrientation<<std::endl;
-            // std::cerr<<"\n\n";
-            
-            /*Following if-else if also initial orientation is considered */
-            // std::cerr<<"Angle displacement: "<<angle_offset<<std::endl;
-            // std::cerr<<"Kilobot orientation: "<<kiloOrientation<<std::endl;
-            // std::cerr<<"Desired orientation: "<<desired_orientation<<std::endl;
-            if(angle_offset.GetAbsoluteValue() > kAngleThreshold)
-            {            
-                if(angle_offset.GetValue() > 0) 
-                {
-                    cmd = LEFT;
-                    // std::cerr<<"Rotate Left!"<<std::endl;
-                }
-                else
-                {
-                    cmd = RIGHT;
-                    // std::cerr<<"Rotate Left!"<<std::endl;
-                }  
-            }
-            else
-            {
-                // std::cerr<<"Arrived!"<<std::endl;
-                cmd = STOP;
-                v_arrivedInOrientation[unKilobotID] = true;            
-            }
-        }
-    }
-    
-    if (m_vecCommandLog[unKilobotID] != cmd )
-    {
-        m_vecCommandLog[unKilobotID] = cmd;
-        msg.data[0] = uint8_t (cmd);
-        GetSimulator().GetMedium<CKilobotCommunicationMedium>("kilocomm").SendOHCMessageTo(c_kilobot_entity,&msg);    
-    }
-    
 }
 
 /****************************************/

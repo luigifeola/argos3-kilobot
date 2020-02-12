@@ -43,11 +43,15 @@ typedef enum {
 motion_t current_motion_type = STOP;
 
 /* current state */
-uint8_t received_command = STOP;
 state_t current_state = OUTSIDE_TARGET;
 
 /* Message send to the other kilobots */
 message_t messageA;
+
+/* Variables for Smart Arena messages */
+int sa_type = 3;    //valore impossibile da assumere state_t in [0,2]
+int sa_payload = 0;
+bool new_sa_msg = false;
 
 /* Flag for decision to send a word */
 bool sending_msg = false;
@@ -59,8 +63,8 @@ bool new_information = false;
 //const double max_time = 9288; //10^3
 /* counters for motion, turning and random_walk */
 const double std_motion_steps = 5*16;
-double levy_exponent = 0; // 2 is brownian like motion
-double crw_exponent = 0; // go straight often
+double levy_exponent = -1; // 2 is brownian like motion
+double crw_exponent = -1; // go straight often
 uint32_t turning_ticks = 0; // keep count of ticks of turning
 const uint8_t max_turning_ticks = 160; /* constant to allow a maximum rotation of 180 degrees with \omega=\pi/5 */
 uint16_t straight_ticks = 0; // keep count of ticks of going straight
@@ -177,22 +181,42 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
   //   set_color(RGB(3, 0, 0));
   //   delay(50);
   // }
-  
-  if (msg->type == 254)
+
+  if (msg->type == 255) 
   {
-    // printf("Moving to start\n");
-    received_command = msg->data[0];
+    // unpack message
+    int id1 = msg->data[0] << 2 | (msg->data[1] >> 6);
+    int id2 = msg->data[3] << 2 | (msg->data[4] >> 6);
+    int id3 = msg->data[6] << 2 | (msg->data[7] >> 6);
+    if (id1 == kilo_uid) {
+        // unpack type
+        sa_type = msg->data[1] >> 2 & 0x0F;
+        // unpack payload
+        sa_payload = ((msg->data[1]&0b11) << 8) | (msg->data[2]);
+        crw_exponent = (double) ((sa_payload >> 5) & 0x1F) /10;
+        levy_exponent = (double) (sa_payload & 0x1F) /10;
+    }
+    // printf("levy = %f", levy_exponent);
+    
+    if (id2 == kilo_uid) {
+        // unpack type
+        sa_type = msg->data[4] >> 2 & 0x0F;
+        // unpack payload
+        sa_payload = ((msg->data[4]&0b11)  << 8) | (msg->data[5]);
+        crw_exponent = (double) ((sa_payload >> 5) & 0x1F) /10;
+        levy_exponent = (double) (sa_payload & 0x1F) /10;
+    }
+    if (id3 == kilo_uid) {
+        // unpack type
+        sa_type = msg->data[7] >> 2 & 0x0F;
+        // unpack payload
+        sa_payload = ((msg->data[7]&0b11)  << 8) | (msg->data[8]);
+        crw_exponent = (double) ((sa_payload >> 5) & 0x1F) /10;
+        levy_exponent = (double) (sa_payload & 0x1F) /10;
+    }
+    
   }
 
-
-  if (msg->type == 255)
-  {
-    // printf("Receiving exponents\n");
-    crw_exponent = (double)msg->data[0]/100;
-    levy_exponent = (double)msg->data[1]/100;
-    // printf("CRW: %f \n", crw_exponent);
-    // printf("LEVY: %f \n", levy_exponent);
-  }
 
 
   /* get id (always firt byte) */
@@ -201,16 +225,49 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
   /* ----------------------------------*/
   /* smart arena message               */
   /* ----------------------------------*/
-  if (msg->type == 0 && msg->data[0]==kilo_uid) 
+  if (msg->type == 0) 
   {
-    // printf("Passing on the target\n");
-    current_state = DISCOVERED_TARGET;
-    new_information = true;
-    set_color(RGB(0, 3, 0));
+    // unpack message
+    int id1 = msg->data[0] << 2 | (msg->data[1] >> 6);
+    int id2 = msg->data[3] << 2 | (msg->data[4] >> 6);
+    int id3 = msg->data[6] << 2 | (msg->data[7] >> 6);
+    if (id1 == kilo_uid) {
+        // unpack type
+        sa_type = msg->data[1] >> 2 & 0x0F;
+        // unpack payload
+        sa_payload = ((msg->data[1]&0b11) << 8) | (msg->data[2]);
+        new_sa_msg = true;
+    }
+    if (id2 == kilo_uid) {
+        // unpack type
+        sa_type = msg->data[4] >> 2 & 0x0F;
+        // unpack payload
+        sa_payload = ((msg->data[4]&0b11)  << 8) | (msg->data[5]);
+        new_sa_msg = true;
+    }
+    if (id3 == kilo_uid) {
+        // unpack type
+        sa_type = msg->data[7] >> 2 & 0x0F;
+        // unpack payload
+        sa_payload = ((msg->data[7]&0b11)  << 8) | (msg->data[8]);
+        new_sa_msg = true;
+    }
 
+    if(new_sa_msg==true)
+    {
+      if((sa_type==1)&&(current_state==OUTSIDE_TARGET || current_state==COMMUNICATED_TARGET))
+      {
+          current_state=DISCOVERED_TARGET;
+          new_information = true;
+          set_color(RGB(3, 0, 0));
+      }
+      new_sa_msg = false;
+    }
   }
 
 
+  //The remaining possibility is for messages arriving from other kilobots
+  //So if distance is too much, the message will be discarded
   uint8_t cur_distance = estimate_distance(d);
   if (cur_distance > 100) //100 mm  
   {
@@ -227,7 +284,7 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
     if (current_state != DISCOVERED_TARGET)
     {
       current_state = COMMUNICATED_TARGET;
-      set_color(RGB(3, 0, 0));
+      set_color(RGB(0, 3, 0));
     }
   }
 }
@@ -320,36 +377,8 @@ void loop()
   // printf("CRW: %f \n", crw_exponent);
   // printf("LEVY: %f \n", levy_exponent);
   
-  // printf("Stato NON arrivato\n");
-  // printf("%" PRIu32 "\n", received_command);
-  
-  if(!crw_exponent && !levy_exponent)
+  if(crw_exponent!=-1 && levy_exponent!=-1)
   {
-    /* Randomness in the movement to avoid collision */
-    if (!(rand()%30) && received_command == FORWARD)
-    {
-      received_command = TURN_RIGHT;
-    }
-
-    set_motion(received_command);
-    // /* Blinking behaviour */
-    // if(received_command == TURN_LEFT || received_command == TURN_RIGHT)
-    // {
-    //   set_color(RGB(0, 3, 0));
-    //   delay(500);
-    //   set_color(RGB(3, 0, 0));
-    //   delay(500);
-    // }
-    if (received_command == STOP)
-    {
-      set_color(RGB(3,0,3));
-    }
-    
-  }
-
-  else
-  {
-    // printf("Random walk\n");
     random_walk();
     broadcast();  
   }
