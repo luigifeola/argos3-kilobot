@@ -193,10 +193,11 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
         sa_type = msg->data[1] >> 2 & 0x0F;
         // unpack payload
         sa_payload = ((msg->data[1]&0b11) << 8) | (msg->data[2]);
-        crw_exponent = (double) ((sa_payload >> 5) & 0x1F) /10;
         levy_exponent = (double) (sa_payload & 0x1F) /10;
+        // crw_exponent = (double) ((sa_payload >> 5) & 0x1F) /10;
+        crw_exponent = (double) ((sa_payload & 0xF8) >>5) /10;
     }
-    // printf("levy = %f", levy_exponent);
+    // printf("crw_exponent = %f\n", crw_exponent);
     
     if (id2 == kilo_uid) {
         // unpack type

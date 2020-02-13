@@ -73,7 +73,7 @@ void CCrwlevyALFPositioning::Destroy() {
 void CCrwlevyALFPositioning::SetupInitialKilobotStates() {
     m_vecKilobotStates.resize(m_tKilobotEntities.size());
     m_vecKilobotsPositions.resize(m_tKilobotEntities.size());
-    m_vecKilobotsPositionsHistory.resize(m_tKilobotEntities.size());
+    m_vecKilobotsPositionsHistory.reserve(m_tKilobotEntities.size());
     m_vecKilobotsOrientations.resize(m_tKilobotEntities.size());
     v_recivedCoefficients.resize(m_tKilobotEntities.size());
     std::fill(v_recivedCoefficients.begin(), v_recivedCoefficients.end(), false);
@@ -85,6 +85,8 @@ void CCrwlevyALFPositioning::SetupInitialKilobotStates() {
         SetupInitialKilobotState(*m_tKilobotEntities[it]);
     }
     
+    //Dopo che hai piazzato i Kilobot, ti salvi la posizione iniziale
+    // PrintVecPos(m_vecKilobotsPositions);
     m_vecKilobotsPositionsHistory.push_back(m_vecKilobotsPositions);
 
     //The experiment must start with no kilobot on top
@@ -359,10 +361,15 @@ void CCrwlevyALFPositioning::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entit
             start_experiment_time = m_fTimeInSeconds;
         }
     }
+
+    else 
+    {
+        UpdateTimeResults();
+    }
+    
+    
     /* Sending the message */
     GetSimulator().GetMedium<CKilobotCommunicationMedium>("kilocomm").SendOHCMessageTo(c_kilobot_entity,&m_tMessages[unKilobotID]);
-    
-    UpdateTimeResults();
 }
 
 /****************************************/
@@ -377,7 +384,7 @@ void CCrwlevyALFPositioning::UpdateTimeResults(){
     m_cOutput << "Robot id\tFirst discovery time\tFirst information time" << std::endl;
     
     //for loop to store all the elements even if no info is available
-    for(int i=0; i<m_vecKilobotStates.size(); i++)
+    for(uint i=0; i<m_vecKilobotStates.size(); i++)
     {
         std::map<UInt16,std::pair<UInt32,UInt32>>::const_iterator itr = m_KilobotResults.find(i);
         if(itr != m_KilobotResults.end())
@@ -408,20 +415,26 @@ void CCrwlevyALFPositioning::PostStep()
 {
 
     Real actual_time_experiment;
-    // std::cout<<"Time in seconds:"<<actual_time_experiment<<std::endl;
     actual_time_experiment = m_fTimeInSeconds - start_experiment_time;
+    // std::cout<<"Time in seconds:"<<actual_time_experiment<<std::endl;
     
     if(start_experiment)
     {
+        // std::cout<<"Qui ci entro\n";
         internal_counter+=1;
         if(internal_counter == m_unDataAcquisitionFrequency)
         {
+            // PrintVecPos(m_vecKilobotsPositions);
             m_vecKilobotsPositionsHistory.push_back(m_vecKilobotsPositions);
             internal_counter = 0;   
         }
 
     }
 
+    // for(const auto& pos : m_vecKilobotsPositions)
+    // {
+    //     std::cout<<'\t'<<std::fixed<<std::setprecision(3)<<pos;
+    // }
 
     // Real integer_digits = -1;
     // Real floating_digits = std::modf(actual_time_experiment, &integer_digits);
@@ -468,20 +481,19 @@ const std::string currentDate()
 
 void CCrwlevyALFPositioning::PostExperiment()
 {
-	m_cOutputPositions<< "Robot id";
-
+    m_cOutputPositions<< "Robot id";
     for (uint j = 0; j < m_vecKilobotsPositionsHistory.size(); j++)
     {
         m_cOutputPositions << "\tt = " << j*m_unDataAcquisitionFrequency;
     }
     m_cOutputPositions<< std::endl;
 
-    for (int i = 0; i < m_vecKilobotsPositionsHistory[0].size(); i++)
+    for (uint i = 0; i < m_vecKilobotsPositionsHistory[0].size(); i++)
 	{
         m_cOutputPositions << i;
-		for (int j = 0; j < m_vecKilobotsPositionsHistory.size(); j++)
+		for (uint j = 0; j < m_vecKilobotsPositionsHistory.size(); j++)
 		{
-			m_cOutputPositions <<'\t'<< std::fixed<<std::setprecision(3)<< m_vecKilobotsPositionsHistory[j][i];
+            m_cOutputPositions <<'\t'<< std::fixed<<std::setprecision(3)<< m_vecKilobotsPositionsHistory[j][i];
 		}
 		m_cOutputPositions<<std::endl;
 	}
@@ -534,6 +546,20 @@ void CCrwlevyALFPositioning::PostExperiment()
 
 
 }
+
+/****************************************/
+/****************************************/
+
+void CCrwlevyALFPositioning::PrintVecPos(std::vector<CVector2> vecKilobotsPositions)
+{
+    std::cout<<"PrintVecPos:\n";
+    for(const auto& pos : m_vecKilobotsPositions)
+    {
+        std::cout<<'\t'<<std::fixed<<std::setprecision(3)<<pos;
+    }     
+    std::cout<<"\n"; 
+}
+
 
 /****************************************/
 /****************************************/

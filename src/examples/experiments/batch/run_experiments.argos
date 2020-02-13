@@ -64,7 +64,7 @@
         <environments>
             <Area position="0,0" radius="0.033" color="255,0,0,125" >
             </Area>
-            <Perimeter radius="0.5" width="0.05" height="0.05" walls="100">
+            <Perimeter radius="0.5" width="0.05" height="0.05" walls="__NUMWALLS__">
             </Perimeter>
         </environments>
     
@@ -74,7 +74,7 @@
     <!-- *********************** -->
     <!-- * Arena configuration * -->
     <!-- *********************** -->
-    <arena size="2, 2, 4" center="0,0,0.5" pixel_per_meter="200">
+    <arena size="__ARENASIZE__" center="0,0,0.5" pixel_per_meter="200">
 
         <distribute>
             <position method="uniform" min="0.2,0.2,0" max="0.7,0.7,0" />
@@ -110,7 +110,7 @@
     <!-- ****************** -->
     <!-- * Visualization  * -->
     <!-- ****************** -->
-    <visualization>
+    <!-- <visualization>
         <qt-opengl>
             <camera>
                 <placement idx="0" position="0,0,1" look_at="0,0,0" lens_focal_length="12" />
@@ -126,7 +126,7 @@
                 <placement idx="10" position="-0.0229259,-0.177184,0.0725521" look_at="-0.0273839,0.812385,0.0624333" lens_focal_length="20" />
             </camera>
         </qt-opengl>
-    </visualization>
+    </visualization> -->
     
 </argos-configuration>
 

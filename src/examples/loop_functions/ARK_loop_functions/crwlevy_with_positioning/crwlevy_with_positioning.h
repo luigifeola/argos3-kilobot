@@ -102,6 +102,9 @@ public:
     void UpdateVirtualSensor(CKilobotEntity& c_kilobot_entity);
 
 
+    /** Print Kilobot Position */
+    void PrintVecPos(std::vector<CVector2> vecKilobotsPositions);
+
     /** Store fpt, fit data on file */
     void UpdateTimeResults();
 
