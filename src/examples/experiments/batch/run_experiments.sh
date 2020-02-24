@@ -24,23 +24,21 @@ base_dir=`dirname $base_config`
 echo base_dir $base_dir
 echo "$CONFIGURATION_FILE" | egrep "^$SHARED_DIR" &> /dev/null || exit 1
 
-# levy="1.2 1.6 2.0"
-# crw="0 0.3 0.6 0.9"
-levy="1.2"
-crw="0.3"
+levy="1.2 1.6 2.0"
+crw="0 0.3 0.6 0.9"
 numrobots="50"
 numWalls="100"
 arenaSize="2, 2, 4"
 #################################
 # experiment_length is in seconds
 #################################
-experiment_length="900"
+experiment_length="1800"
 date_time=`date "+%Y-%m-%d"`
 RUNS=1
 
 for par1 in $levy; do
     for par2 in $crw; do
-	param_dir=$res_dir/$date_time"_robots#"$numrobots"_alpha#"$par1"_rho#"$par2"_sim"
+	param_dir=$res_dir/$date_time"_robots#"$numrobots"_alpha#"$par1"_rho#"$par2"_sim_"$experiment_length
 	if [[ ! -e $param_dir ]]; then
 	    mkdir $param_dir
 	fi

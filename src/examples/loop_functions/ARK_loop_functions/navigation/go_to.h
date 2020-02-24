@@ -91,7 +91,7 @@ public:
     void UpdateVirtualSensor(CKilobotEntity& c_kilobot_entity);
 
     /** Desired initial position and orientation */
-    void GoToWithOrientation(CKilobotEntity &c_kilobot_entity);
+    command GoToWithOrientation(CKilobotEntity &c_kilobot_entity);
 
     /** Reassign initial position */
     void GreedyAssociation(std::vector<CVector2> actual_pos, std::vector<CVector2> desired_pos);
@@ -128,7 +128,6 @@ private:
         CColor Color;
     };
 
-    SVirtualArea m_sClusteringHub;
     std::vector<SVirtualArea> m_TargetAreas;
 
 
@@ -171,23 +170,6 @@ private:
     /* random number generator */
     CRandom::CRNG* c_rng;
 
-    /* crwlevy exponents */
-    Real crw_exponent;
-    Real levy_exponent;
-
-    /* output file for data acquisition */
-    std::ofstream m_cOutput;
-
-    /* output file name*/
-    std::string m_strOutputFileName;
-
-    /* data acquisition frequency in ticks */
-    UInt16 m_unDataAcquisitionFrequency;
-
-    UInt32 m_unFullDiscoveryTime;
-    UInt32 m_unFullInformationTime;
-    Real m_fFractionWithInformation;
-    Real m_fFractionWithDiscovery;
 };
 
 #endif

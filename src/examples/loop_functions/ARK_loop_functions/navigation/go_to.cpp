@@ -2,9 +2,9 @@
 
 /****************************************/
 /****************************************/
+double KiloDiameter = 0.033;
 
-CNavigationALF::CNavigationALF() :
-    m_unDataAcquisitionFrequency(10)
+CNavigationALF::CNavigationALF()
     {
         c_rng = CRandom::CreateRNG("argos");
     }
@@ -21,26 +21,18 @@ CNavigationALF::~CNavigationALF(){
 void CNavigationALF::Init(TConfigurationNode& t_node) {
     /* Initialize ALF*/
     CALF::Init(t_node);
-    /* Other initializations: Varibales, Log file opening... */
-    m_cOutput.open(m_strOutputFileName, std::ios_base::trunc | std::ios_base::out);
 }
 
 /****************************************/
 /****************************************/
 
 void CNavigationALF::Reset() {
-    /* Close data file */
-    m_cOutput.close();
-    /* Reopen the file, erasing its contents */
-    m_cOutput.open(m_strOutputFileName, std::ios_base::trunc | std::ios_base::out);
 }
 
 /****************************************/
 /****************************************/
 
 void CNavigationALF::Destroy() {
-    /* Close data file */
-    m_cOutput.close();
 }
 
 /****************************************/
@@ -54,6 +46,7 @@ void CNavigationALF::SetupInitialKilobotStates() {
     m_vecKilobotsPositions.resize(m_tKilobotEntities.size());
     m_vecKilobotsOrientations.resize(m_tKilobotEntities.size());
     m_vecDesInitKilobotPosition.resize(m_tKilobotEntities.size());
+    std::fill(m_vecDesInitKilobotPosition.begin(), m_vecDesInitKilobotPosition.end(), CVector2(1000,1000));
     m_vecDesInitKilobotOrientation.resize(m_tKilobotEntities.size());
     m_vecLastTimeMessaged.resize(m_tKilobotEntities.size());
     m_vecCommandLog.resize(m_tKilobotEntities.size());
@@ -91,7 +84,7 @@ void CNavigationALF::SetupInitialKilobotState(CKilobotEntity &c_kilobot_entity){
 
     /* Get a non-colliding random position within the circular arena */
     bool distant_enough = false;
-    Real rand_angle;
+    Real rand_angle, random_dist;
     CVector2 rand_displacement, rand_init_pos;
     CVector3 rand_pos;
 
@@ -105,13 +98,13 @@ void CNavigationALF::SetupInitialKilobotState(CKilobotEntity &c_kilobot_entity){
 
     do {
         rand_angle = c_rng->Uniform(CRange<Real>(-CRadians::PI.GetValue(), CRadians::PI.GetValue()));
-        rand_displacement.SetX(c_rng->Uniform(CRange<Real>(0, m_WallStructure.circular_arena_radius)));
-        rand_displacement.SetY(c_rng->Uniform(CRange<Real>(0, m_WallStructure.circular_arena_radius)));
-        rand_pos = CVector3(rand_displacement.GetX()*sin(rand_angle),rand_displacement.GetY()*cos(rand_angle),0);
+	    random_dist = c_rng->Uniform(CRange<Real>(0, m_WallStructure.circular_arena_radius - m_WallStructure.circular_arena_width/2 - KiloDiameter/2 - 0.0001));
+	    rand_pos = CVector3(random_dist*sin(rand_angle),random_dist*cos(rand_angle),0);
+        
         distant_enough = MoveEntity(c_kilobot_entity.GetEmbodiedEntity(), rand_pos, random_rotation, false);
         
         if(tries == maxTries-1) {
-        std::cerr << "ERROR: too many tries and not an available spot for the area" << std::endl;
+            std::cerr << "ERROR: too many tries and not an available spot for the area" << std::endl;
         }
     } while(!distant_enough);
     
@@ -121,18 +114,26 @@ void CNavigationALF::SetupInitialKilobotState(CKilobotEntity &c_kilobot_entity){
      * 
      */
     
-    rand_angle = c_rng->Uniform(CRange<Real>(-CRadians::PI.GetValue(), CRadians::PI.GetValue()));
-    // do
-    rand_displacement.SetX(c_rng->Uniform(CRange<Real>(0, m_WallStructure.circular_arena_radius)));
-    rand_displacement.SetY(c_rng->Uniform(CRange<Real>(0, m_WallStructure.circular_arena_radius)));
-    rand_init_pos = CVector2(rand_displacement.GetX()*sin(rand_angle),rand_displacement.GetY()*cos(rand_angle));
-    // while each pos distant enough each others
+    //Generate desired initial position NOT colliding
+    std::vector<CVector2>::iterator colliding_position;
+
+    do{
+        rand_angle = c_rng->Uniform(CRange<Real>(-CRadians::PI.GetValue(), CRadians::PI.GetValue()));
+        random_dist = c_rng->Uniform(CRange<Real>(0, m_WallStructure.circular_arena_radius - m_WallStructure.circular_arena_width/2 - KiloDiameter/2 - 0.0001));
+        rand_init_pos = CVector2(random_dist*sin(rand_angle),random_dist*cos(rand_angle));
+
+        colliding_position = std::find_if(m_vecDesInitKilobotPosition.begin(), m_vecDesInitKilobotPosition.end(), [&rand_init_pos, &KiloDiameter](CVector2 const &position) {
+            return Distance(rand_init_pos, position) < (KiloDiameter + 0.001) ;    //WARNING: 1mm costant
+            });        
+
+    } while (colliding_position != m_vecDesInitKilobotPosition.end()); //while there is no colliding position in m_vecDesInitKilobotPosition
+
     m_vecKilobotsPositions[unKilobotID] = GetKilobotPosition(c_kilobot_entity);
     m_vecKilobotsOrientations[unKilobotID] = GetKilobotOrientation(c_kilobot_entity);
     m_vecDesInitKilobotPosition[unKilobotID] = rand_init_pos;
     m_vecCommandLog[unKilobotID] = STOP;
     rand_angle = c_rng->Uniform(CRange<Real>(-CRadians::PI.GetValue(), CRadians::PI.GetValue()));     // Angle in [-pi,pi]
-    //TODO : FIX RANDOM ANGLE
+    
     m_vecDesInitKilobotOrientation[unKilobotID] = CRadians(rand_angle);
 
     // GreedyAssociation(m_vecKilobotsPositions, m_vecDesInitKilobotPosition);
@@ -140,7 +141,7 @@ void CNavigationALF::SetupInitialKilobotState(CKilobotEntity &c_kilobot_entity){
 
     SVirtualArea temp_area2;
     temp_area2.Center = CVector2(rand_init_pos.GetX(), rand_init_pos.GetY());
-    temp_area2.Radius = 0.05;
+    temp_area2.Radius = 0.033;
     temp_area2.Color = CColor::GREEN;
     m_TargetAreas.push_back(temp_area2);
 }
@@ -178,13 +179,6 @@ void CNavigationALF::SetupVirtualEnvironments(TConfigurationNode& t_tree){
     }
 
     
-    /* Get the node defining the clustering hub parametres*/
-    TConfigurationNode& t_VirtualClusteringHubNode = GetNode(tVirtualEnvironmentsNode,"Area");
-    GetNodeAttribute(t_VirtualClusteringHubNode, "position", m_sClusteringHub.Center);
-    GetNodeAttribute(t_VirtualClusteringHubNode, "radius", m_sClusteringHub.Radius);
-    GetNodeAttribute(t_VirtualClusteringHubNode, "color", m_sClusteringHub.Color);
-
-    
 }
 
 /****************************************/
@@ -193,15 +187,6 @@ void CNavigationALF::SetupVirtualEnvironments(TConfigurationNode& t_tree){
 void CNavigationALF::GetExperimentVariables(TConfigurationNode& t_tree){
     /* Get the experiment variables node from the .argos file */
     TConfigurationNode& tExperimentVariablesNode = GetNode(t_tree,"variables");
-    /* Get the crwlevy exponents */
-    GetNodeAttribute(tExperimentVariablesNode, "crw", crw_exponent);
-    GetNodeAttribute(tExperimentVariablesNode, "levy", levy_exponent);
-    /* Get the output datafile name and open it */
-    GetNodeAttribute(tExperimentVariablesNode, "datafilename", m_strOutputFileName);
-    /* Get the frequency of data saving */
-    GetNodeAttributeOrDefault(tExperimentVariablesNode, "dataacquisitionfrequency", m_unDataAcquisitionFrequency, m_unDataAcquisitionFrequency);
-    /* Get the frequency of updating the environment plot */
-    GetNodeAttributeOrDefault(tExperimentVariablesNode, "m_unEnvironmentPlotUpdateFrequency", m_unEnvironmentPlotUpdateFrequency, m_unEnvironmentPlotUpdateFrequency);
     /* Get the time for one kilobot message */
     GetNodeAttributeOrDefault(tExperimentVariablesNode, "timeforonemessage", m_fTimeForAMessage, m_fTimeForAMessage);
 }
@@ -278,7 +263,65 @@ void CNavigationALF::GreedyAssociation(std::vector<CVector2> actual_pos, std::ve
 
 void CNavigationALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
 {    
-    GoToWithOrientation(c_kilobot_entity);
+    
+    UInt16 unKilobotID=GetKilobotId(c_kilobot_entity);
+    command cmd = GoToWithOrientation(c_kilobot_entity);
+    // message_t tMessage;
+
+    // tMessage.type = 254;
+    // tMessage.data[0] = (uint8_t)cmd;
+    
+    //WARNING : there is no control about elapsed time between messages
+    /* check if enough time has passed from the last message otherwise*/
+    if (m_fTimeInSeconds - m_vecLastTimeMessaged[unKilobotID]< m_fMinTimeBetweenTwoMsg){
+        return; // if the time is too short, the kilobot cannot receive a message
+    }
+    
+    if (m_vecCommandLog[unKilobotID] != cmd )//|| cmd == STOP)
+    {
+        m_vecCommandLog[unKilobotID] = cmd;
+
+   
+        // std::cout<<"kID: "<<unKilobotID << " Sended command : "<<uint8_t (cmd)<<std::endl;
+
+        /*Create ARK-type messages variables*/
+        m_tALFKilobotMessage tKilobotMessage,tEmptyMessage,tMessage;
+        /* Get the kilobot ID and state (Only Position in this example) */
+        m_tMessages[unKilobotID].type = 254;
+        tKilobotMessage.m_sID = unKilobotID;
+        tKilobotMessage.m_sType = 0;
+        tKilobotMessage.m_sData = uint8_t (cmd);
+
+        /*  Set the message sending flag to True */
+        m_vecLastTimeMessaged[unKilobotID] = m_fTimeInSeconds;
+
+        /* Send the message to the kilobot using the ARK messaging protocol (addressing 3 kilobots per one standard kilobot message)*/
+        for (int i = 0; i < 9; ++i) {
+            m_tMessages[unKilobotID].data[i]=0;
+        }
+        // Prepare an empty ARK-type message to fill the gap in the full kilobot message
+        tEmptyMessage.m_sID=1023;
+        tEmptyMessage.m_sType=0;
+        tEmptyMessage.m_sData=0;
+        // Fill the kilobot message by the ARK-type messages
+        for (int i = 0; i < 3; ++i) {
+            if( i == 0){
+                tMessage = tKilobotMessage;
+            } else{
+                tMessage = tEmptyMessage;
+            }
+            m_tMessages[unKilobotID].data[i*3] = (tMessage.m_sID >> 2);
+            m_tMessages[unKilobotID].data[1+i*3] = (tMessage.m_sID << 6);
+            m_tMessages[unKilobotID].data[1+i*3] = m_tMessages[unKilobotID].data[1+i*3] | (tMessage.m_sType << 2);
+            m_tMessages[unKilobotID].data[1+i*3] = m_tMessages[unKilobotID].data[1+i*3] | (tMessage.m_sData >> 8);
+            m_tMessages[unKilobotID].data[2+i*3] = tMessage.m_sData;
+        }
+
+
+        GetSimulator().GetMedium<CKilobotCommunicationMedium>("kilocomm").SendOHCMessageTo(c_kilobot_entity,&m_tMessages[unKilobotID]); 
+
+    }
+    // GetSimulator().GetMedium<CKilobotCommunicationMedium>("kilocomm").SendOHCMessageTo(c_kilobot_entity,&tGotoMessage); 
 }
 
 /****************************************/
@@ -324,11 +367,11 @@ void CNavigationALF::PrintPose(UInt16& unKilobotID, command& cmd)
             break;
     }
 
-    CVector2 kiloPos = m_vecKilobotsPositions[unKilobotID];// GetKilobotPosition(c_kilobot_entity);
-    CVector2 init_d_position = m_vecDesInitKilobotPosition[index_vector[unKilobotID].second];
+    // CVector2 kiloPos = m_vecKilobotsPositions[unKilobotID];// GetKilobotPosition(c_kilobot_entity);
+    // CVector2 init_d_position = m_vecDesInitKilobotPosition[index_vector[unKilobotID].second];
 
     CRadians kiloOrientation = m_vecKilobotsOrientations[unKilobotID]; //GetKilobotOrientation(c_kilobot_entity);
-    CRadians desired_orientation = m_vecDesInitKilobotOrientation[index_vector[unKilobotID].second];
+    // CRadians desired_orientation = m_vecDesInitKilobotOrientation[index_vector[unKilobotID].second];
     
     std::cerr<<"KId: "<<unKilobotID<<", command: "<<s_cmd<<std::endl;
     // std::cerr<<"SquareDistance: "<<SquareDistance(init_d_position , kiloPos)<<std::endl;
@@ -343,7 +386,7 @@ void CNavigationALF::PrintPose(UInt16& unKilobotID, command& cmd)
 /****************************************/
 /****************************************/
 
-void CNavigationALF::GoToWithOrientation(CKilobotEntity &c_kilobot_entity)
+command CNavigationALF::GoToWithOrientation(CKilobotEntity &c_kilobot_entity)
 {
     /* Get the kilobot ID and state */
     UInt16 unKilobotID=GetKilobotId(c_kilobot_entity);
@@ -353,9 +396,6 @@ void CNavigationALF::GoToWithOrientation(CKilobotEntity &c_kilobot_entity)
 
     /* Motion command to send to the kilobot */
     command cmd = STOP;
-    message_t msg;
-    msg.type = 254;
-    m_vecLastTimeMessaged[unKilobotID] = m_fTimeInSeconds;
         
     /* Variable for Kilobots position and orientation */
     CVector2 kiloPos = m_vecKilobotsPositions[unKilobotID];// GetKilobotPosition(c_kilobot_entity);
@@ -448,13 +488,8 @@ void CNavigationALF::GoToWithOrientation(CKilobotEntity &c_kilobot_entity)
             }
         }
     }
-    
-    if (m_vecCommandLog[unKilobotID] != cmd )//|| cmd == STOP)
-    {
-        m_vecCommandLog[unKilobotID] = cmd;
-        msg.data[0] = uint8_t (cmd);
-        GetSimulator().GetMedium<CKilobotCommunicationMedium>("kilocomm").SendOHCMessageTo(c_kilobot_entity,&msg);    
-    }
+
+    return cmd;  
     
 }
 /****************************************/
@@ -468,11 +503,6 @@ CColor CNavigationALF::GetFloorColor(const CVector2 &vec_position_on_plane) {
         {
             cColor = m_target.Color;
         }
-    }
-
-    if (SquareDistance(vec_position_on_plane, m_sClusteringHub.Center) < pow(m_sClusteringHub.Radius, 2))
-    {
-        cColor = m_sClusteringHub.Color;
     }
     
     return cColor;

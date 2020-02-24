@@ -39,7 +39,6 @@ motion_t current_motion_type = STOP;
 uint8_t received_command = FORWARD;
 
 
-
 /*Max number of ticks*/
 //const double max_time = 9288; //10^3
 /* counters for motion, turning and random_walk */
@@ -150,9 +149,41 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
   }
 
   if (msg->type == 254)
+  // {
+  //   received_command = msg->data[0];
+  // }
   {
-    received_command = msg->data[0];
+    // unpack message
+    int id1 = msg->data[0] << 2 | (msg->data[1] >> 6);
+    int id2 = msg->data[3] << 2 | (msg->data[4] >> 6);
+    int id3 = msg->data[6] << 2 | (msg->data[7] >> 6);
+    if (id1 == kilo_uid) {
+        // unpack type
+        // sa_type = msg->data[1] >> 2 & 0x0F;
+        // unpack payload
+        received_command = ((msg->data[1]&0b11) << 8) | (msg->data[2]);
+    }
+    // printf("crw_exponent = %f\n", crw_exponent);
+    
+    if (id2 == kilo_uid) {
+        // unpack type
+        // sa_type = msg->data[4] >> 2 & 0x0F;
+        // unpack payload
+        received_command = ((msg->data[4]&0b11)  << 8) | (msg->data[5]);
+        // received_command = sa_payload;
+    }
+    if (id3 == kilo_uid) {
+        // unpack type
+        // sa_type = msg->data[7] >> 2 & 0x0F;
+        // unpack payload
+        received_command = ((msg->data[7]&0b11)  << 8) | (msg->data[8]);
+        // received_command = sa_payload;
+    }
+    
   }
+
+  // printf("%" PRIu32 "kID\t", kilo_uid);
+  // printf("%" PRIu32 "Received command\n", received_command);
 
 }
 

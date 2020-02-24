@@ -3,7 +3,7 @@
 /****************************************/
 /****************************************/
 
-double KiloRadius = 0.033;
+double KiloDiameter = 0.033;
 
 CCrwlevyALFPositioning::CCrwlevyALFPositioning() :
 m_unDataAcquisitionFrequency(10),   //each 10 seconds store kilobots positione
@@ -102,7 +102,7 @@ void CCrwlevyALFPositioning::SetupInitialKilobotStates() {
         
         kilobot_on_the_top = 
         std::find_if(m_vecKilobotsPositions.begin(), m_vecKilobotsPositions.end(), [&c_position, &c_radius](CVector2 const &position) {
-            return Distance(c_position, position) < (c_radius + 0.001) ;    //LOOK: 1mm costant
+            return Distance(c_position, position) < (c_radius + 0.001) ;    //WARNING: 1mm costant
             });
         
     }while(kilobot_on_the_top != m_vecKilobotsPositions.end());
@@ -156,7 +156,7 @@ void CCrwlevyALFPositioning::SetupInitialKilobotState(CKilobotEntity &c_kilobot_
 
     do {
         rand_angle = c_rng->Uniform(CRange<Real>(-CRadians::PI.GetValue(), CRadians::PI.GetValue()));
-	    random_dist = c_rng->Uniform(CRange<Real>(0, m_WallStructure.circular_arena_radius - m_WallStructure.circular_arena_width/2 - KiloRadius/2 - 0.0001));
+	    random_dist = c_rng->Uniform(CRange<Real>(0, m_WallStructure.circular_arena_radius - m_WallStructure.circular_arena_width/2 - KiloDiameter/2 - 0.0001));
 	    rand_pos = CVector3(random_dist*sin(rand_angle),random_dist*cos(rand_angle),0);
         
         distant_enough = MoveEntity(c_kilobot_entity.GetEmbodiedEntity(), rand_pos, random_rotation, false);
