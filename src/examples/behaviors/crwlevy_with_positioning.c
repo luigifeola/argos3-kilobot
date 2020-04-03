@@ -17,6 +17,10 @@
 #else
 #include <inttypes.h>
 #endif
+// # define NDEBUG 
+# include <assert.h> 
+
+
 /* Enum for different motion types */
 typedef enum {
     FORWARD = 0,
@@ -63,12 +67,20 @@ bool new_information = false;
 //const double max_time = 9288; //10^3
 /* counters for motion, turning and random_walk */
 const double std_motion_steps = 5*16;
-double levy_exponent = -1; // 2 is brownian like motion
-double crw_exponent = -1; // go straight often
 uint32_t turning_ticks = 0; // keep count of ticks of turning
 const uint8_t max_turning_ticks = 160; /* constant to allow a maximum rotation of 180 degrees with \omega=\pi/5 */
 uint16_t straight_ticks = 0; // keep count of ticks of going straight
 
+/*Parameters from ARK*/
+double levy_exponent = -1; // 2 is brownian motion
+double crw_exponent = -1; // go straight often
+
+/* Bias parameters */
+double bias_prob = -1;    // probability of facing home 
+motion_t bias_command = STOP;
+bool apply_bias_rotation = false;
+// uint8_t previous_state_color = RGB(0,0,0);
+// uint8_t previous_state = RGB(0,0,0);
 
 uint32_t last_motion_ticks = 0;
 /* counters for broadcast a message */
@@ -181,7 +193,13 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
   //   set_color(RGB(3, 0, 0));
   //   delay(50);
   // }
+  
 
+  /* ----------------------------------*/
+  /* smart arena message               */
+  /* ----------------------------------*/
+
+  /* Receiving parameters */
   if (msg->type == 255) 
   {
     // unpack message
@@ -196,8 +214,14 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
         levy_exponent = (double) (sa_payload & 0x1F) /10;
         // crw_exponent = (double) ((sa_payload >> 5) & 0x1F) /10;
         crw_exponent = (double) ((sa_payload & 0xF8) >>5) /10;
+        // bias_prob = (double) sa_type/10;
+        
+        // sa_type in [0,10], so bias_prob checked with rand_soft() in [0,255]
+        // TODO : uncomment line before
+        bias_prob = sa_type * 255 / 10;
+        // bias_prob = 4 * 255 / 10;
     }
-    // printf("crw_exponent = %f\n", crw_exponent);
+    // printf("bias_prob = %f\n", bias_prob);
     
     if (id2 == kilo_uid) {
         // unpack type
@@ -218,14 +242,7 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
     
   }
 
-
-
-  /* get id (always firt byte) */
-  // id = msg->data[0];
-  
-  /* ----------------------------------*/
-  /* smart arena message               */
-  /* ----------------------------------*/
+  /* Receiving kilobt state */
   if (msg->type == 0) 
   {
     // unpack message
@@ -266,6 +283,72 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
     }
   }
 
+  /* Receiving kilobt BIAS */
+  if (msg->type == 254) 
+  {
+    // unpack message
+    int id1 = msg->data[0] << 2 | (msg->data[1] >> 6);
+    int id2 = msg->data[3] << 2 | (msg->data[4] >> 6);
+    int id3 = msg->data[6] << 2 | (msg->data[7] >> 6);
+    if (id1 == kilo_uid) {
+      // unpack payload
+      bias_command = ((msg->data[1]&0b11) << 8) | (msg->data[2]);
+    } 
+    if (id2 == kilo_uid) {
+      bias_command = ((msg->data[4]&0b11)  << 8) | (msg->data[5]);
+    }
+    if (id3 == kilo_uid) {
+      bias_command = ((msg->data[7]&0b11)  << 8) | (msg->data[8]);
+    }
+    
+    /* Printing received bias_command*/
+    switch (bias_command)
+    {
+      case FORWARD:
+        printf("msg->type == 254 Bias command: FORWARD\n");
+        break;
+      case TURN_LEFT:
+        printf("msg->type == 254 Bias command: TURN_LEFT\n");
+        break;
+      case TURN_RIGHT:
+        printf("msg->type == 254 Bias command: TURN_RIGHT\n");
+        break;
+      case STOP:
+        printf("msg->type == 254 Bias command: STOP\n");
+        break;
+      
+      default:
+          break;
+    } 
+
+    // TODO : insert assert here
+    if (bias_command==STOP)
+    {
+      apply_bias_rotation = false;
+      //ritorna al colore e quindi allo stato precedente
+      switch (current_state)
+      {
+        case OUTSIDE_TARGET:
+          set_color(RGB(0,0,0));
+          break;
+        case DISCOVERED_TARGET:
+          set_color(RGB(3,0,0));
+          break;
+        case COMMUNICATED_TARGET:
+          set_color(RGB(0,3,0));
+          break;
+        
+        default:
+          break;
+      }
+
+    }
+    else
+    {
+      apply_bias_rotation = true;
+    }
+  }
+
 
   //The remaining possibility is for messages arriving from other kilobots
   //So if distance is too much, the message will be discarded
@@ -278,6 +361,7 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
   /* ----------------------------------*/
   /* KB interactive message            */
   /* ----------------------------------*/
+
   else if (msg->type==1 && msg->data[0]!=kilo_uid && msg->crc==message_crc(msg)) 
   {
     // printf("Receiving information about the target\n");
@@ -319,10 +403,22 @@ void random_walk()
     }
     break;
   case FORWARD:
+    /* if moved forward for enough time turn */
     if (kilo_ticks > last_motion_ticks + straight_ticks) {
       /* perform a random turn */
       last_motion_ticks = kilo_ticks;
-      if (rand_soft() % 2)
+      
+
+      // rand_soft e' fra 0 e 255 mentre a te serve il 20%. 
+      // Quindi o normalizzi rand_soft of usi il 20% di 255 che e' 51
+      if(bias_prob-rand_soft() > 0 && apply_bias_rotation==false) 
+      {
+        // bias_prob = true, siamo nel 20%
+        apply_bias_rotation = true;
+        // printf("It's time to rotate \n");
+        set_color(RGB(3,3,3));
+      }
+      else if (rand_soft() % 2)
       {
         set_motion(TURN_LEFT);
       }
@@ -333,7 +429,6 @@ void random_walk()
       double angle = 0;
       if(crw_exponent == 0) 
       {
-
         angle = (uniform_distribution(0, (M_PI)));
         // my_printf("%" PRIu32 "\n", turning_ticks);
         // my_printf("%u" "\n", rand());
@@ -377,10 +472,45 @@ void loop()
 
   // printf("CRW: %f \n", crw_exponent);
   // printf("LEVY: %f \n", levy_exponent);
+   // if(crw_exponent!=-1 && levy_exponent!=-1)
+  // {
   
+  //   broadcast();  
+  // }
+
+  // set_motion(TURN_LEFT);
   if(crw_exponent!=-1 && levy_exponent!=-1)
   {
-    random_walk();
+    if(apply_bias_rotation==false)
+    {
+      printf("RANDOM WALK\n");
+      random_walk();
+    }
+    else
+    {
+      printf("BIAS Rotation\n");
+      // assert(bias_command==TURN_RIGHT || bias_command==TURN_LEFT)
+      // switch (bias_command)
+      // {
+      //   case FORWARD:
+      //     printf("loop Bias command: FORWARD\n");
+      //     break;
+      //   case TURN_LEFT:
+      //     printf("loop Bias command: TURN_LEFT\n");
+      //     break;
+      //   case TURN_RIGHT:
+      //     printf("loop Bias command: TURN_RIGHT\n");
+      //     break;
+      //   case STOP:
+      //     printf("loop Bias command: STOP\n");
+      //     break;
+        
+      //   default:
+      //       break;
+      // } 
+      set_motion(bias_command);
+    }
+    
     broadcast();  
   }
   

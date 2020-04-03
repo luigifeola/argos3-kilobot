@@ -60,6 +60,11 @@ class CSimulator;
 
 using namespace argos;
 
+enum bias_command {
+    LEFT = 1,
+    RIGHT = 2,
+    STOP = 3
+};
 
 class CCrwlevyALFPositioning : public CALF
 {
@@ -105,11 +110,19 @@ public:
     /** Print Kilobot Position */
     void PrintVecPos(std::vector<CVector2> vecKilobotsPositions);
 
+    /** Print Kilobot State */
+    void PrintKilobotState(int state);
+
+    /** Print Kilobot Command */
+    void PrintKilobotCommand(int command);
+
     /** Store fpt, fit data on file */
     void UpdateTimeResults();
 
     /** Used to plot the Virtual environment on the floor */
     virtual CColor GetFloorColor(const CVector2& vec_position_on_plane);
+
+    bias_command Apply_bias_rotation(CKilobotEntity& c_kilobot_entity);
 
 private:
 
@@ -147,6 +160,7 @@ private:
         NOT_TARGET_FOUND=0,
         TARGET_FOUND=1,
         TARGET_COMMUNICATED=2,
+        BIASING=3,
     } SRobotState;
 
 
@@ -155,6 +169,9 @@ private:
     std::vector<CVector2> m_vecKilobotsPositions;
     std::vector<std::vector<CVector2>> m_vecKilobotsPositionsHistory;
     std::vector<CRadians> m_vecKilobotsOrientations;
+    // TODO : use in the best way following two vectors
+    std::vector<SRobotState> m_vecKilobotStatesLog;
+    std::vector<bias_command> m_vecBiasCommandLog;
     
     /** Structure to contain data to evaluate first passage time and
      *  convergence time of the experiment
@@ -184,6 +201,7 @@ private:
     /* crwlevy exponents */
     Real crw_exponent;
     Real levy_exponent;
+    Real bias_prob;
 
     /* simulator seed */
     uint m_random_seed;

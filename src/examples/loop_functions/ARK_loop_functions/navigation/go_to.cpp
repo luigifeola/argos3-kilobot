@@ -468,6 +468,8 @@ command CNavigationALF::GoToWithOrientation(CKilobotEntity &c_kilobot_entity)
             // std::cerr<<"Angle displacement: "<<angle_offset<<std::endl;
             // std::cerr<<"Kilobot orientation: "<<kiloOrientation<<std::endl;
             // std::cerr<<"Desired orientation: "<<desired_orientation<<std::endl;
+            
+            //angle_offset = desired_orientation - kiloOrientation
             if(angle_offset.GetAbsoluteValue() > kAngleThreshold)
             {
                 std::cerr<<"Apply Rotation!"<<std::endl;            
