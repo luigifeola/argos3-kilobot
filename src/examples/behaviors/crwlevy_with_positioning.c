@@ -121,6 +121,8 @@ void set_motion(motion_t new_motion_type)
       spinup_motors();
       set_motors(0, kilo_turn_right);
       break;
+    //case wait_angle
+      
     case STOP:
     default:
       set_motors(0, 0);
@@ -442,6 +444,12 @@ void random_walk()
       // my_printf("%u" "\n", straight_ticks);
     }
     break;
+  // case WAIT_ANGLE:
+    //if angolo != -1 
+      //  update lat motion to current
+        // turning ticks based on agle from ark
+      // else
+      //  do nothing 
 
   case STOP:
   default:
