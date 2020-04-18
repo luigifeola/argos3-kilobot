@@ -2,3 +2,7 @@ build
 results
 data_file.txt
 positions_file.txt
+py3_scripts/Plots
+py3_scripts/example_out
+py3_scripts/test
+py3_scripts/.ipynb_checkpoints/
