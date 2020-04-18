@@ -54,7 +54,14 @@
         "typeindex": "cpp",
         "typeinfo": "cpp",
         "kilolib.h": "c",
-        "*.txx": "cpp"
+        "*.txx": "cpp",
+        "iterator": "cpp",
+        "map": "cpp",
+        "memory_resource": "cpp",
+        "optional": "cpp",
+        "string": "cpp",
+        "string_view": "cpp"
     },
-    "C_Cpp.errorSquiggles": "Disabled"
+    "C_Cpp.errorSquiggles": "Disabled",
+    "cmake.configureOnOpen": true
 }

@@ -32,7 +32,7 @@ arenaSize="50, 50, 4"
 #################################
 # experiment_length is in seconds
 #################################
-experiment_length="3600"
+experiment_length="1800"
 date_time=`date "+%Y-%m-%d"`
 RUNS=500
 

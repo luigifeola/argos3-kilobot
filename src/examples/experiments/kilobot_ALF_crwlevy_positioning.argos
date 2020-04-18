@@ -8,7 +8,7 @@
         <system threads="4" />
         <experiment length="500"
         ticks_per_second="10"
-        random_seed="10" />
+        random_seed="50" />
     </framework>
     
     <!-- *************** -->
@@ -28,7 +28,7 @@
                 <kilobot_communication implementation="default" />
             </actuators>
             <sensors>
-                <kilobot_communication implementation="default" medium="kilocomm" show_rays="true" />
+                <kilobot_communication implementation="default" medium="kilocomm" show_rays="false" />
             </sensors>
             <params behavior="build/examples/behaviors/crwlevy_with_positioning" />
         </kilobot_controller>
@@ -62,10 +62,10 @@
         </variables>
     
         <environments>
-            <Area position="0,0.475" radius="0.1" color="255,0,0,125" >
+            <Area position="0,0.475" radius="0.033" color="255,0,0,125" >
             </Area>
 
-            <Area1 position="0,0" radius="0.016" color="0,255,0,125" >
+            <Area1 position="0,0.5" radius="0.016" color="0,255,0,125" >
             </Area1>
             <Perimeter radius="0.5" width="0.05" height="0.05" walls="100">
             </Perimeter>

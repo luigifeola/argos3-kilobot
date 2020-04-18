@@ -122,7 +122,7 @@ public:
     /** Used to plot the Virtual environment on the floor */
     virtual CColor GetFloorColor(const CVector2& vec_position_on_plane);
 
-    bias_command Apply_bias_rotation(CKilobotEntity& c_kilobot_entity);
+    void Set_kilobot_bias_angle(CKilobotEntity& c_kilobot_entity);
 
 private:
 
@@ -166,12 +166,11 @@ private:
 
     /* used to store the state of each kilobot */
     std::vector<SRobotState> m_vecKilobotStates;
+    std::vector<SRobotState> m_vecKilobotStatesLog;
     std::vector<CVector2> m_vecKilobotsPositions;
     std::vector<std::vector<CVector2>> m_vecKilobotsPositionsHistory;
     std::vector<CRadians> m_vecKilobotsOrientations;
-    // TODO : use in the best way following two vectors
-    std::vector<SRobotState> m_vecKilobotStatesLog;
-    std::vector<bias_command> m_vecBiasCommandLog;
+    std::vector<CRadians> m_vecKilobotsBiasAngle;
     
     /** Structure to contain data to evaluate first passage time and
      *  convergence time of the experiment

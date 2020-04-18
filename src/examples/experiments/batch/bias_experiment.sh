@@ -26,11 +26,11 @@ echo "$CONFIGURATION_FILE" | egrep "^$SHARED_DIR" &> /dev/null || exit 1
 
 levy="1.2 1.6 2.0"
 crw="0.0 0.3 0.6 0.9"
-bias_prob="0.0"
-numrobots="50"
-numWalls="100"
-arenaSize="2, 2, 4"
-radius="0.5"
+bias_prob="0.1"
+numrobots="20"
+numWalls="0"
+arenaSize="30, 30, 4"
+radius="0.25"
 #################################
 # experiment_length is in seconds
 #################################

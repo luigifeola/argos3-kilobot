@@ -27,6 +27,7 @@ typedef enum {
     TURN_LEFT = 1,
     TURN_RIGHT = 2,
     STOP = 3,
+    WAIT_ANGLE = 4
 } motion_t;
 
 /* Enum for boolean flags */
@@ -41,6 +42,7 @@ typedef enum {
     OUTSIDE_TARGET = 0,
     DISCOVERED_TARGET = 1,
     COMMUNICATED_TARGET = 2,
+    BIASING = 3
 } state_t;
 
 /* current motion type */
@@ -48,6 +50,7 @@ motion_t current_motion_type = STOP;
 
 /* current state */
 state_t current_state = OUTSIDE_TARGET;
+state_t previous_state = OUTSIDE_TARGET;
 
 /* Message send to the other kilobots */
 message_t messageA;
@@ -77,8 +80,8 @@ double crw_exponent = -1; // go straight often
 
 /* Bias parameters */
 double bias_prob = -1;    // probability of facing home 
-motion_t bias_command = STOP;
-bool apply_bias_rotation = false;
+double bias_angle = -1;
+motion_t bias_rotation = STOP;
 // uint8_t previous_state_color = RGB(0,0,0);
 // uint8_t previous_state = RGB(0,0,0);
 
@@ -121,8 +124,8 @@ void set_motion(motion_t new_motion_type)
       spinup_motors();
       set_motors(0, kilo_turn_right);
       break;
-    //case wait_angle
-      
+    
+    case WAIT_ANGLE:
     case STOP:
     default:
       set_motors(0, 0);
@@ -219,9 +222,8 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
         // bias_prob = (double) sa_type/10;
         
         // sa_type in [0,10], so bias_prob checked with rand_soft() in [0,255]
-        // TODO : uncomment line before
         bias_prob = sa_type * 255 / 10;
-        // bias_prob = 4 * 255 / 10;
+        // bias_prob = 6 * 255 / 10;  //60% probability
     }
     // printf("bias_prob = %f\n", bias_prob);
     
@@ -230,18 +232,24 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
         sa_type = msg->data[4] >> 2 & 0x0F;
         // unpack payload
         sa_payload = ((msg->data[4]&0b11)  << 8) | (msg->data[5]);
-        crw_exponent = (double) ((sa_payload >> 5) & 0x1F) /10;
+        // crw_exponent = (double) ((sa_payload >> 5) & 0x1F) /10;
+        crw_exponent = (double) ((sa_payload & 0xF8) >>5) /10;
         levy_exponent = (double) (sa_payload & 0x1F) /10;
+        bias_prob = sa_type * 255 / 10;
+        // bias_prob = 6 * 255 / 10;  //60% probability
     }
     if (id3 == kilo_uid) {
         // unpack type
         sa_type = msg->data[7] >> 2 & 0x0F;
         // unpack payload
         sa_payload = ((msg->data[7]&0b11)  << 8) | (msg->data[8]);
-        crw_exponent = (double) ((sa_payload >> 5) & 0x1F) /10;
+        // crw_exponent = (double) ((sa_payload >> 5) & 0x1F) /10;
+        crw_exponent = (double) ((sa_payload & 0xF8) >>5) /10;
         levy_exponent = (double) (sa_payload & 0x1F) /10;
+        bias_prob = sa_type * 255 / 10;
+        // bias_prob = 6 * 255 / 10;  //60% probability
     }
-    
+    // printf("bias_prob = %f\n", bias_prob);
   }
 
   /* Receiving kilobt state */
@@ -294,61 +302,19 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
     int id3 = msg->data[6] << 2 | (msg->data[7] >> 6);
     if (id1 == kilo_uid) {
       // unpack payload
-      bias_command = ((msg->data[1]&0b11) << 8) | (msg->data[2]);
+      bias_angle = (((msg->data[1]&0b11) << 8) | (msg->data[2])) * M_PI / 255;
+      bias_rotation = msg->data[1] >> 2 & 0x0F;
     } 
     if (id2 == kilo_uid) {
-      bias_command = ((msg->data[4]&0b11)  << 8) | (msg->data[5]);
+      bias_angle = ((msg->data[4]&0b11)  << 8) | (msg->data[5]);
+      bias_rotation = msg->data[4] >> 2 & 0x0F;
     }
     if (id3 == kilo_uid) {
-      bias_command = ((msg->data[7]&0b11)  << 8) | (msg->data[8]);
+      bias_angle = ((msg->data[7]&0b11)  << 8) | (msg->data[8]);
+      bias_rotation = msg->data[7] >> 2 & 0x0F;
     }
     
-    /* Printing received bias_command*/
-    switch (bias_command)
-    {
-      case FORWARD:
-        printf("msg->type == 254 Bias command: FORWARD\n");
-        break;
-      case TURN_LEFT:
-        printf("msg->type == 254 Bias command: TURN_LEFT\n");
-        break;
-      case TURN_RIGHT:
-        printf("msg->type == 254 Bias command: TURN_RIGHT\n");
-        break;
-      case STOP:
-        printf("msg->type == 254 Bias command: STOP\n");
-        break;
-      
-      default:
-          break;
-    } 
-
-    // TODO : insert assert here
-    if (bias_command==STOP)
-    {
-      apply_bias_rotation = false;
-      //ritorna al colore e quindi allo stato precedente
-      switch (current_state)
-      {
-        case OUTSIDE_TARGET:
-          set_color(RGB(0,0,0));
-          break;
-        case DISCOVERED_TARGET:
-          set_color(RGB(3,0,0));
-          break;
-        case COMMUNICATED_TARGET:
-          set_color(RGB(0,3,0));
-          break;
-        
-        default:
-          break;
-      }
-
-    }
-    else
-    {
-      apply_bias_rotation = true;
-    }
+    // printf("bias_angle = %f\n", bias_angle);
   }
 
 
@@ -413,12 +379,14 @@ void random_walk()
 
       // rand_soft e' fra 0 e 255 mentre a te serve il 20%. 
       // Quindi o normalizzi rand_soft of usi il 20% di 255 che e' 51
-      if(bias_prob-rand_soft() > 0 && apply_bias_rotation==false) 
+      if(bias_prob-rand_soft() > 0) 
       {
-        // bias_prob = true, siamo nel 20%
-        apply_bias_rotation = true;
         // printf("It's time to rotate \n");
         set_color(RGB(3,3,3));
+        set_motion(WAIT_ANGLE);
+        delay(1000);
+        previous_state = current_state;
+        current_state = BIASING;
       }
       else if (rand_soft() % 2)
       {
@@ -444,13 +412,36 @@ void random_walk()
       // my_printf("%u" "\n", straight_ticks);
     }
     break;
-  // case WAIT_ANGLE:
-    //if angolo != -1 
-      //  update lat motion to current
-        // turning ticks based on agle from ark
-      // else
-      //  do nothing 
-
+  case WAIT_ANGLE:
+    if (bias_angle != -1)
+    {
+      // update lat motion to current
+      // turning ticks based on agle from ark
+      current_state = previous_state;
+      switch (current_state)
+      {
+        case OUTSIDE_TARGET:
+          set_color(RGB(0,0,0));
+          break;
+        case DISCOVERED_TARGET:
+          set_color(RGB(3,0,0));
+          break;
+        case COMMUNICATED_TARGET:
+          set_color(RGB(0,3,0));
+          break;
+        
+        default:
+          break;
+      }
+      last_motion_ticks = kilo_ticks;
+      turning_ticks = (uint32_t)((bias_angle / M_PI) * max_turning_ticks);
+      set_motion(bias_rotation);  // bias_rotation is LEFT or RIGHT
+    } 
+    else
+    {
+      // do nothing
+    }
+    break;
   case STOP:
   default:
     set_motion(FORWARD);
@@ -478,50 +469,15 @@ void loop()
 {
   check_reset();
 
-  // printf("CRW: %f \n", crw_exponent);
-  // printf("LEVY: %f \n", levy_exponent);
-   // if(crw_exponent!=-1 && levy_exponent!=-1)
-  // {
-  
-  //   broadcast();  
-  // }
 
-  // set_motion(TURN_LEFT);
+  // set_motion(TURN_RIGHT);
   if(crw_exponent!=-1 && levy_exponent!=-1)
   {
-    if(apply_bias_rotation==false)
-    {
-      printf("RANDOM WALK\n");
-      random_walk();
-    }
-    else
-    {
-      printf("BIAS Rotation\n");
-      // assert(bias_command==TURN_RIGHT || bias_command==TURN_LEFT)
-      // switch (bias_command)
-      // {
-      //   case FORWARD:
-      //     printf("loop Bias command: FORWARD\n");
-      //     break;
-      //   case TURN_LEFT:
-      //     printf("loop Bias command: TURN_LEFT\n");
-      //     break;
-      //   case TURN_RIGHT:
-      //     printf("loop Bias command: TURN_RIGHT\n");
-      //     break;
-      //   case STOP:
-      //     printf("loop Bias command: STOP\n");
-      //     break;
-        
-      //   default:
-      //       break;
-      // } 
-      set_motion(bias_command);
-    }
-    
+    random_walk();
     broadcast();  
   }
   
+
   
   
 }

@@ -5,7 +5,7 @@
     <!-- * General configuration * -->
     <!-- ************************* -->
     <framework>
-        <system threads="2" />
+        <system threads="4" />
         <experiment length="__TIMEEXPERIMENT__"
         ticks_per_second="10"
         random_seed="__SEED__" />
@@ -58,13 +58,14 @@
             environmentplotupdatefrequency="1"
             timeforonemessage="0.05"
             crw = "__CRW__"
-            levy = "__LEVY__">
+            levy = "__LEVY__"
+            bias_prob = "__BIASPROB__">
         </variables>
     
         <environments>
             <Area position="0,0" radius="0.033" color="255,0,0,125" >
             </Area>
-            <Perimeter radius="0.5" width="0.05" height="0.05" walls="__NUMWALLS__">
+            <Perimeter radius="__RADIUS__" width="0.05" height="0.05" walls="__NUMWALLS__">
             </Perimeter>
         </environments>
     
@@ -88,7 +89,7 @@
 
         <floor id="floor"
         source="loop_functions"
-        pixels_per_meter="200" />
+        pixels_per_meter="100" />
         
     </arena>
     
