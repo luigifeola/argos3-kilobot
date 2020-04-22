@@ -71,7 +71,7 @@ bool new_information = false;
 /* counters for motion, turning and random_walk */
 const double std_motion_steps = 5*16;
 uint32_t turning_ticks = 0; // keep count of ticks of turning
-const uint8_t max_turning_ticks = 160; /* constant to allow a maximum rotation of 180 degrees with \omega=\pi/5 */
+const uint8_t max_turning_ticks = 120; /* constant to allow a maximum rotation of 180 degrees with \omega=\pi/5 */
 uint16_t straight_ticks = 0; // keep count of ticks of going straight
 
 /*Parameters from ARK*/
@@ -217,8 +217,7 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
         // unpack payload
         sa_payload = ((msg->data[1]&0b11) << 8) | (msg->data[2]);
         levy_exponent = (double) (sa_payload & 0x1F) /10;
-        // crw_exponent = (double) ((sa_payload >> 5) & 0x1F) /10;
-        crw_exponent = (double) ((sa_payload & 0xF8) >>5) /10;
+        crw_exponent = (double) ((sa_payload >> 5) & 0x1F) /10;
         // bias_prob = (double) sa_type/10;
         
         // sa_type in [0,10], so bias_prob checked with rand_soft() in [0,255]
@@ -232,9 +231,8 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
         sa_type = msg->data[4] >> 2 & 0x0F;
         // unpack payload
         sa_payload = ((msg->data[4]&0b11)  << 8) | (msg->data[5]);
-        // crw_exponent = (double) ((sa_payload >> 5) & 0x1F) /10;
-        crw_exponent = (double) ((sa_payload & 0xF8) >>5) /10;
         levy_exponent = (double) (sa_payload & 0x1F) /10;
+        crw_exponent = (double) ((sa_payload >> 5) & 0x1F) /10;
         bias_prob = sa_type * 255 / 10;
         // bias_prob = 6 * 255 / 10;  //60% probability
     }
@@ -243,9 +241,8 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
         sa_type = msg->data[7] >> 2 & 0x0F;
         // unpack payload
         sa_payload = ((msg->data[7]&0b11)  << 8) | (msg->data[8]);
-        // crw_exponent = (double) ((sa_payload >> 5) & 0x1F) /10;
-        crw_exponent = (double) ((sa_payload & 0xF8) >>5) /10;
         levy_exponent = (double) (sa_payload & 0x1F) /10;
+        crw_exponent = (double) ((sa_payload >> 5) & 0x1F) /10;
         bias_prob = sa_type * 255 / 10;
         // bias_prob = 6 * 255 / 10;  //60% probability
     }
@@ -469,7 +466,8 @@ void loop()
 {
   check_reset();
 
-
+  // printf("crw_exponent = %f\n", crw_exponent);
+  // printf("levy_exponent = %f\n", levy_exponent);
   // set_motion(TURN_RIGHT);
   if(crw_exponent!=-1 && levy_exponent!=-1)
   {

@@ -15,7 +15,7 @@ if [ ! -e $base_config ]; then
     fi
 fi
 
-res_dir=$wdir/"results"
+res_dir=$wdir/"results/baseline"
 if [[ ! -e $res_dir ]]; then
     mkdir $res_dir
 fi
@@ -24,11 +24,15 @@ base_dir=`dirname $base_config`
 echo base_dir $base_dir
 echo "$CONFIGURATION_FILE" | egrep "^$SHARED_DIR" &> /dev/null || exit 1
 
-levy="1.2 1.6 2.0"
-crw="0 0.3 0.6 0.9"
+#levy="1.2 1.6 2.0"
+# crw="0.0 0.3 0.6 0.9"
+crw="0.6 0.9"
+levy="2.0"
+bias_prob="0.0"
 numrobots="1"
 numWalls="0"
 arenaSize="50, 50, 4"
+radius="0.5"
 #################################
 # experiment_length is in seconds
 #################################
@@ -50,6 +54,8 @@ for par1 in $levy; do
             echo config $config
             cp $base_config $config
             sed -i "s|__NUMROBOTS__|$numrobots|g" $config
+            sed -i "s|__BIASPROB__|$bias_prob|g" $config
+            sed -i "s|__RADIUS__|$radius|g" $config
             sed -i "s|__NUMWALLS__|$numWalls|g" $config
             sed -i "s|__ARENASIZE__|$arenaSize|g" $config
             sed -i "s|__TIMEEXPERIMENT__|$experiment_length|g" $config

@@ -51,9 +51,9 @@
 
         
         <variables
-            crw = "0.0"
+            crw = "0.9"
             levy = "2.0"
-            bias_prob = "0.2"
+            bias_prob = "0.0"
             positionsfilename="positions_file.tsv"
             datafilename="data_file.tsv"
             dataacquisitionfrequency="10"  
@@ -67,7 +67,7 @@
 
             <Area1 position="0,0.5" radius="0.016" color="0,255,0,125" >
             </Area1>
-            <Perimeter radius="0.5" width="0.05" height="0.05" walls="100">
+            <Perimeter radius="0.5" width="0.05" height="0.05" walls="0">
             </Perimeter>
         </environments>
     
@@ -82,7 +82,7 @@
         <distribute>
             <position method="uniform" min="0.2,0.2,0" max="0.7,0.7,0" />
             <orientation method="uniform" min="0,0,0" max="360,0,0" />
-            <entity quantity="1" max_trials="100">
+            <entity quantity="5" max_trials="100">
                 <kilobot id="kb">
                     <controller config="listener"/> <dynamics2d friction="0.7" />
                 </kilobot>

@@ -391,7 +391,6 @@ void CCrwlevyALFPositioning::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entit
     m_tALFKilobotMessage tKilobotMessage,tEmptyMessage,tMessage;
     /* Get the kilobot ID and state (Only Position in this example) */
     UInt16 unKilobotID=GetKilobotId(c_kilobot_entity);
-   
     // // TODO : REMOVE FOLLOWING 2 ROWS
     // argos::CRadians kiloOrientation = GetKilobotOrientation(c_kilobot_entity);
     // std::cout<<"Kilobot orientation : "<< kiloOrientation<<std::endl;
