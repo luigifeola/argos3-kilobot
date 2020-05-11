@@ -24,14 +24,12 @@ base_dir=`dirname $base_config`
 echo base_dir $base_dir
 echo "$CONFIGURATION_FILE" | egrep "^$SHARED_DIR" &> /dev/null || exit 1
 
-#levy="1.2 1.6 2.0"
-# crw="0.0 0.3 0.6 0.9"
-crw="0.6 0.9"
-levy="2.0"
+levy="1.2 1.6 2.0"
+crw="0.0 0.3 0.6 0.9"
 bias_prob="0.0"
 numrobots="1"
 numWalls="0"
-arenaSize="50, 50, 4"
+arenaSize="5, 5, 4"
 radius="0.5"
 #################################
 # experiment_length is in seconds
