@@ -84,6 +84,7 @@ double bias_angle = -1;
 motion_t bias_rotation = STOP;
 // uint8_t previous_state_color = RGB(0,0,0);
 // uint8_t previous_state = RGB(0,0,0);
+bool coll_avoid = false;
 
 uint32_t last_motion_ticks = 0;
 /* counters for broadcast a message */
@@ -101,6 +102,79 @@ void my_printf(const char *fmt, ...)
 
   va_end(args);
 #endif
+}
+
+/*-------------------------------------------------------------------*/
+/* Print Kilobot state                                               */
+/*-------------------------------------------------------------------*/
+void print_state()
+{
+  printf("State: ");
+  switch (current_state)
+  {
+    case OUTSIDE_TARGET:
+      printf("NOT_TARGET_FOUND\t");
+      break;
+    case DISCOVERED_TARGET:
+      printf("TARGET_FOUND\t");
+      break;
+    case COMMUNICATED_TARGET:
+      printf("TARGET_COMMUNICATED\t");
+      break;
+    case BIASING:
+      printf("BIASING\t");
+      break;
+      
+    default:
+      printf("Error, no one of the possible state happens\n");
+        break;
+  }
+
+  printf("LOGState: "); 
+  switch (previous_state)
+  {
+    case OUTSIDE_TARGET:
+      printf("NOT_TARGET_FOUND\n");
+      break;
+    case DISCOVERED_TARGET:
+      printf("TARGET_FOUND\n");
+      break;
+    case COMMUNICATED_TARGET:
+      printf("TARGET_COMMUNICATED\n");
+      break;
+    case BIASING:
+      printf("BIASING\n");
+      break;
+      
+    default:
+        break;
+  } 
+}
+
+/*-------------------------------------------------------------------*/
+/* Turn on the right led color                                       */
+/*-------------------------------------------------------------------*/
+void check_state()
+{
+  switch (current_state)
+  {
+    case OUTSIDE_TARGET:
+      set_color(RGB(0,0,0));
+      break;
+    case DISCOVERED_TARGET:
+      set_color(RGB(3,0,0));
+      break;
+    case COMMUNICATED_TARGET:
+      set_color(RGB(0,3,0));
+      break;
+    case BIASING:
+      set_color(RGB(0,0,3));
+      break;
+      
+    default:
+      set_color(RGB(3,3,3));
+      break;
+  }
 }
 
 /*-------------------------------------------------------------------*/
@@ -282,6 +356,7 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
     {
       if((sa_type==1)&&(current_state==OUTSIDE_TARGET || current_state==COMMUNICATED_TARGET))
       {
+          previous_state = DISCOVERED_TARGET;
           current_state=DISCOVERED_TARGET;
           new_information = true;
           set_color(RGB(3, 0, 0));
@@ -293,25 +368,37 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
   /* Receiving kilobt BIAS */
   if (msg->type == 254) 
   {
+    //Tutti accendo il led ma solo quelli interessati ruoteranno
+    // printf("Message type 254\n");
     // unpack message
-    int id1 = msg->data[0] << 2 | (msg->data[1] >> 6);
-    int id2 = msg->data[3] << 2 | (msg->data[4] >> 6);
-    int id3 = msg->data[6] << 2 | (msg->data[7] >> 6);
+    int id1 = (msg->data[0] & 0x7F) << 2 | (msg->data[1] >> 6);
+    int id2 = (msg->data[3] & 0x7F) << 2 | (msg->data[4] >> 6);
+    int id3 = (msg->data[6] & 0x7F) << 2 | (msg->data[7] >> 6);
     if (id1 == kilo_uid) {
-      // unpack payload
+      // unpack payload 
+      coll_avoid = (msg->data[0] >> 7) & 0x01;
+      if(coll_avoid)
+        set_color(RGB(0,0,3));
       bias_angle = (((msg->data[1]&0b11) << 8) | (msg->data[2])) * M_PI / 255;
       bias_rotation = msg->data[1] >> 2 & 0x0F;
     } 
     if (id2 == kilo_uid) {
+      coll_avoid = (msg->data[3] >> 7) & 0x01;
+      if(coll_avoid)
+        set_color(RGB(0,0,3));
       bias_angle = ((msg->data[4]&0b11)  << 8) | (msg->data[5]);
       bias_rotation = msg->data[4] >> 2 & 0x0F;
     }
     if (id3 == kilo_uid) {
+      coll_avoid = (msg->data[6] >> 7) & 0x01;
+      if(coll_avoid)
+        set_color(RGB(0,0,3));
       bias_angle = ((msg->data[7]&0b11)  << 8) | (msg->data[8]);
       bias_rotation = msg->data[7] >> 2 & 0x0F;
     }
     
     // printf("bias_angle = %f\n", bias_angle);
+    // printf("bias_rotation = %d\n", bias_rotation);
   }
 
 
@@ -333,6 +420,7 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
     new_information = true;
     if (current_state != DISCOVERED_TARGET)
     {
+      previous_state = COMMUNICATED_TARGET;
       current_state = COMMUNICATED_TARGET;
       set_color(RGB(0, 3, 0));
     }
@@ -364,6 +452,14 @@ void random_walk()
     if (kilo_ticks > last_motion_ticks + turning_ticks) {
       /* start moving forward */
       last_motion_ticks = kilo_ticks;
+
+      if(coll_avoid)
+      {
+        // printf("Sono false in wait angle!!!!!\n");
+        coll_avoid = false;
+        current_state = previous_state;
+      }
+
       set_motion(FORWARD);
     }
     break;
@@ -376,69 +472,75 @@ void random_walk()
 
       // rand_soft e' fra 0 e 255 mentre a te serve il 20%. 
       // Quindi o normalizzi rand_soft of usi il 20% di 255 che e' 51
-      if(bias_prob-rand_soft() > 0) 
+      // if(bias_prob-rand_soft() > 0 || coll_avoid == 1) 
+      // {
+      //   // printf("bias_prob = %f\n", bias_prob);
+      //   if(bias_prob != 0.0)
+      //     set_color(RGB(3,3,3));
+
+      //   set_motion(WAIT_ANGLE);
+      //   delay(1000);
+      //   previous_state = current_state;
+      //   current_state = BIASING;
+      // }
+      if(coll_avoid == true)
       {
-        // printf("It's time to rotate \n");
-        set_color(RGB(3,3,3));
+        // printf("Sono true!!!!!!!\n");
         set_motion(WAIT_ANGLE);
-        delay(1000);
+        // delay(2000);
         previous_state = current_state;
         current_state = BIASING;
-      }
-      else if (rand_soft() % 2)
-      {
-        set_motion(TURN_LEFT);
+        // coll_avoid = false;
+        // printf("Sono FALSE!!!!!!!\n");
       }
       else
       {
-        set_motion(TURN_RIGHT);
-      }
-      double angle = 0;
-      if(crw_exponent == 0) 
-      {
-        angle = (uniform_distribution(0, (M_PI)));
-        // my_printf("%" PRIu32 "\n", turning_ticks);
-        // my_printf("%u" "\n", rand());
-      }
-      else
-      {
-        angle = fabs(wrapped_cauchy_ppf(crw_exponent));
-      }
-      turning_ticks = (uint32_t)((angle / M_PI) * max_turning_ticks);
-      straight_ticks = (uint32_t)(fabs(levy(std_motion_steps, levy_exponent)));
-      // my_printf("%u" "\n", straight_ticks);
+        if (rand_soft() % 2)
+        {
+          set_motion(TURN_LEFT);
+        }
+        else
+        {
+          set_motion(TURN_RIGHT);
+        }
+        double angle = 0;
+        if(crw_exponent == 0) 
+        {
+          angle = (uniform_distribution(0, (M_PI)));
+          // my_printf("%" PRIu32 "\n", turning_ticks);
+          // my_printf("%u" "\n", rand());
+        }
+        else
+        {
+          angle = fabs(wrapped_cauchy_ppf(crw_exponent));
+        }
+        turning_ticks = (uint32_t)((angle / M_PI) * max_turning_ticks);
+        
+        straight_ticks = (uint32_t)(fabs(levy(std_motion_steps, levy_exponent)));
+      } 
+      
+      // printf("Straight ticks%u" "\n", straight_ticks);
     }
     break;
+
   case WAIT_ANGLE:
-    if (bias_angle != -1)
+    // Questo if serve solo per l'esperimento open space
+    if (bias_angle != -1 && bias_rotation != STOP)
     {
+
+      // printf("Qui non entro mai\n");
       // update lat motion to current
       // turning ticks based on agle from ark
-      current_state = previous_state;
-      switch (current_state)
-      {
-        case OUTSIDE_TARGET:
-          set_color(RGB(0,0,0));
-          break;
-        case DISCOVERED_TARGET:
-          set_color(RGB(3,0,0));
-          break;
-        case COMMUNICATED_TARGET:
-          set_color(RGB(0,3,0));
-          break;
-        
-        default:
-          break;
-      }
       last_motion_ticks = kilo_ticks;
       turning_ticks = (uint32_t)((bias_angle / M_PI) * max_turning_ticks);
       set_motion(bias_rotation);  // bias_rotation is LEFT or RIGHT
     } 
     else
     {
-      // do nothing
+      // set_motion(FORWARD);
     }
     break;
+
   case STOP:
   default:
     set_motion(FORWARD);
@@ -469,14 +571,17 @@ void loop()
   // printf("crw_exponent = %f\n", crw_exponent);
   // printf("levy_exponent = %f\n", levy_exponent);
   // set_motion(TURN_RIGHT);
+  
+  // print_state();
+
+  //turn on the right led color
+  check_state();
+
   if(crw_exponent!=-1 && levy_exponent!=-1)
   {
     random_walk();
     broadcast();  
   }
-  
-
-  
   
 }
 

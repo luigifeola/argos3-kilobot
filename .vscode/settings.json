@@ -60,7 +60,9 @@
         "memory_resource": "cpp",
         "optional": "cpp",
         "string": "cpp",
-        "string_view": "cpp"
+        "string_view": "cpp",
+        "random": "cpp",
+        "set": "cpp"
     },
     "C_Cpp.errorSquiggles": "Disabled",
     "cmake.configureOnOpen": true

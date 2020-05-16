@@ -66,6 +66,11 @@ enum bias_command {
     STOP = 3
 };
 
+enum Experiment_type {
+    BIAS_EXPERIMENT = 1,
+    OBSTACLE_AVOIDANCE_EXPERIMENT = 2
+};
+
 class CCrwlevyALFPositioning : public CALF
 {
 
@@ -111,7 +116,7 @@ public:
     void PrintVecPos(std::vector<CVector2> vecKilobotsPositions);
 
     /** Print Kilobot State */
-    void PrintKilobotState(int state);
+    void PrintKilobotState(CKilobotEntity& c_kilobot_entity);
 
     /** Print Kilobot Command */
     void PrintKilobotCommand(int command);
@@ -122,7 +127,7 @@ public:
     /** Used to plot the Virtual environment on the floor */
     virtual CColor GetFloorColor(const CVector2& vec_position_on_plane);
 
-    void Set_kilobot_bias_angle(CKilobotEntity& c_kilobot_entity);
+    CRadians GetBearingRobotPosition(CKilobotEntity& c_kilobot_entity);
 
 private:
 
@@ -147,13 +152,14 @@ private:
     struct SVirtualPerimeter
     {
         // circular arena variables
-        Real circular_arena_radius; // radius for the circular arena
-        Real circular_arena_width;  // wall width
-        Real circular_arena_height; // wall height
-        Real circular_arena_walls;  // number of walls
+        CVector2 Center;
+        Real Radius; // radius for the circular arena
+        Real Wall_width;  // wall width
+        Real Wall_height; // wall height
+        Real Wall_numbers;  // number of walls
     };
 
-    SVirtualPerimeter m_WallStructure;
+    SVirtualPerimeter m_ArenaStructure;
 
     typedef enum
     {
@@ -161,6 +167,7 @@ private:
         TARGET_FOUND=1,
         TARGET_COMMUNICATED=2,
         BIASING=3,
+        COLLIDING = 4,
     } SRobotState;
 
 
@@ -181,6 +188,10 @@ private:
     /* used to store the last message sent to each kilobot */
     std::vector<Real> m_vecLastTimeMessaged;
     Real m_fMinTimeBetweenTwoMsg;
+
+    /* used to store the last message sent to each kilobot */
+    std::vector<Real> m_vecLastTimeCollisionMessaged;
+    Real m_fMinTimeBetweenTwoCollisionMsg;
 
     /* Flag to start the experiment */
     /** Flag to check if kilobot is arrived in its initial desired position */
