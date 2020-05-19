@@ -186,12 +186,9 @@ private:
     std::map<UInt16,std::pair<UInt32,UInt32>> m_KilobotResults; 
 
     /* used to store the last message sent to each kilobot */
-    std::vector<Real> m_vecLastTimeMessaged;
-    Real m_fMinTimeBetweenTwoMsg;
-
-    /* used to store the last message sent to each kilobot */
-    std::vector<Real> m_vecLastTimeCollisionMessaged;
-    Real m_fMinTimeBetweenTwoCollisionMsg;
+    // TODO : rimuovi se non servono
+    // std::vector<Real> m_vecLastTimeMessaged;
+    // Real m_fMinTimeBetweenTwoMsg;
 
     /* Flag to start the experiment */
     /** Flag to check if kilobot is arrived in its initial desired position */

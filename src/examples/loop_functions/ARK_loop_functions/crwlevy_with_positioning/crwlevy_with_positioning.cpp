@@ -50,17 +50,6 @@ void CCrwlevyALFPositioning::Reset() {
     m_cOutput.open(m_strOutputFileName, std::ios_base::trunc | std::ios_base::out);
     m_cOutputPositions.open(m_strPositionsFileName, std::ios_base::trunc | std::ios_base::out);
 
-    //TODO : update reset function
-    // std::fill(m_vecKilobotStates.begin(), m_vecKilobotStates.end(), NOT_TARGET_FOUND);
-    // std::fill(m_vecLastTimeMessaged.begin(), m_vecLastTimeMessaged.end(), -1000);
-
-    // for(UInt16 it=0;it< m_tKilobotEntities.size();it++){
-    //     /* Setup the virtual states of a kilobot(e.g. has food state)*/
-    //     SetupInitialKilobotState(*m_tKilobotEntities[it]);
-    // }
-    
-    // m_vecKilobotsPositionsHistory.push_back(m_vecKilobotsPositions);
-
 }
 
 /****************************************/
@@ -88,11 +77,6 @@ void CCrwlevyALFPositioning::SetupInitialKilobotStates() {
     
     v_recivedCoefficients.resize(m_tKilobotEntities.size());
     std::fill(v_recivedCoefficients.begin(), v_recivedCoefficients.end(), false);
-    m_vecLastTimeMessaged.resize(m_tKilobotEntities.size());
-    m_vecLastTimeCollisionMessaged.resize(m_tKilobotEntities.size());
-    m_fMinTimeBetweenTwoMsg = Max<Real>(1.0, m_tKilobotEntities.size() * m_fTimeForAMessage / 3.0);
-    // TODO : Warning, be carefull to take into account the population size
-    m_fMinTimeBetweenTwoCollisionMsg = Real(90.0);
 
     for(UInt16 it=0;it< m_tKilobotEntities.size();it++){
         /* Setup the virtual states of a kilobot(e.g. has food state)*/
@@ -153,8 +137,7 @@ void CCrwlevyALFPositioning::SetupInitialKilobotState(CKilobotEntity &c_kilobot_
     UInt16 unKilobotID=GetKilobotId(c_kilobot_entity);
     m_vecKilobotStates[unKilobotID] = NOT_TARGET_FOUND;
     m_vecKilobotStatesLog[unKilobotID] = NOT_TARGET_FOUND;
-    m_vecLastTimeMessaged[unKilobotID] = -1000;
-    m_vecLastTimeCollisionMessaged[unKilobotID] = -1000;
+    // m_vecLastTimeMessaged[unKilobotID] = -1000;
 
     /* Get a non-colliding random position within the circular arena */
     bool distant_enough = false;
@@ -165,13 +148,13 @@ void CCrwlevyALFPositioning::SetupInitialKilobotState(CKilobotEntity &c_kilobot_
     UInt16 maxTries = 999;
     UInt16 tries = 0;
 
-    /*Check for possible border robot position*/
-    // CQuaternion random_rotation;
+    /******************************************!!!TESTING!!!***********************************************************************/
+    // CQuaternion random_rotation = CQuaternion();
     // rand_angle = CRadians::ZERO.GetValue();/*CRadians::PI_OVER_TWO.GetValue();*/
     // random_dist = 0.46769;//676999999999;//m_ArenaStructure.Radius-0.1;
-    // rand_pos = CVector3(random_dist*sin(rand_angle),random_dist*cos(rand_angle),0);
+    // rand_pos = CVector3(0.45,0,0);
     
-    // CRadians rand_rot_angle = -CRadians::PI_OVER_TWO;
+    // CRadians rand_rot_angle = CRadians::PI;
     // random_rotation.FromEulerAngles(rand_rot_angle, CRadians::ZERO, CRadians::ZERO);
     
     // distant_enough = MoveEntity(c_kilobot_entity.GetEmbodiedEntity(), rand_pos, random_rotation, false);
@@ -184,9 +167,12 @@ void CCrwlevyALFPositioning::SetupInitialKilobotState(CKilobotEntity &c_kilobot_
     // {
     //     std::cout<<"Problema il robot non può essere messo lì\n";
     // }
-    /*A qui*/
+    /******************************************END-TESTING***********************************************************************/
     
-    /* Get a random orientation for the kilobot */
+    
+    
+    
+    /* Get a random position and orientation for the kilobot not on top of the target */
     CQuaternion random_rotation;
     CRadians rand_rot_angle(c_rng->Uniform(CRange<Real>(-CRadians::PI.GetValue(), CRadians::PI.GetValue())));
     random_rotation.FromEulerAngles(rand_rot_angle, CRadians::ZERO, CRadians::ZERO);
@@ -203,8 +189,11 @@ void CCrwlevyALFPositioning::SetupInitialKilobotState(CKilobotEntity &c_kilobot_
         }
     } while(!distant_enough);
 
+    // NOTE : questo cout viene stampato sul terminale e non sull'interfaccia di argos
+    //std::cout<<"Initial position: "<<rand_pos.GetX()<<","<<rand_pos.GetY()<<std::endl;
     m_vecKilobotsPositions[unKilobotID] = GetKilobotPosition(c_kilobot_entity);
     m_vecKilobotsOrientations[unKilobotID] = GetKilobotOrientation(c_kilobot_entity);
+    
 
 }
 
@@ -259,6 +248,12 @@ void CCrwlevyALFPositioning::SetupVirtualEnvironments(TConfigurationNode& t_tree
     temp_area2.Radius = 0.0165;
     temp_area2.Color = CColor::MAGENTA;
     m_TargetAreas.push_back(temp_area2);
+    /* Show some position */
+    // SVirtualArea temp_area3;
+    // temp_area3.Center = CVector2(0.406604,-0.0961578);
+    // temp_area3.Radius = 0.033;
+    // temp_area3.Color = CColor::BLACK;
+    // m_TargetAreas.push_back(temp_area3);
 }
 
 /****************************************/
@@ -290,33 +285,41 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
     /* Update the state of the kilobots (target not found, found directly or communicated)*/
     UInt16 unKilobotID=GetKilobotId(c_kilobot_entity);
     
-    // PrintKilobotState(c_kilobot_entity);
-    
+    PrintKilobotState(c_kilobot_entity);
+    // std::cout<<"Actual position: "<<GetKilobotPosition(c_kilobot_entity)<<std::endl;
 
     //std::cout<<"Distance from the center " << Distance(m_vecKilobotsPositions[unKilobotID],  CVector2(0,0)) << std::endl;
     // TODO: attento prima di essere TARGET_FOUND deve essere READY
     if(start_experiment)
     {
-        CRadians robot_bearing = GetBearingRobotPosition(c_kilobot_entity);
-        bool facing_wall = NormalizedDifference(m_vecKilobotsOrientations[unKilobotID],robot_bearing).GetAbsoluteValue() <=CRadians::PI_OVER_TWO.GetValue();//((m_vecKilobotsOrientations[unKilobotID] >= CRadians::ZERO && robot_bearing >= CRadians::ZERO) || (m_vecKilobotsOrientations[unKilobotID] < CRadians::ZERO && robot_bearing < CRadians::ZERO));
-        Real wall_threshold = m_ArenaStructure.Radius-m_ArenaStructure.Wall_width-kKiloDiameter;
         m_vecKilobotsPositions[unKilobotID] = GetKilobotPosition(c_kilobot_entity);
         m_vecKilobotsOrientations[unKilobotID] = GetKilobotOrientation(c_kilobot_entity);
+        m_vecKilobotsBiasAngle[unKilobotID] = CRadians::ZERO;
+
+        CRadians robot_bearing = GetBearingRobotPosition(c_kilobot_entity);
+        bool facing_wall = NormalizedDifference(m_vecKilobotsOrientations[unKilobotID],robot_bearing).GetAbsoluteValue() <=CRadians::PI_OVER_TWO.GetValue();//((m_vecKilobotsOrientations[unKilobotID] >= CRadians::ZERO && robot_bearing >= CRadians::ZERO) || (m_vecKilobotsOrientations[unKilobotID] < CRadians::ZERO && robot_bearing < CRadians::ZERO));
+        Real wall_threshold = m_ArenaStructure.Radius-m_ArenaStructure.Wall_width-kKiloDiameter/2;
+        // std::cout<<"threshold"<<wall_threshold<<" arena radius:"<<m_ArenaStructure.Radius<<"Wall width:"<<m_ArenaStructure.Wall_width<<" kilosize: "<<kKiloDiameter<<std::endl;
+
+        // std::cout<<"KbAngle "<< ToDegrees( GetKilobotOrientation(c_kilobot_entity));
+        // std::cout<<"\tBearing: "<<ToDegrees(robot_bearing)<<std::endl;
         
         // if(facing_wall)
         // {
-        //     std::cout<<"Facing Wall:\n";
+        //     std::cout<<"Facing Wall:\t";
         //     std::cout<<"KbAngle "<< ToDegrees(m_vecKilobotsOrientations[unKilobotID]);
         //     std::cout<<"\tBearing: "<<ToDegrees(robot_bearing);
         //     std::cout<<"\tDiff: "<<ToDegrees(NormalizedDifference(m_vecKilobotsOrientations[unKilobotID],robot_bearing))<<std::endl;
         // }
         // else
         // {
-        //     std::cout<<"Facing HOME!!!!\n";
+        //     std::cout<<"Facing HOME!!!!\t";
         //     std::cout<<"KbAngle "<< ToDegrees(m_vecKilobotsOrientations[unKilobotID]);
         //     std::cout<<"\tBearing: "<<ToDegrees(robot_bearing)<<std::endl;
         // }
 
+        // std::cout<<"Distance threshold:"<<Distance(GetKilobotPosition(c_kilobot_entity),CVector2(0,0))<<" SqDistance threshold:"<<SquareDistance(GetKilobotPosition(c_kilobot_entity),CVector2(0,0))<<std::endl;
+        // std::cout<<"threshold:"<<wall_threshold<<" sqThreshold:"<<pow(wall_threshold,2)<<std::endl;
 
         switch (m_vecKilobotStates[unKilobotID]){
         case TARGET_FOUND:
@@ -325,7 +328,7 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
                 {
                     m_vecKilobotStates[unKilobotID] = BIASING;
                 }
-                else if(Distance(m_vecKilobotsPositions[unKilobotID],CVector2(0,0)) > wall_threshold && facing_wall && GetKilobotLedColor(c_kilobot_entity) != CColor::BLUE)
+                else if(Distance(GetKilobotPosition(c_kilobot_entity),CVector2(0,0)) > wall_threshold && facing_wall && GetKilobotLedColor(c_kilobot_entity) != CColor::BLUE)
                 {
                     m_vecKilobotStates[unKilobotID] = COLLIDING;
                 }
@@ -338,27 +341,16 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
                 {
                     m_vecKilobotStates[unKilobotID] = BIASING;
                 }
-                else if(Distance(m_vecKilobotsPositions[unKilobotID],CVector2(0,0)) > wall_threshold && facing_wall && GetKilobotLedColor(c_kilobot_entity) != CColor::BLUE)
+                else if(Distance(GetKilobotPosition(c_kilobot_entity),CVector2(0,0)) > wall_threshold && facing_wall && GetKilobotLedColor(c_kilobot_entity) != CColor::BLUE)
                 {
-                    // // if(m_vecKilobotStatesLog[unKilobotID]==COLLIDING){
-                    // //     return;
-                    // // }
-                    // if(Distance(m_vecKilobotsPositions[unKilobotID],CVector2(0,0)) > wall_threshold)
-                    //     std::cout<<"Distanza oltrepassata\n";
-                    // // if(facing_wall)
-                    // //     std::cout<<"Facing wall\n";
-                    // if(GetKilobotLedColor(c_kilobot_entity) != CColor::BLUE)
-                    //     std::cout<<"Il colore non e blue\n";
-                    
-                    // std::cout<<"\n";
-
                     m_vecKilobotStates[unKilobotID] = COLLIDING;
                 }
+
                 else{
-                    Real fDistance = Distance(m_vecKilobotsPositions[unKilobotID], m_sClusteringHub.Center);
+                    Real fDistance = Distance(GetKilobotPosition(c_kilobot_entity), m_sClusteringHub.Center);
 
                     //If the kilobot is on the target area
-                    if(fDistance<(m_sClusteringHub.Radius)){//*0.9
+                    if(fDistance<(m_sClusteringHub.Radius)){
                         m_vecKilobotStatesLog[unKilobotID]=m_vecKilobotStates[unKilobotID];
                         m_vecKilobotStates[unKilobotID]=TARGET_FOUND;
                         std::map<UInt16,std::pair<UInt32,UInt32>>::iterator itr = m_KilobotResults.find(unKilobotID);
@@ -401,51 +393,29 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
                 if(facing_wall)
                 {
                     // experiment_type could be BIAS_EXPERIMENT or OBSTACLE_AVOIDANCE_EXPERIMENT
-                    // Set_kilobot_bias_angle(c_kilobot_entity, experiment_type);
                     argos::CRadians kiloOrientation = GetKilobotOrientation(c_kilobot_entity);
-                    CRadians pathOrientation = ATan2(-m_vecKilobotsPositions[unKilobotID].GetY(), 
-                                                        -m_vecKilobotsPositions[unKilobotID].GetX()) 
+                    CRadians pathOrientation = ATan2(-GetKilobotPosition(c_kilobot_entity).GetY(), 
+                                                        -GetKilobotPosition(c_kilobot_entity).GetX()) 
                                                         - kiloOrientation; //+ CRadians::PI_OVER_TWO;
-                    // std::cerr<<"\nDelta:"<<ToDegrees(pathOrientation)<<std::endl;
-                    // std::cout<<"Facing Wall!!!!\n";
+                    std::cout<<"pathorientation:"<<ToDegrees(pathOrientation)<<std::endl;
+                    
                     // normalise the pathOrientation between -pi and pi
                     CRadians rand_rot_angle(c_rng->Uniform(CRange<Real>(-CRadians::PI_OVER_TWO.GetValue(), CRadians::PI_OVER_TWO.GetValue())));
-                    pathOrientation -= rand_rot_angle;
-                    // std::cerr<<"\nDelta+ random:"<<ToDegrees(pathOrientation)<<std::endl;
+                    pathOrientation += rand_rot_angle;
                     pathOrientation.SignedNormalize(); //map angle in [-pi,pi]
-                    // std::cerr<<"\nDelta+random normalized:"<<ToDegrees(pathOrientation)<<std::endl;
-                    // if(experiment == OBSTACLE_AVOIDANCE_EXPERIMENT)
-                    // {
-                    //     // if(rand() % 2) 
-                    //     // {
-
-                    //     //     pathOrientation += CRadians::PI_OVER_TWO;
-                    //     // }
-                    //     // else
-                    //     // {
-
-                    //     //     pathOrientation -= CRadians::PI_OVER_TWO; 
-                    //     // } 
-                    // }
 
                     m_vecKilobotsBiasAngle[unKilobotID] = pathOrientation;
-                    // facing_wall = false;
-                    // std::cout<<"Pathorientation: "<<ToDegrees(pathOrientation)<<" "<<ToDegrees((pathOrientation+CRadians::PI).SignedNormalize())<<std::endl;
                 }
 
                 else
                 {
-                    // std::cout<<"Facing Home in BIASING!!!!\n";
+                    // std::cout<<"KID:"<<unKilobotID<<" Sending ZERO!!!!!\n";
                     m_vecKilobotsBiasAngle[unKilobotID] = CRadians::ZERO;
                 }
-                
-                
-                
+                           
+
                 if(GetKilobotLedColor(c_kilobot_entity) != CColor::WHITE && GetKilobotLedColor(c_kilobot_entity) == CColor::BLUE)
                 {
-                    // TODO : attento che lo stato e il log dello stato sia aggiornato bene
-                    // PrintKilobotState(c_kilobot_entity);
-                    // std::cerr<<std::endl;
                     m_vecKilobotStates[unKilobotID] = m_vecKilobotStatesLog[unKilobotID]; 
                 }
                 break;
@@ -468,42 +438,18 @@ void CCrwlevyALFPositioning::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entit
     /* Get the kilobot ID and state (Only Position in this example) */
     UInt16 unKilobotID=GetKilobotId(c_kilobot_entity);
     
-    
-    
-    
-    
-    
-    // // TODO : REMOVE FOLLOWING 2 ROWS
-    // argos::CRadians kiloOrientation = GetKilobotOrientation(c_kilobot_entity);
-    // std::cout<<"Kilobot orientation : "<< kiloOrientation<<std::endl;
+    // Prepare an empty ARK-type message to fill the gap in the full kilobot message
+    tEmptyMessage.m_sID=511;
+    tEmptyMessage.m_sType=0;
+    tEmptyMessage.m_sData=0;
 
-    // /********************************************************************************************/
-    // // TODO : REMOVE, just for testing
-    // CRadians pathOrientation = ATan2(-m_vecKilobotsPositions[unKilobotID].GetY(), 
-    //                                     -m_vecKilobotsPositions[unKilobotID].GetX()) 
-    //                                     - kiloOrientation; //+ CRadians::PI_OVER_TWO;
-
-    
-    // // normalise the pathOrientation between -pi and pi
-    // pathOrientation.SignedNormalize(); //map angle in [-pi,pi]
-    // m_vecKilobotsBiasAngle[unKilobotID] = pathOrientation;
-    // std::cerr<<"pathOrientation : "<<pathOrientation.GetAbsoluteValue()<<std::endl;
-    // /*******************************************************************************************/
-
-    /* check if enough time has passed from the last message otherwise*/
-    if (m_fTimeInSeconds - m_vecLastTimeMessaged[unKilobotID]< m_fMinTimeBetweenTwoMsg){
-        return; // if the time is too short, the kilobot cannot receive a message
-    }
-
-
-    // if(previous state era colliding e non e passato abbastanza tempo, non rompere il cazzo)
 
     tKilobotMessage.m_sID = unKilobotID;
 
 
     // PrintKilobotState(c_kilobot_entity);
 
-    
+    // se non é cominciato l'esperimento, manda i parametri
     if(!start_experiment)
     {
         // Messagges of parameters (crw, levy, bias_prob)
@@ -519,9 +465,10 @@ void CCrwlevyALFPositioning::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entit
     }
 
 
-    // TODO : else if biasing bla bla
-    else if((m_vecKilobotStates[unKilobotID] == BIASING || m_vecKilobotStates[unKilobotID] == COLLIDING) /*&& m_fTimeInSeconds-m_vecLastTimeCollisionMessaged[unKilobotID]>m_fMinTimeBetweenTwoCollisionMsg*/)
+    // altrimenti se il kb e' in collisione 
+    else if((m_vecKilobotStates[unKilobotID] == BIASING || m_vecKilobotStates[unKilobotID] == COLLIDING) && m_vecKilobotsBiasAngle[unKilobotID]!= CRadians::ZERO)
     {   
+        
         if(m_vecKilobotStates[unKilobotID] == COLLIDING)
         {
             // Most significant bit set to 1 (colliding = true)
@@ -531,47 +478,45 @@ void CCrwlevyALFPositioning::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entit
         // std::cerr<<"tKilobotMessage.m_sID : " << std::dec << tKilobotMessage.m_sID << '\n';
 
         m_tMessages[unKilobotID].type = 254;
-        // if(m_vecKilobotsBiasAngle[unKilobotID].GetAbsoluteValue() < CRadians::PI_OVER_TWO.GetAbsoluteValue() )
-        // {
-        //     tKilobotMessage = tEmptyMessage;
-        // }
-            if(m_vecKilobotsBiasAngle[unKilobotID] == CRadians::ZERO)
-            {
-                tKilobotMessage = tEmptyMessage;
-            }
-            else
-            { 
-                if(m_vecKilobotsBiasAngle[unKilobotID].GetValue() < 0.0)
-                {
-                    tKilobotMessage.m_sType = RIGHT;    // TURN_RIGHT
-                }
-                else
-                {
-                    tKilobotMessage.m_sType = LEFT;    //TURN_LEFT
-                }
-                
-                //used to send the actual angle of the kilobot
-                UInt8 kilo_bias_angle_8_t = (UInt8) round(255 * m_vecKilobotsBiasAngle[unKilobotID].GetAbsoluteValue() / M_PI);
-                tKilobotMessage.m_sData = kilo_bias_angle_8_t;
-                // std::cerr<<"kilo_bias_angle_8_t : "<<m_vecKilobotsBiasAngle[unKilobotID].GetAbsoluteValue()<<std::endl;
-                m_vecLastTimeCollisionMessaged[unKilobotID] = m_fMinTimeBetweenTwoCollisionMsg;
-            }
+        
+        if(m_vecKilobotsBiasAngle[unKilobotID].GetValue() < 0.0)
+        {
+            tKilobotMessage.m_sType = RIGHT;    // TURN_RIGHT
+            if(unKilobotID == 3)
+                std::cout<<"Turn RIGHT ";
+        }
+        else
+        {
+            tKilobotMessage.m_sType = LEFT;    //TURN_LEFT
+            if(unKilobotID == 3)
+                std::cout<<"Turn LEFT ";
+        }
+
+
+        //used to send the actual angle of the kilobot
+        UInt8 kilo_bias_angle_8_t = (UInt8) round(255 * m_vecKilobotsBiasAngle[unKilobotID].GetAbsoluteValue() / M_PI);
+        tKilobotMessage.m_sData = kilo_bias_angle_8_t;
+        // std::cerr<<"kilo_bias_angle_8_t : "<<m_vecKilobotsBiasAngle[unKilobotID].GetAbsoluteValue()<<std::endl;
+            
     }
 
-    //UpdateVirtualSensor vuole sempre un messaggio da mandare, quindi questo controllo sotto non evita l'invio bensì viene mandato il messaggio precedente
-    // else if(m_vecKilobotStates[unKilobotID] == m_vecKilobotStatesLog[unKilobotID])
-    //     return;
-
-    else  // Message with kilobot state
+    // Altrimenti se e' un cambio di stato 
+    else if(GetKilobotLedColor(c_kilobot_entity) != CColor::RED && m_vecKilobotStates[unKilobotID]==TARGET_FOUND) 
     {
         m_tMessages[unKilobotID].type = 0;
         tKilobotMessage.m_sType = (int)m_vecKilobotStates[unKilobotID];
         tKilobotMessage.m_sData = 0;//(int)m_vecKilobotsOrientations[unKilobotID];
     }
-        
-    /*  Set the message sending flag to True */
-    m_vecLastTimeMessaged[unKilobotID] = m_fTimeInSeconds;
-    // std::cout<<"Tempo ultimo msg:"<<m_vecLastTimeMessaged[unKilobotID]<<std::endl;
+
+    //Altrimenti ultimo caso, non hai nulla da mandare
+    else
+    {
+        m_tMessages[unKilobotID].type = 111;
+        tKilobotMessage = tEmptyMessage;
+        // std::cout<<"Ho fatto la return\n";
+        // return;
+    }
+    
 
     /* Send the message to the kilobot using the ARK messaging protocol (addressing 3 kilobots per one standard kilobot message)*/
     for (int i = 0; i < 9; ++i) {
@@ -583,11 +528,7 @@ void CCrwlevyALFPositioning::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entit
      * READY TO SEND A MESSAGE
      * 
     **/
-
-    // Prepare an empty ARK-type message to fill the gap in the full kilobot message
-    tEmptyMessage.m_sID=511;
-    tEmptyMessage.m_sType=0;
-    tEmptyMessage.m_sData=0;
+    
     // Fill the kilobot message by the ARK-type messages
     for (int i = 0; i < 3; ++i) {
         if( i == 0){
@@ -619,7 +560,6 @@ void CCrwlevyALFPositioning::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entit
     }
     
     
-    /* Sending the message */
     GetSimulator().GetMedium<CKilobotCommunicationMedium>("kilocomm").SendOHCMessageTo(c_kilobot_entity,&m_tMessages[unKilobotID]);
 }
 /****************************************/
@@ -629,10 +569,9 @@ CRadians CCrwlevyALFPositioning::GetBearingRobotPosition(CKilobotEntity& c_kilob
 {
     UInt16 unKilobotID=GetKilobotId(c_kilobot_entity);    
     CRadians kiloOrientation = GetKilobotOrientation(c_kilobot_entity);
-    CRadians robot_bearing = ATan2(m_vecKilobotsPositions[unKilobotID].GetY(), 
-                                    m_vecKilobotsPositions[unKilobotID].GetX());
+    CRadians robot_bearing = ATan2(GetKilobotPosition(c_kilobot_entity).GetY(), 
+                                    GetKilobotPosition(c_kilobot_entity).GetX());
 
-    // std::cout<<"\nDelta:"<<ToDegrees(pathOrientation);
     
     // normalise the pathOrientation between -pi and pi
     robot_bearing.SignedNormalize(); //map angle in [-pi,pi]
@@ -680,10 +619,6 @@ void CCrwlevyALFPositioning::UpdateTimeResults(){
 /****************************************/
 void CCrwlevyALFPositioning::PostStep()
 {
-
-    Real actual_time_experiment;
-    actual_time_experiment = m_fTimeInSeconds - start_experiment_time;
-    // std::cout<<"Time in seconds:"<<actual_time_experiment<<std::endl;
     
     if(start_experiment)
     {
@@ -697,27 +632,6 @@ void CCrwlevyALFPositioning::PostStep()
         }
 
     }
-
-    // for(const auto& pos : m_vecKilobotsPositions)
-    // {
-    //     std::cout<<'\t'<<std::fixed<<std::setprecision(3)<<pos;
-    // }
-
-    // Real integer_digits = -1;
-    // Real floating_digits = std::modf(actual_time_experiment, &integer_digits);
-    
-    //     // if(!((int)integer_digits%10) && (std::fabs(floating_digits - 0.1) < EPSILON ))
-    //     //     std::cout<<"actual_time_experiment:"<<actual_time_experiment<<std::endl;
-    
-    // if(start_experiment && !((int)integer_digits%10) && (std::fabs(floating_digits - 0.1) < EPSILON ))
-    // {
-    //     m_cOutputPositions<</*std::fixed<<std::setprecision(1)<<*/actual_time_experiment;
-    //     for(const auto& pos : m_vecKilobotsPositions)
-    //     {
-    //         m_cOutputPositions<<'\t'<<std::fixed<<std::setprecision(3)<<pos;
-    //     }
-    //     m_cOutputPositions<<std::endl;
-    // }
 }
 
 
@@ -764,52 +678,6 @@ void CCrwlevyALFPositioning::PostExperiment()
 		}
 		m_cOutputPositions<<std::endl;
 	}
-
-
-
-    // m_cOutputPositions << "Robot id";
-    // for (uint j = 0; j < m_vecKilobotsPositionsHistory[1].size(); j++)
-    // {
-    //         int t = j;
-    //         m_cOutputPositions << "\tt = " << t;
-    // }
-    // m_cOutputPositions<<std::endl;
-    // for (uint i = 1; i <= m_vecKilobotsPositions.size(); i++)
-    // {
-    //         m_cOutputPositions << i;
-
-    //         for (uint j = 0; j < m_vecKilobotsPositionsHistory[i].size(); j++)
-    //         {
-    //             m_cOutputPositions << '\t' << std::setprecision(3) << (m_vecKilobotsPositionsHistory[i])[j];
-    //         }
-    //         m_cOutputPositions << std::endl;
-    // }
-    // std::string dateTime = currentDateTime();
-    // std::string date = currentDate();
-    // char numRobotStr[10];
-    // sprintf(numRobotStr, "%d", m_tKilobotEntities.size());
-    // char alpha[10];
-    // sprintf(alpha, "%.1f", m_alpha);
-    // char rho[10];
-    // sprintf(rho, "%.2f", m_rho);
-
-    // std::string folder = "experiments/" + date + "_robots=" + numRobotStr + "_alpha=" + alpha + "_rho=" + rho + "_experiments";
-    // if (opendir(folder.c_str()) == NULL)
-    // {
-    //     const int dir_err = mkdir(folder.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    //     if (-1 == dir_err)
-    //     {
-    //             printf("Error creating directory!\n");
-    //             exit(1);
-    //     }
-    // }
-    // char randomStr[5];
-    // int randomInt = m_pcRNG->Uniform(CRange<int>((int)0, (int)99999));
-    // sprintf(randomStr, "_%05d_%d_", randomInt, m_random_seed);
-    // std::string prefix = folder + "/" + dateTime + randomStr;
-
-    // std::string position_file = prefix + "position.tsv";
-    // std::string time_results_file = prefix + "time_results.tsv";
 
 
     

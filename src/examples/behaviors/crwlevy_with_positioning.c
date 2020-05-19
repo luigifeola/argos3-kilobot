@@ -23,18 +23,26 @@
 
 /* Enum for different motion types */
 typedef enum {
-    FORWARD = 0,
-    TURN_LEFT = 1,
-    TURN_RIGHT = 2,
-    STOP = 3,
-    WAIT_ANGLE = 4
+  FORWARD = 0,
+  TURN_LEFT = 1,
+  TURN_RIGHT = 2,
+  STOP = 3,
+  WAIT_ANGLE = 4
 } motion_t;
 
 /* Enum for boolean flags */
 typedef enum {
-    false = 0,
-    true = 1,
+  false = 0,
+  true = 1,
 } bool;
+
+typedef enum {
+  TARGET_FOUND_MSG = 0,
+  TARGET_COMMUNICATED_MSG = 1,
+  CONFIG_PARAMETERS_MSG = 255,
+  BIAS_PARAMETERS_MSG = 254,
+  IDLE = 111
+} received_message_type;
 
 
 /* Enum for the robot states */
@@ -272,16 +280,13 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
   //   set_color(RGB(3, 0, 0));
   //   delay(50);
   // }
-  
 
-  /* ----------------------------------*/
-  /* smart arena message               */
-  /* ----------------------------------*/
+  // printf("Message type: %d\n",msg->type);
 
-  /* Receiving parameters */
-  if (msg->type == 255) 
+  switch (msg->type)
   {
-    // unpack message
+  case CONFIG_PARAMETERS_MSG:
+  {
     int id1 = msg->data[0] << 2 | (msg->data[1] >> 6);
     int id2 = msg->data[3] << 2 | (msg->data[4] >> 6);
     int id3 = msg->data[6] << 2 | (msg->data[7] >> 6);
@@ -321,10 +326,10 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
         // bias_prob = 6 * 255 / 10;  //60% probability
     }
     // printf("bias_prob = %f\n", bias_prob);
+    break;
   }
 
-  /* Receiving kilobt state */
-  if (msg->type == 0) 
+  case TARGET_FOUND_MSG:
   {
     // unpack message
     int id1 = msg->data[0] << 2 | (msg->data[1] >> 6);
@@ -363,22 +368,50 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
       }
       new_sa_msg = false;
     }
+    break;
   }
 
-  /* Receiving kilobt BIAS */
-  if (msg->type == 254) 
+  case TARGET_COMMUNICATED_MSG:
   {
-    //Tutti accendo il led ma solo quelli interessati ruoteranno
-    // printf("Message type 254\n");
-    // unpack message
+    //If distance is too much, the message will be discarded
+    uint8_t cur_distance = estimate_distance(d);
+    if (cur_distance > 100) //100 mm  
+    {
+      break;
+    }
+
+    /* ----------------------------------*/
+    /* KB interactive message            */
+    /* ----------------------------------*/
+    // if new_information == true means that the kb has yet the info about the target, so the following msg not needed
+    else if (msg->data[0]!=kilo_uid && msg->crc==message_crc(msg) && new_information == false) 
+    {
+      new_information = true;
+      if (current_state != DISCOVERED_TARGET)
+      {
+        previous_state = COMMUNICATED_TARGET;
+        current_state = COMMUNICATED_TARGET;
+        set_color(RGB(0, 3, 0));
+      }
+    }
+    break;
+  }
+  
+  case BIAS_PARAMETERS_MSG:
+  {
     int id1 = (msg->data[0] & 0x7F) << 2 | (msg->data[1] >> 6);
     int id2 = (msg->data[3] & 0x7F) << 2 | (msg->data[4] >> 6);
     int id3 = (msg->data[6] & 0x7F) << 2 | (msg->data[7] >> 6);
     if (id1 == kilo_uid) {
       // unpack payload 
       coll_avoid = (msg->data[0] >> 7) & 0x01;
-      if(coll_avoid)
+      if(coll_avoid == true){
         set_color(RGB(0,0,3));
+        set_motion(WAIT_ANGLE);
+        // delay(2000);
+        previous_state = current_state;
+        current_state = BIASING;
+      }
       bias_angle = (((msg->data[1]&0b11) << 8) | (msg->data[2])) * M_PI / 255;
       bias_rotation = msg->data[1] >> 2 & 0x0F;
     } 
@@ -399,32 +432,14 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
     
     // printf("bias_angle = %f\n", bias_angle);
     // printf("bias_rotation = %d\n", bias_rotation);
+    break;
   }
 
-
-  //The remaining possibility is for messages arriving from other kilobots
-  //So if distance is too much, the message will be discarded
-  uint8_t cur_distance = estimate_distance(d);
-  if (cur_distance > 100) //100 mm  
-  {
-    return;
+  case IDLE:
+  default:
+    break;
   }
 
-  /* ----------------------------------*/
-  /* KB interactive message            */
-  /* ----------------------------------*/
-
-  else if (msg->type==1 && msg->data[0]!=kilo_uid && msg->crc==message_crc(msg)) 
-  {
-    // printf("Receiving information about the target\n");
-    new_information = true;
-    if (current_state != DISCOVERED_TARGET)
-    {
-      previous_state = COMMUNICATED_TARGET;
-      current_state = COMMUNICATED_TARGET;
-      set_color(RGB(0, 3, 0));
-    }
-  }
 }
 
 /*-------------------------------------------------------------------*/
@@ -483,41 +498,41 @@ void random_walk()
       //   previous_state = current_state;
       //   current_state = BIASING;
       // }
-      if(coll_avoid == true)
+      // if(coll_avoid == true)
+      // {
+      //   // printf("Sono true!!!!!!!\n");
+      //   set_motion(WAIT_ANGLE);
+      //   // delay(2000);
+      //   previous_state = current_state;
+      //   current_state = BIASING;
+      //   // coll_avoid = false;
+      //   // printf("Sono FALSE!!!!!!!\n");
+      // }
+      // else
+      // {
+      if (rand_soft() % 2)
       {
-        // printf("Sono true!!!!!!!\n");
-        set_motion(WAIT_ANGLE);
-        // delay(2000);
-        previous_state = current_state;
-        current_state = BIASING;
-        // coll_avoid = false;
-        // printf("Sono FALSE!!!!!!!\n");
+        set_motion(TURN_LEFT);
       }
       else
       {
-        if (rand_soft() % 2)
-        {
-          set_motion(TURN_LEFT);
-        }
-        else
-        {
-          set_motion(TURN_RIGHT);
-        }
-        double angle = 0;
-        if(crw_exponent == 0) 
-        {
-          angle = (uniform_distribution(0, (M_PI)));
-          // my_printf("%" PRIu32 "\n", turning_ticks);
-          // my_printf("%u" "\n", rand());
-        }
-        else
-        {
-          angle = fabs(wrapped_cauchy_ppf(crw_exponent));
-        }
-        turning_ticks = (uint32_t)((angle / M_PI) * max_turning_ticks);
-        
-        straight_ticks = (uint32_t)(fabs(levy(std_motion_steps, levy_exponent)));
-      } 
+        set_motion(TURN_RIGHT);
+      }
+      double angle = 0;
+      if(crw_exponent == 0) 
+      {
+        angle = (uniform_distribution(0, (M_PI)));
+        // my_printf("%" PRIu32 "\n", turning_ticks);
+        // my_printf("%u" "\n", rand());
+      }
+      else
+      {
+        angle = fabs(wrapped_cauchy_ppf(crw_exponent));
+      }
+      turning_ticks = (uint32_t)((angle / M_PI) * max_turning_ticks);
+      
+      straight_ticks = (uint32_t)(fabs(levy(std_motion_steps, levy_exponent)));
+      // } 
       
       // printf("Straight ticks%u" "\n", straight_ticks);
     }
@@ -574,6 +589,7 @@ void loop()
   
   // print_state();
 
+  
   //turn on the right led color
   check_state();
 
@@ -583,6 +599,8 @@ void loop()
     broadcast();  
   }
   
+
+
 }
 
 /*-------------------------------------------------------------------*/
