@@ -484,32 +484,6 @@ void random_walk()
       /* perform a random turn */
       last_motion_ticks = kilo_ticks;
       
-
-      // rand_soft e' fra 0 e 255 mentre a te serve il 20%. 
-      // Quindi o normalizzi rand_soft of usi il 20% di 255 che e' 51
-      // if(bias_prob-rand_soft() > 0 || coll_avoid == 1) 
-      // {
-      //   // printf("bias_prob = %f\n", bias_prob);
-      //   if(bias_prob != 0.0)
-      //     set_color(RGB(3,3,3));
-
-      //   set_motion(WAIT_ANGLE);
-      //   delay(1000);
-      //   previous_state = current_state;
-      //   current_state = BIASING;
-      // }
-      // if(coll_avoid == true)
-      // {
-      //   // printf("Sono true!!!!!!!\n");
-      //   set_motion(WAIT_ANGLE);
-      //   // delay(2000);
-      //   previous_state = current_state;
-      //   current_state = BIASING;
-      //   // coll_avoid = false;
-      //   // printf("Sono FALSE!!!!!!!\n");
-      // }
-      // else
-      // {
       if (rand_soft() % 2)
       {
         set_motion(TURN_LEFT);
@@ -532,9 +506,6 @@ void random_walk()
       turning_ticks = (uint32_t)((angle / M_PI) * max_turning_ticks);
       
       straight_ticks = (uint32_t)(fabs(levy(std_motion_steps, levy_exponent)));
-      // } 
-      
-      // printf("Straight ticks%u" "\n", straight_ticks);
     }
     break;
 
@@ -548,6 +519,8 @@ void random_walk()
       // turning ticks based on agle from ark
       last_motion_ticks = kilo_ticks;
       turning_ticks = (uint32_t)((bias_angle / M_PI) * max_turning_ticks);
+      //reinizializza il passo
+      straight_ticks = (uint32_t)(fabs(levy(std_motion_steps, levy_exponent)));
       set_motion(bias_rotation);  // bias_rotation is LEFT or RIGHT
     } 
     else
