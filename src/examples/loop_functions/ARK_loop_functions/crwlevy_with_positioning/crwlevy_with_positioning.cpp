@@ -285,7 +285,7 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
     /* Update the state of the kilobots (target not found, found directly or communicated)*/
     UInt16 unKilobotID=GetKilobotId(c_kilobot_entity);
     
-    PrintKilobotState(c_kilobot_entity);
+    // PrintKilobotState(c_kilobot_entity);
     // std::cout<<"Actual position: "<<GetKilobotPosition(c_kilobot_entity)<<std::endl;
 
     //std::cout<<"Distance from the center " << Distance(m_vecKilobotsPositions[unKilobotID],  CVector2(0,0)) << std::endl;
@@ -397,7 +397,7 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
                     CRadians pathOrientation = ATan2(-GetKilobotPosition(c_kilobot_entity).GetY(), 
                                                         -GetKilobotPosition(c_kilobot_entity).GetX()) 
                                                         - kiloOrientation; //+ CRadians::PI_OVER_TWO;
-                    std::cout<<"pathorientation:"<<ToDegrees(pathOrientation)<<std::endl;
+                    // std::cout<<"pathorientation:"<<ToDegrees(pathOrientation)<<std::endl;
                     
                     // normalise the pathOrientation between -pi and pi
                     CRadians rand_rot_angle(c_rng->Uniform(CRange<Real>(-CRadians::PI_OVER_TWO.GetValue(), CRadians::PI_OVER_TWO.GetValue())));
@@ -482,14 +482,14 @@ void CCrwlevyALFPositioning::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entit
         if(m_vecKilobotsBiasAngle[unKilobotID].GetValue() < 0.0)
         {
             tKilobotMessage.m_sType = RIGHT;    // TURN_RIGHT
-            if(unKilobotID == 3)
-                std::cout<<"Turn RIGHT ";
+            // if(unKilobotID == 3)
+            //     std::cout<<"Turn RIGHT ";
         }
         else
         {
             tKilobotMessage.m_sType = LEFT;    //TURN_LEFT
-            if(unKilobotID == 3)
-                std::cout<<"Turn LEFT ";
+            // if(unKilobotID == 3)
+            //     std::cout<<"Turn LEFT ";
         }
 
 
