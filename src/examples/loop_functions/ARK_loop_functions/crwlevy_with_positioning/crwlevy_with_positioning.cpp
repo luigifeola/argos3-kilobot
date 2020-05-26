@@ -145,6 +145,7 @@ void CCrwlevyALFPositioning::SetupInitialKilobotState(CKilobotEntity &c_kilobot_
     CVector2 rand_displacement, rand_init_pos;
     CVector3 rand_pos;
 
+
     UInt16 maxTries = 999;
     UInt16 tries = 0;
 
@@ -250,7 +251,7 @@ void CCrwlevyALFPositioning::SetupVirtualEnvironments(TConfigurationNode& t_tree
     m_TargetAreas.push_back(temp_area2);
     /* Show some position */
     // SVirtualArea temp_area3;
-    // temp_area3.Center = CVector2(0.406604,-0.0961578);
+    // temp_area3.Center = CVector2(-0.151515,-0.47649);
     // temp_area3.Radius = 0.033;
     // temp_area3.Color = CColor::BLACK;
     // m_TargetAreas.push_back(temp_area3);
@@ -393,18 +394,74 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
                 if(facing_wall)
                 {
                     // experiment_type could be BIAS_EXPERIMENT or OBSTACLE_AVOIDANCE_EXPERIMENT
-                    argos::CRadians kiloOrientation = GetKilobotOrientation(c_kilobot_entity);
-                    CRadians pathOrientation = ATan2(-GetKilobotPosition(c_kilobot_entity).GetY(), 
-                                                        -GetKilobotPosition(c_kilobot_entity).GetX()) 
+                    CRadians kiloOrientation = GetKilobotOrientation(c_kilobot_entity);
+                    CVector2 kiloPosition = GetKilobotPosition(c_kilobot_entity);
+                    CRadians pathOrientation = ATan2(-kiloPosition.GetY(), 
+                                                        -kiloPosition.GetX()) 
                                                         - kiloOrientation; //+ CRadians::PI_OVER_TWO;
                     // std::cout<<"pathorientation:"<<ToDegrees(pathOrientation)<<std::endl;
                     
-                    // normalise the pathOrientation between -pi and pi
-                    CRadians rand_rot_angle(c_rng->Uniform(CRange<Real>(-CRadians::PI_OVER_TWO.GetValue(), CRadians::PI_OVER_TWO.GetValue())));
-                    pathOrientation += rand_rot_angle;
+                    /*Get collision point*/
+                    
+                    Real radius = m_ArenaStructure.Radius-m_ArenaStructure.Wall_width;
+                    // Real a = Tan(kiloOrientation);
+                    // Real b = -1.0;
+                    // Real c = - (kiloPosition.GetX() * a) + kiloPosition.GetY();
+                    
+                    // std::cout<<"Kilopos: "<<kiloPosition<<std::endl;
+                    // std::cout<<"KiloAngle: "<<ATan2(kiloPosition.GetY(),kiloPosition.GetX())<<std::endl;
+                    // std::cout<<"a:"<<a<<'\t'<<"b:"<<b<<'\t'<<"c"<<c<<std::endl;
+                    
+                    // CVector2 collision_point = CircleLineIntersection(radius, a, b, c, kiloPosition);
+                    // CRadians bouncing_angle = (CRadians::PI
+                    //                             - ATan2(kiloPosition.GetY(),kiloPosition.GetX())
+                    //                             - ATan2(collision_point.GetY(),collision_point.GetX())
+                    //                             -ATan2(-kiloPosition.GetY(),-kiloPosition.GetX())
+                    //                             - kiloOrientation).SignedNormalize();
+
+                    
+                    std::cout<<"Kilo orientation: "<<ToDegrees(kiloOrientation)<<std::endl;
+                    std::cout<<"c:"<<Distance(kiloPosition, CVector2(0,0))<<'\t'<<"a:"<<radius<<std::endl;
+                    std::cout<<"Kilopos:"<<kiloPosition<<std::endl;
+                    std::cout<<"Atan2 kilobot:"<< ATan2(kiloPosition.GetY(),kiloPosition.GetX())<<std::endl;
+
+                    std::cout<<"Alpha: "<<ToDegrees( ATan2(kiloPosition.GetY(),kiloPosition.GetX()) + CRadians::PI - kiloOrientation) <<std::endl;
+                    CRadians bouncing_angle = ASin( Distance(kiloPosition, CVector2(0,0) / radius * Sin(ATan2(kiloPosition.GetY(),kiloPosition.GetX()) + CRadians::PI - kiloOrientation)) );
+                    std::cout<<"Bouncing angle: "<<ToDegrees(bouncing_angle)<<'\t';
+
+                    pathOrientation = CRadians::PI - 2 * bouncing_angle;
+
+                    if(kiloPosition.GetX() >= 0)
+                    {
+                        if((kiloOrientation >= -CRadians::PI_OVER_TWO && kiloOrientation < CRadians::PI_OVER_FOUR)
+                            || (kiloOrientation >= -CRadians::PI && kiloOrientation < -CRadians::PI_OVER_FOUR))
+                        {
+                            pathOrientation *= -1;
+                        }
+                        
+                    }
+                    else
+                    {
+                        if((kiloOrientation > CRadians::ZERO && kiloOrientation < 3.0*CRadians::PI_OVER_FOUR)
+                            || (kiloOrientation > CRadians::PI_OVER_TWO && kiloOrientation <= CRadians::PI) 
+                                && (kiloOrientation > -CRadians::PI && kiloOrientation < -3.0*CRadians::PI_OVER_FOUR))
+                        {
+                            pathOrientation *= -1;
+                        }
+                    }
+                    
+
+
+
+                    /*Random angle in [-Pi,Pi]*/
+                    // CRadians rand_rot_angle(c_rng->Uniform(CRange<Real>(-CRadians::PI_OVER_TWO.GetValue(), CRadians::PI_OVER_TWO.GetValue())));
+                    // pathOrientation += rand_rot_angle;
+
+                    
                     pathOrientation.SignedNormalize(); //map angle in [-pi,pi]
 
                     m_vecKilobotsBiasAngle[unKilobotID] = pathOrientation;
+                    std::cout<<"pathorientation:"<<ToDegrees(pathOrientation)<<std::endl;
                 }
 
                 else
@@ -562,6 +619,47 @@ void CCrwlevyALFPositioning::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entit
     
     GetSimulator().GetMedium<CKilobotCommunicationMedium>("kilocomm").SendOHCMessageTo(c_kilobot_entity,&m_tMessages[unKilobotID]);
 }
+/****************************************/
+/****************************************/
+
+CVector2 CCrwlevyALFPositioning::CircleLineIntersection(Real radius, Real a, Real b, Real c, CVector2 kilo_pos)
+{
+    double x0 = -a*c/(a*a+b*b), y0 = -b*c/(a*a+b*b);
+    if (c*c > radius*radius*(a*a+b*b)+EPSILON)
+        // std::puts ("no points");
+        std::cerr<<"ERROR!!!! No points\n";
+    else if (abs (c*c - radius*radius*(a*a+b*b)) < EPSILON) {
+        // std::puts ("1 point");
+        std::cerr<<"ERROR!!!! Just one point\n";
+        // cout << x0 << ' ' << y0 << '\n';
+    }
+    else 
+    {
+        double d = radius*radius - c*c/(a*a+b*b);
+        double mult = sqrt (d / (a*a+b*b));
+        double x1,x2,y1,y2;
+        x1 = x0 + b * mult;
+        x2 = x0 - b * mult;
+        y1 = y0 - a * mult;
+        y2 = y0 + a * mult;
+        // std::puts ("2 points");
+        // cout << ax << ' ' << ay << '\n' << bx << ' ' << by << '\n';
+        CVector2 p1 = CVector2(x1,y1);
+        CVector2 p2 = CVector2(x2,y2);
+        // std::cerr<<"2 points: "<<p1<<'\t'<<p2<<std::endl;
+        if(SquareDistance(p1,kilo_pos) < SquareDistance(p2,kilo_pos)){
+            std::cerr<<"Collision point: "<<p1<<std::endl;
+            return p1;
+        }
+        else
+        {
+            std::cerr<<"Collision point: "<<p2<<std::endl;
+            return p2;
+        }
+        
+    }
+}
+
 /****************************************/
 /****************************************/
 
@@ -794,6 +892,35 @@ CColor CCrwlevyALFPositioning::GetFloorColor(const CVector2 &vec_position_on_pla
         cColor = m_sClusteringHub.Color;
     }
     
+    if(vec_position_on_plane.GetX() < 0.01 && vec_position_on_plane.GetX()> -0.01 ){
+        if(vec_position_on_plane.GetY() >= 0)
+            cColor = CColor::BLUE;
+        else 
+            cColor = CColor::GRAY70;
+    }
+
+    if(vec_position_on_plane.GetY() < 0.01 && vec_position_on_plane.GetY()> -0.01){
+        if(vec_position_on_plane.GetX() >= 0)
+            cColor = CColor::ORANGE;
+        else
+            cColor = CColor::GRAY70;
+    }
+
+    // if(Abs(vec_position_on_plane.GetY() - Tan(CRadians(-2.15391)) * vec_position_on_plane.GetX()) <= 0.01 )
+    //     cColor = CColor::RED;
+
+    // /*Draw some line*/
+    // double x = vec_position_on_plane.GetX();
+    // double y = vec_position_on_plane.GetY();
+    // double ak,bk,ck;
+    // ak= 11.0;
+    // bk=-1;
+    // ck = 0.0;
+    // ck = 0.3;
+    // if(Abs(ak/ck*x + bk/ck*y + 1.0) <= 0.09)
+    //     cColor = CColor::BLACK;
+
+
     return cColor;
 }
 

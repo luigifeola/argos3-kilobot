@@ -129,6 +129,9 @@ public:
 
     CRadians GetBearingRobotPosition(CKilobotEntity& c_kilobot_entity);
 
+    //a,b,c are line coefficients in equation ax+by+c=0
+    CVector2 CircleLineIntersection(Real radius, Real a, Real b, Real c, CVector2 kilo_pos);
+
 private:
 
     UInt32 num_robots_with_discovery;
