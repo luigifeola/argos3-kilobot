@@ -396,9 +396,9 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
                     // experiment_type could be BIAS_EXPERIMENT or OBSTACLE_AVOIDANCE_EXPERIMENT
                     CRadians kiloOrientation = GetKilobotOrientation(c_kilobot_entity);
                     CVector2 kiloPosition = GetKilobotPosition(c_kilobot_entity);
-                    CRadians pathOrientation = ATan2(-kiloPosition.GetY(), 
-                                                        -kiloPosition.GetX()) 
-                                                        - kiloOrientation; //+ CRadians::PI_OVER_TWO;
+                    // CRadians pathOrientation = ATan2(-kiloPosition.GetY(), 
+                    //                                     -kiloPosition.GetX()) 
+                    //                                     - kiloOrientation; //+ CRadians::PI_OVER_TWO;
                     // std::cout<<"pathorientation:"<<ToDegrees(pathOrientation)<<std::endl;
                     
                     /*Get collision point*/
@@ -420,19 +420,22 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
                     //                             - kiloOrientation).SignedNormalize();
 
                     
-                    std::cout<<"\nKilo orientation: "<<ToDegrees(kiloOrientation)<<std::endl;
-                    std::cout<<"c:"<<Distance(kiloPosition, CVector2(0,0))<<'\t'<<"a:"<<radius<<std::endl;
-                    std::cout<<"Kilopos:"<<kiloPosition<<std::endl;
+                    std::cout<<"\nKilopos:"<<kiloPosition<<std::endl;
+                    std::cout<<"Kilo orientation: "<<ToDegrees(kiloOrientation)<<std::endl;
+                    std::cout<<"Origin Distance:"<<Distance(kiloPosition, CVector2(0,0))<<'\t'<<"R:"<<radius<<std::endl;
                     std::cout<<"Atan2 kilobot:"<< ATan2(kiloPosition.GetY(),kiloPosition.GetX())<<std::endl;
+                    std::cout<<"Atan2+PI:"<< ATan2(kiloPosition.GetY(),kiloPosition.GetX()) + CRadians::PI <<std::endl;
 
-                    CRadians alpha = ATan2(kiloPosition.GetY(),kiloPosition.GetX()) + CRadians::PI - kiloOrientation;
-                    std::cout<<"Alpha: "<<ToDegrees( alpha) <<std::endl;
-                    CRadians bouncing_angle = ASin( Distance(kiloPosition, CVector2(0,0) / radius * Sin(alpha) ));
-                    std::cout<<"Bouncing angle: "<<ToDegrees(bouncing_angle)<<std::endl;
+                    CRadians alpha = NormalizedDifference(ATan2(kiloPosition.GetY(),kiloPosition.GetX()) + CRadians::PI , kiloOrientation);
+                    std::cout<<"NormDiff:"<<ToDegrees(alpha) <<std::endl;
+                    std::cout<<"Sin(alpha):"<<Sin(alpha);
+                    std::cout<<"Sin(gamma)"<<Distance(kiloPosition, CVector2(0,0)) / radius * Sin(alpha)<<std::endl;
+                    CRadians bouncing_angle = ASin( Distance(kiloPosition, CVector2(0,0)) / radius * Sin(alpha) );
+                    std::cout<<"Asin(alpha): "<<ToDegrees(bouncing_angle)<<std::endl;
 
-                    pathOrientation = CRadians::PI - 2.0 * bouncing_angle;
+                    CRadians bias = CRadians::PI - 2.0 * bouncing_angle;
                     // std::cout<<"Stocazzo\n";
-                    // std::cout<<"pathorientation before control:"<<ToDegrees(pathOrientation)<<std::endl;
+                    // std::cout<<"bias before control:"<<ToDegrees(bias)<<std::endl;
 
                     // if(kiloPosition.GetX() >= 0)
                     // {
@@ -443,7 +446,7 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
                     //     }
                     //     else
                     //     {
-                    //         pathOrientation *= -1;
+                    //         bias *= -1;
                     //         std::cerr<<"Rotate LEFT\n";
                     //     }
                         
@@ -458,23 +461,23 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
                     //     }
                     //     else
                     //     {
-                    //         pathOrientation *= -1;
+                    //         bias *= -1;
                     //         std::cerr<<"Rotate LEFT\n";
                     //     }
                     // }
                     
 
-                    // std::cout<<"pathorientation:"<<ToDegrees(pathOrientation)<<std::endl;
+                    // std::cout<<"bias:"<<ToDegrees(bias)<<std::endl;
 
 
                     /*Random angle in [-Pi,Pi]*/
                     // CRadians rand_rot_angle(c_rng->Uniform(CRange<Real>(-CRadians::PI_OVER_TWO.GetValue(), CRadians::PI_OVER_TWO.GetValue())));
-                    // pathOrientation += rand_rot_angle;
+                    // bias += rand_rot_angle;
 
                     
-                    pathOrientation.SignedNormalize(); //map angle in [-pi,pi]
-                    std::cout<<"pathorientationSignedNormalized:"<<ToDegrees(pathOrientation)<<std::endl;
-                    m_vecKilobotsBiasAngle[unKilobotID] = pathOrientation;
+                    bias.SignedNormalize(); //map angle in [-pi,pi]
+                    // std::cout<<"biasSignedNormalized:"<<ToDegrees(bias)<<std::endl;
+                    m_vecKilobotsBiasAngle[unKilobotID] = bias;
                 }
 
                 else
@@ -566,7 +569,7 @@ void CCrwlevyALFPositioning::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entit
         //used to send the actual angle of the kilobot
         UInt8 kilo_bias_angle_8_t = (UInt8) round(255 * m_vecKilobotsBiasAngle[unKilobotID].GetAbsoluteValue() / M_PI);
         tKilobotMessage.m_sData = kilo_bias_angle_8_t;
-        // std::cerr<<"kilo_bias_angle_8_t : "<<m_vecKilobotsBiasAngle[unKilobotID].GetAbsoluteValue()<<std::endl;
+        // std::cerr<<"kilo_bias_angle_8_t : "<<m_vecKilobotsBiasAngle[unKilobotID]<<std::endl;
             
     }
 
