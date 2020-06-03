@@ -18,6 +18,9 @@ fi
 res_dir=$wdir/"results/baseline"
 if [[ ! -e $res_dir ]]; then
     mkdir $res_dir
+else
+    echo "Error: directory '$res_dir' already exists" 
+    exit 1
 fi
 
 base_dir=`dirname $base_config`
@@ -29,8 +32,8 @@ crw="0.0 0.3 0.6 0.9"
 bias_prob="0.0"
 numrobots="1"
 numWalls="0"
-arenaSize="5, 5, 4"
-radius="0.5"
+arenaSize="40, 40, 4"
+radius="0.0"
 #################################
 # experiment_length is in seconds
 #################################

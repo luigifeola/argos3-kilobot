@@ -15,7 +15,7 @@ if [ ! -e $base_config ]; then
     fi
 fi
 
-res_dir=$wdir/"results"
+res_dir=$wdir/"results/baseline_openspace"
 if [[ ! -e $res_dir ]]; then
     mkdir $res_dir
 else
@@ -29,21 +29,22 @@ echo "$CONFIGURATION_FILE" | egrep "^$SHARED_DIR" &> /dev/null || exit 1
 
 levy="1.2 1.6 2.0"
 crw="0.0 0.3 0.6 0.9"
-bias_prob="0.0"
-numrobots="50"
-numWalls="100"
-arenaSize="2, 2, 4"
-radius="0.5"
+bias_prob="0.1"
+numrobots="1"
+numWalls="0"
+arenaSize="40, 40, 4"
+radius="0.0"
 #################################
 # experiment_length is in seconds
 #################################
 experiment_length="1800"
 date_time=`date "+%Y-%m-%d"`
-RUNS=1
+RUNS=500
+
 
 for par1 in $levy; do
     for par2 in $crw; do
-	param_dir=$res_dir/$date_time"_robots#"$numrobots"_alpha#"$par1"_rho#"$par2"_sim_"$experiment_length
+	param_dir=$res_dir/$date_time"_robots#"$numrobots"_alpha#"$par1"_rho#"$par2"_baseline_"$experiment_length
 	if [[ ! -e $param_dir ]]; then
 	    mkdir $param_dir
 	fi

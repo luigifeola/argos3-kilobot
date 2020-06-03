@@ -300,7 +300,7 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
         // bias_prob = (double) sa_type/10;
         
         // sa_type in [0,10], so bias_prob checked with rand_soft() in [0,255]
-        bias_prob = sa_type * 255 / 10;
+        bias_prob = sa_type * 255 / 10.0;
         // bias_prob = 6 * 255 / 10;  //60% probability
     }
     // printf("bias_prob = %f\n", bias_prob);
@@ -312,7 +312,7 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
         sa_payload = ((msg->data[4]&0b11)  << 8) | (msg->data[5]);
         levy_exponent = (double) (sa_payload & 0x1F) /10;
         crw_exponent = (double) ((sa_payload >> 5) & 0x1F) /10;
-        bias_prob = sa_type * 255 / 10;
+        bias_prob = sa_type * 255 / 10.0;
         // bias_prob = 6 * 255 / 10;  //60% probability
     }
     if (id3 == kilo_uid) {
@@ -322,10 +322,12 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
         sa_payload = ((msg->data[7]&0b11)  << 8) | (msg->data[8]);
         levy_exponent = (double) (sa_payload & 0x1F) /10;
         crw_exponent = (double) ((sa_payload >> 5) & 0x1F) /10;
-        bias_prob = sa_type * 255 / 10;
+        bias_prob = sa_type * 255 / 10.0;
         // bias_prob = 6 * 255 / 10;  //60% probability
     }
     // printf("bias_prob = %f\n", bias_prob);
+    // printf("crw_exponent = %f\n", crw_exponent);
+    // printf("levy_exponent = %f\n", levy_exponent);
     break;
   }
 
@@ -412,6 +414,7 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
         previous_state = current_state;
         current_state = BIASING;
       }
+      
       bias_angle = (((msg->data[1]&0b11) << 8) | (msg->data[2])) * M_PI / 255;
       bias_rotation = msg->data[1] >> 2 & 0x0F;
     } 
@@ -430,7 +433,7 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
       bias_rotation = msg->data[7] >> 2 & 0x0F;
     }
     
-    // printf("bias_angle = %f\n", bias_angle);
+    // printf("coll_avoid = %d\n", coll_avoid);
     // printf("bias_rotation = %d\n", bias_rotation);
     break;
   }
@@ -468,7 +471,7 @@ void random_walk()
       /* start moving forward */
       last_motion_ticks = kilo_ticks;
 
-      if(coll_avoid)
+      if(current_state == BIASING)
       {
         // printf("Sono false in wait angle!!!!!\n");
         coll_avoid = false;
@@ -478,13 +481,26 @@ void random_walk()
       set_motion(FORWARD);
     }
     break;
-  case FORWARD:
+
+    case FORWARD:
     /* if moved forward for enough time turn */
     if (kilo_ticks > last_motion_ticks + straight_ticks) {
       /* perform a random turn */
       last_motion_ticks = kilo_ticks;
       
-      if (rand_soft() % 2)
+
+      // rand_soft e' fra 0 e 255 mentre a te serve il 20%. 
+      // Quindi o normalizzi rand_soft of usi il 20% di 255 che e' 51
+      if(bias_prob-rand_soft() > 0) 
+      {
+        // printf("It's time to rotate \n");
+        set_color(RGB(0,0,3));
+        set_motion(WAIT_ANGLE);
+        delay(1000);
+        previous_state = current_state;
+        current_state = BIASING;
+      }
+      else if (rand_soft() % 2)
       {
         set_motion(TURN_LEFT);
       }
@@ -504,8 +520,8 @@ void random_walk()
         angle = fabs(wrapped_cauchy_ppf(crw_exponent));
       }
       turning_ticks = (uint32_t)((angle / M_PI) * max_turning_ticks);
-      
       straight_ticks = (uint32_t)(fabs(levy(std_motion_steps, levy_exponent)));
+      // my_printf("%u" "\n", straight_ticks);
     }
     break;
 

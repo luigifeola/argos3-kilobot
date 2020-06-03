@@ -325,11 +325,11 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
         switch (m_vecKilobotStates[unKilobotID]){
         case TARGET_FOUND:
             {
-                if(GetKilobotLedColor(c_kilobot_entity) == CColor::WHITE)
+                if(GetKilobotLedColor(c_kilobot_entity) == CColor::BLUE && bias_prob!=0.0)
                 {
                     m_vecKilobotStates[unKilobotID] = BIASING;
                 }
-                else if(Distance(GetKilobotPosition(c_kilobot_entity),CVector2(0,0)) > wall_threshold && facing_wall && GetKilobotLedColor(c_kilobot_entity) != CColor::BLUE)
+                else if(Distance(GetKilobotPosition(c_kilobot_entity),CVector2(0,0)) > wall_threshold && facing_wall && GetKilobotLedColor(c_kilobot_entity) != CColor::BLUE && m_ArenaStructure.Radius != 0.0)
                 {
                     m_vecKilobotStates[unKilobotID] = COLLIDING;
                 }
@@ -338,11 +338,11 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
         case NOT_TARGET_FOUND:
         case TARGET_COMMUNICATED:
             {
-                if(GetKilobotLedColor(c_kilobot_entity) == CColor::WHITE)
+                if(GetKilobotLedColor(c_kilobot_entity) == CColor::BLUE && bias_prob!=0.0)
                 {
                     m_vecKilobotStates[unKilobotID] = BIASING;
                 }
-                else if(Distance(GetKilobotPosition(c_kilobot_entity),CVector2(0,0)) > wall_threshold && facing_wall && GetKilobotLedColor(c_kilobot_entity) != CColor::BLUE)
+                else if(Distance(GetKilobotPosition(c_kilobot_entity),CVector2(0,0)) > wall_threshold && facing_wall && GetKilobotLedColor(c_kilobot_entity) != CColor::BLUE && m_ArenaStructure.Radius != 0.0)
                 {
                     m_vecKilobotStates[unKilobotID] = COLLIDING;
                 }
@@ -387,10 +387,38 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
                 }
                 break;
             }
-        case COLLIDING:
         case BIASING:
             {
+                // Set_kilobot_bias_angle(c_kilobot_entity);
+                // Set_kilobot_bias_angle(CKilobotEntity &c_kilobot_entity){
+                // UInt16 unKilobotID=GetKilobotId(c_kilobot_entity);    
+                argos::CRadians kiloOrientation = GetKilobotOrientation(c_kilobot_entity);
+                CVector2 kiloPosition = GetKilobotPosition(c_kilobot_entity);
+                CRadians pathOrientation = ATan2(-kiloPosition.GetY(), 
+                                                    -kiloPosition.GetX()) 
+                                                    - kiloOrientation; //+ CRadians::PI_OVER_TWO;
+                // std::cout<<"pathorientation:"<<ToDegrees(pathOrientation)<<std::endl;
+                // // normalise the pathOrientation between -pi and pi
+                pathOrientation.SignedNormalize(); //map angle in [-pi,pi]
+                m_vecKilobotsBiasAngle[unKilobotID] = pathOrientation;
+                // // std::cerr<<"(UInt8)pathOrientation : "<<(UInt8)pathOrientation.GetAbsoluteValue()<<std::endl;
+                // // std::cerr<<"pathOrientation.GetAbsoluteValue() = "<<pathOrientation.GetAbsoluteValue()<<std::endl;
+                // // std::cerr<<"pathOrientation.GetAbsoluteValue() < 0.52"<<(pathOrientation.GetAbsoluteValue() < 0.52)<<std::endl; 
+
                 
+                if(GetKilobotLedColor(c_kilobot_entity) != CColor::BLUE)
+                {
+                    // TODO : attento che lo stato e il log dello stato sia aggiornato bene
+                    // PrintKilobotState((int)m_vecKilobotStates[unKilobotID]);
+                    // PrintKilobotState((int)m_vecKilobotStatesLog[unKilobotID]);
+                    // std::cerr<<std::endl;
+                    m_vecKilobotStates[unKilobotID] = m_vecKilobotStatesLog[unKilobotID]; 
+                }
+                break;
+            }
+        case COLLIDING:
+            {
+                std::cout<<"Sto entrando qui\n";
                 if(facing_wall)
                 {
                     // experiment_type could be BIAS_EXPERIMENT or OBSTACLE_AVOIDANCE_EXPERIMENT
@@ -420,51 +448,22 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
                     //                             - kiloOrientation).SignedNormalize();
 
                     
-                    std::cout<<"\nKilopos:"<<kiloPosition<<std::endl;
-                    std::cout<<"Kilo orientation: "<<ToDegrees(kiloOrientation)<<std::endl;
-                    std::cout<<"Origin Distance:"<<Distance(kiloPosition, CVector2(0,0))<<'\t'<<"R:"<<radius<<std::endl;
-                    std::cout<<"Atan2 kilobot:"<< ATan2(kiloPosition.GetY(),kiloPosition.GetX())<<std::endl;
-                    std::cout<<"Atan2+PI:"<< ATan2(kiloPosition.GetY(),kiloPosition.GetX()) + CRadians::PI <<std::endl;
+                    // std::cout<<"\nKilopos:"<<kiloPosition<<std::endl;
+                    // std::cout<<"Kilo orientation: "<<ToDegrees(kiloOrientation)<<std::endl;
+                    // std::cout<<"Origin Distance:"<<Distance(kiloPosition, CVector2(0,0))<<'\t'<<"R:"<<radius<<std::endl;
+                    // std::cout<<"Atan2 kilobot:"<< ATan2(kiloPosition.GetY(),kiloPosition.GetX())<<std::endl;
+                    // std::cout<<"Atan2+PI:"<< ATan2(kiloPosition.GetY(),kiloPosition.GetX()) + CRadians::PI <<std::endl;
 
                     CRadians alpha = NormalizedDifference(ATan2(kiloPosition.GetY(),kiloPosition.GetX()) + CRadians::PI , kiloOrientation);
-                    std::cout<<"NormDiff:"<<ToDegrees(alpha) <<std::endl;
-                    std::cout<<"Sin(alpha):"<<Sin(alpha);
-                    std::cout<<"Sin(gamma)"<<Distance(kiloPosition, CVector2(0,0)) / radius * Sin(alpha)<<std::endl;
+                    // std::cout<<"NormDiff:"<<ToDegrees(alpha) <<std::endl;
+                    // std::cout<<"Sin(alpha):"<<Sin(alpha);
+                    // std::cout<<"Sin(gamma)"<<Distance(kiloPosition, CVector2(0,0)) / radius * Sin(alpha)<<std::endl;
                     CRadians bouncing_angle = ASin( Distance(kiloPosition, CVector2(0,0)) / radius * Sin(alpha) );
-                    std::cout<<"Asin(alpha): "<<ToDegrees(bouncing_angle)<<std::endl;
+                    // std::cout<<"Asin(alpha): "<<ToDegrees(bouncing_angle)<<std::endl;
 
                     CRadians bias = CRadians::PI - 2.0 * bouncing_angle;
                     // std::cout<<"Stocazzo\n";
                     // std::cout<<"bias before control:"<<ToDegrees(bias)<<std::endl;
-
-                    // if(kiloPosition.GetX() >= 0)
-                    // {
-                    //     if((kiloOrientation >= -CRadians::PI_OVER_TWO && kiloOrientation < CRadians::PI_OVER_FOUR)
-                    //         || (kiloOrientation >= -CRadians::PI && kiloOrientation < -CRadians::PI_OVER_FOUR))
-                    //     {
-                    //         std::cerr<<"Rotate RIGHT\n";
-                    //     }
-                    //     else
-                    //     {
-                    //         bias *= -1;
-                    //         std::cerr<<"Rotate LEFT\n";
-                    //     }
-                        
-                    // }
-                    // else
-                    // {
-                    //     if((kiloOrientation > CRadians::ZERO && kiloOrientation < 3.0*CRadians::PI_OVER_FOUR)
-                    //         || (kiloOrientation > CRadians::PI_OVER_TWO && kiloOrientation <= CRadians::PI) 
-                    //             && (kiloOrientation > -CRadians::PI && kiloOrientation < -3.0*CRadians::PI_OVER_FOUR))
-                    //     {
-                    //         std::cerr<<"Rotate RIGHT\n";
-                    //     }
-                    //     else
-                    //     {
-                    //         bias *= -1;
-                    //         std::cerr<<"Rotate LEFT\n";
-                    //     }
-                    // }
                     
 
                     // std::cout<<"bias:"<<ToDegrees(bias)<<std::endl;
@@ -487,7 +486,7 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
                 }
                            
 
-                if(GetKilobotLedColor(c_kilobot_entity) != CColor::WHITE && GetKilobotLedColor(c_kilobot_entity) == CColor::BLUE)
+                if(GetKilobotLedColor(c_kilobot_entity) == CColor::BLUE)
                 {
                     m_vecKilobotStates[unKilobotID] = m_vecKilobotStatesLog[unKilobotID]; 
                 }
@@ -530,9 +529,11 @@ void CCrwlevyALFPositioning::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entit
         UInt8 levy = (UInt8)(levy_exponent*10);
         
         m_tMessages[unKilobotID].type = 255;
-        // std::cerr<<bias_prob<<std::endl;
+        // std::cerr<<"bias_prob"<<bias_prob<<std::endl;
         //m_sType is just 4-bit ->[0,16]
         tKilobotMessage.m_sType = bias_prob*10;
+        // std::cerr<<"message bias_prob"<<tKilobotMessage.m_sType<<std::endl;
+
         tKilobotMessage.m_sData = (crw << 5);
         tKilobotMessage.m_sData = tKilobotMessage.m_sData | levy;
     }
@@ -908,19 +909,21 @@ CColor CCrwlevyALFPositioning::GetFloorColor(const CVector2 &vec_position_on_pla
         cColor = m_sClusteringHub.Color;
     }
     
-    if(vec_position_on_plane.GetX() < 0.01 && vec_position_on_plane.GetX()> -0.01 ){
-        if(vec_position_on_plane.GetY() >= 0)
-            cColor = CColor::BLUE;
-        else 
-            cColor = CColor::GRAY70;
-    }
+    // // y-axis
+    // if(vec_position_on_plane.GetX() < 0.01 && vec_position_on_plane.GetX()> -0.01 ){
+    //     if(vec_position_on_plane.GetY() >= 0)
+    //         cColor = CColor::BLUE;
+    //     else 
+    //         cColor = CColor::GRAY70;
+    // }
 
-    if(vec_position_on_plane.GetY() < 0.01 && vec_position_on_plane.GetY()> -0.01){
-        if(vec_position_on_plane.GetX() >= 0)
-            cColor = CColor::ORANGE;
-        else
-            cColor = CColor::GRAY70;
-    }
+    // // x-axis
+    // if(vec_position_on_plane.GetY() < 0.01 && vec_position_on_plane.GetY()> -0.01){
+    //     if(vec_position_on_plane.GetX() >= 0)
+    //         cColor = CColor::ORANGE;
+    //     else
+    //         cColor = CColor::GRAY70;
+    // }
 
     // if(Abs(vec_position_on_plane.GetY() - Tan(CRadians(-2.15391)) * vec_position_on_plane.GetX()) <= 0.01 )
     //     cColor = CColor::RED;

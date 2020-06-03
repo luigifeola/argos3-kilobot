@@ -18,6 +18,9 @@ fi
 res_dir=$wdir/"results"
 if [[ ! -e $res_dir ]]; then
     mkdir $res_dir
+else
+    echo "Error: directory '$res_dir' already exists" 
+    exit 1
 fi
 
 base_dir=`dirname $base_config`
