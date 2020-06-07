@@ -39,7 +39,7 @@ radius="0.5"
 #################################
 experiment_length="1800"
 date_time=`date "+%Y-%m-%d"`
-RUNS=1
+RUNS=50
 
 for par1 in $levy; do
     for par2 in $crw; do

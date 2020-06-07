@@ -6,8 +6,7 @@ namespace{
 const double kKiloDiameter = 0.033;
 const double kDistanceTargetFromTheOrigin = 0.5;
 const double kEpsilon = 0.0001;
-const bool kobstacle_avoidance = true;
-const Experiment_type experiment_type = OBSTACLE_AVOIDANCE_EXPERIMENT; // BIAS_EXPERIMENT 
+const bool kobstacle_avoidance = true; 
 }
 
 CCrwlevyALFPositioning::CCrwlevyALFPositioning() :
@@ -142,6 +141,7 @@ void CCrwlevyALFPositioning::SetupInitialKilobotState(CKilobotEntity &c_kilobot_
     /* Get a non-colliding random position within the circular arena */
     bool distant_enough = false;
     Real rand_angle, random_dist;
+    Real rand_x, rand_y;
     CVector2 rand_displacement, rand_init_pos;
     CVector3 rand_pos;
 
@@ -169,29 +169,41 @@ void CCrwlevyALFPositioning::SetupInitialKilobotState(CKilobotEntity &c_kilobot_
     //     std::cout<<"Problema il robot non può essere messo lì\n";
     // }
     /******************************************END-TESTING***********************************************************************/
-    
-    
-    
-    
-    /* Get a random position and orientation for the kilobot not on top of the target */
+    /* Get a random position and orientation for the kilobot initialized into a square but positioned in the circular arena */
     CQuaternion random_rotation;
     CRadians rand_rot_angle(c_rng->Uniform(CRange<Real>(-CRadians::PI.GetValue(), CRadians::PI.GetValue())));
     random_rotation.FromEulerAngles(rand_rot_angle, CRadians::ZERO, CRadians::ZERO);
+    Real radius =  m_ArenaStructure.Radius - m_ArenaStructure.Wall_width/2 - kKiloDiameter/2 - kEpsilon;
 
     do {
-        rand_angle = c_rng->Uniform(CRange<Real>(-CRadians::PI.GetValue(), CRadians::PI.GetValue()));
-	    random_dist = c_rng->Uniform(CRange<Real>(0, m_ArenaStructure.Radius - m_ArenaStructure.Wall_width/2 - kKiloDiameter/2 - kEpsilon));
-	    rand_pos = CVector3(random_dist*sin(rand_angle),random_dist*cos(rand_angle),0);
-        
-        distant_enough = MoveEntity(c_kilobot_entity.GetEmbodiedEntity(), rand_pos, random_rotation, false);
+        rand_x = c_rng->Uniform(CRange<Real>(-radius,radius));
+        rand_y = c_rng->Uniform(CRange<Real>(-radius,radius));
+        distant_enough = MoveEntity(c_kilobot_entity.GetEmbodiedEntity(), CVector3(rand_x, rand_y, 0), random_rotation, false);
         
         if(tries == maxTries-1) {
             std::cerr << "ERROR: too many tries and not an available spot for the area" << std::endl;
         }
-    } while(!distant_enough);
+    } while(!distant_enough || (rand_x*rand_x)+(rand_y*rand_y) > radius*radius );
+    
+    
+    /* Get a random position and orientation for the kilobot not on top of the target */
+    // CQuaternion random_rotation;
+    // CRadians rand_rot_angle(c_rng->Uniform(CRange<Real>(-CRadians::PI.GetValue(), CRadians::PI.GetValue())));
+    // random_rotation.FromEulerAngles(rand_rot_angle, CRadians::ZERO, CRadians::ZERO);
+
+    // do {
+    //     rand_angle = c_rng->Uniform(CRange<Real>(-CRadians::PI.GetValue(), CRadians::PI.GetValue()));
+	//     random_dist = c_rng->Uniform(CRange<Real>(0, m_ArenaStructure.Radius - m_ArenaStructure.Wall_width/2 - kKiloDiameter/2 - kEpsilon));
+	//     rand_pos = CVector3(random_dist*sin(rand_angle),random_dist*cos(rand_angle),0);
+        
+    //     distant_enough = MoveEntity(c_kilobot_entity.GetEmbodiedEntity(), rand_pos, random_rotation, false);
+        
+    //     if(tries == maxTries-1) {
+    //         std::cerr << "ERROR: too many tries and not an available spot for the area" << std::endl;
+    //     }
+    // } while(!distant_enough);
 
     // NOTE : questo cout viene stampato sul terminale e non sull'interfaccia di argos
-    //std::cout<<"Initial position: "<<rand_pos.GetX()<<","<<rand_pos.GetY()<<std::endl;
     m_vecKilobotsPositions[unKilobotID] = GetKilobotPosition(c_kilobot_entity);
     m_vecKilobotsOrientations[unKilobotID] = GetKilobotOrientation(c_kilobot_entity);
     
@@ -244,15 +256,15 @@ void CCrwlevyALFPositioning::SetupVirtualEnvironments(TConfigurationNode& t_tree
     GetNodeAttribute(t_VirtualClusteringHubNode, "color", m_sClusteringHub.Color);
 
     /* Show origin position */
-    SVirtualArea temp_area2;
-    temp_area2.Center = CVector2(0,0);
-    temp_area2.Radius = 0.0165;
-    temp_area2.Color = CColor::MAGENTA;
-    m_TargetAreas.push_back(temp_area2);
+    // SVirtualArea temp_area2;
+    // temp_area2.Center = CVector2(0,0);
+    // temp_area2.Radius = 0.0165;
+    // temp_area2.Color = CColor::MAGENTA;
+    // m_TargetAreas.push_back(temp_area2);
     /* Show some position */
     // SVirtualArea temp_area3;
-    // temp_area3.Center = CVector2(-0.151515,-0.47649);
-    // temp_area3.Radius = 0.033;
+    // temp_area3.Center = CVector2(0,0.45);
+    // temp_area3.Radius = 0.003;
     // temp_area3.Color = CColor::BLACK;
     // m_TargetAreas.push_back(temp_area3);
 }
@@ -264,6 +276,7 @@ void CCrwlevyALFPositioning::GetExperimentVariables(TConfigurationNode& t_tree){
     /* Get the experiment variables node from the .argos file */
     TConfigurationNode& tExperimentVariablesNode = GetNode(t_tree,"variables");
     /* Get the crwlevy exponents */
+    GetNodeAttribute(tExperimentVariablesNode, "experiment_type", experiment_type);
     GetNodeAttribute(tExperimentVariablesNode, "crw", crw_exponent);
     GetNodeAttribute(tExperimentVariablesNode, "levy", levy_exponent);
     GetNodeAttribute(tExperimentVariablesNode, "bias_prob", bias_prob);
@@ -325,26 +338,32 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
         switch (m_vecKilobotStates[unKilobotID]){
         case TARGET_FOUND:
             {
-                if(GetKilobotLedColor(c_kilobot_entity) == CColor::BLUE && bias_prob!=0.0)
+                if(experiment_type == OBSTACLE_AVOIDANCE_EXPERIMENT)
                 {
-                    m_vecKilobotStates[unKilobotID] = BIASING;
-                }
-                else if(Distance(GetKilobotPosition(c_kilobot_entity),CVector2(0,0)) > wall_threshold && facing_wall && GetKilobotLedColor(c_kilobot_entity) != CColor::BLUE && m_ArenaStructure.Radius != 0.0)
-                {
-                    m_vecKilobotStates[unKilobotID] = COLLIDING;
+                    if(GetKilobotLedColor(c_kilobot_entity) == CColor::BLUE && bias_prob!=0.0)
+                    {
+                        m_vecKilobotStates[unKilobotID] = BIASING;
+                    }
+                    else if(Distance(GetKilobotPosition(c_kilobot_entity),CVector2(0,0)) > wall_threshold && facing_wall && GetKilobotLedColor(c_kilobot_entity) != CColor::BLUE && m_ArenaStructure.Radius != 0.0)
+                    {
+                        m_vecKilobotStates[unKilobotID] = COLLIDING;
+                    }
                 }
                 break;
             }
         case NOT_TARGET_FOUND:
         case TARGET_COMMUNICATED:
             {
-                if(GetKilobotLedColor(c_kilobot_entity) == CColor::BLUE && bias_prob!=0.0)
+                if(experiment_type == OBSTACLE_AVOIDANCE_EXPERIMENT)
                 {
-                    m_vecKilobotStates[unKilobotID] = BIASING;
-                }
-                else if(Distance(GetKilobotPosition(c_kilobot_entity),CVector2(0,0)) > wall_threshold && facing_wall && GetKilobotLedColor(c_kilobot_entity) != CColor::BLUE && m_ArenaStructure.Radius != 0.0)
-                {
-                    m_vecKilobotStates[unKilobotID] = COLLIDING;
+                    if(GetKilobotLedColor(c_kilobot_entity) == CColor::BLUE && bias_prob!=0.0)
+                    {
+                        m_vecKilobotStates[unKilobotID] = BIASING;
+                    }
+                    else if(Distance(GetKilobotPosition(c_kilobot_entity),CVector2(0,0)) > wall_threshold && facing_wall && GetKilobotLedColor(c_kilobot_entity) != CColor::BLUE && m_ArenaStructure.Radius != 0.0)
+                    {
+                        m_vecKilobotStates[unKilobotID] = COLLIDING;
+                    }
                 }
 
                 else{
@@ -418,16 +437,12 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
             }
         case COLLIDING:
             {
-                std::cout<<"Sto entrando qui\n";
                 if(facing_wall)
                 {
                     // experiment_type could be BIAS_EXPERIMENT or OBSTACLE_AVOIDANCE_EXPERIMENT
                     CRadians kiloOrientation = GetKilobotOrientation(c_kilobot_entity);
                     CVector2 kiloPosition = GetKilobotPosition(c_kilobot_entity);
-                    // CRadians pathOrientation = ATan2(-kiloPosition.GetY(), 
-                    //                                     -kiloPosition.GetX()) 
-                    //                                     - kiloOrientation; //+ CRadians::PI_OVER_TWO;
-                    // std::cout<<"pathorientation:"<<ToDegrees(pathOrientation)<<std::endl;
+                    
                     
                     /*Get collision point*/
                     
@@ -454,25 +469,28 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
                     // std::cout<<"Atan2 kilobot:"<< ATan2(kiloPosition.GetY(),kiloPosition.GetX())<<std::endl;
                     // std::cout<<"Atan2+PI:"<< ATan2(kiloPosition.GetY(),kiloPosition.GetX()) + CRadians::PI <<std::endl;
 
-                    CRadians alpha = NormalizedDifference(ATan2(kiloPosition.GetY(),kiloPosition.GetX()) + CRadians::PI , kiloOrientation);
-                    // std::cout<<"NormDiff:"<<ToDegrees(alpha) <<std::endl;
-                    // std::cout<<"Sin(alpha):"<<Sin(alpha);
-                    // std::cout<<"Sin(gamma)"<<Distance(kiloPosition, CVector2(0,0)) / radius * Sin(alpha)<<std::endl;
-                    CRadians bouncing_angle = ASin( Distance(kiloPosition, CVector2(0,0)) / radius * Sin(alpha) );
-                    // std::cout<<"Asin(alpha): "<<ToDegrees(bouncing_angle)<<std::endl;
+                    /**************************Bouncing angle***************************/
+                    // CRadians alpha = NormalizedDifference(ATan2(kiloPosition.GetY(),kiloPosition.GetX()) + CRadians::PI , kiloOrientation);
+                    // // std::cout<<"NormDiff:"<<ToDegrees(alpha) <<std::endl;
+                    // // std::cout<<"Sin(alpha):"<<Sin(alpha);
+                    // // std::cout<<"Sin(gamma)"<<Distance(kiloPosition, CVector2(0,0)) / radius * Sin(alpha)<<std::endl;
+                    // CRadians bouncing_angle = ASin( Distance(kiloPosition, CVector2(0,0)) / radius * Sin(alpha) );
+                    // // std::cout<<"Asin(alpha): "<<ToDegrees(bouncing_angle)<<std::endl;
 
-                    CRadians bias = CRadians::PI - 2.0 * bouncing_angle;
-                    // std::cout<<"Stocazzo\n";
+                    // CRadians bias = CRadians::PI - 2.0 * bouncing_angle;
                     // std::cout<<"bias before control:"<<ToDegrees(bias)<<std::endl;
-                    
-
                     // std::cout<<"bias:"<<ToDegrees(bias)<<std::endl;
+                    /*********************************************************************************************************/
 
-
+                    /******************* Bias angle + random in [-90,+90] *****************************/
+                    CRadians bias = ATan2(-kiloPosition.GetY(), 
+                                                        -kiloPosition.GetX()) 
+                                                        - kiloOrientation; //+ CRadians::PI_OVER_TWO;
+                    // std::cout<<"pathorientation:"<<ToDegrees(pathOrientation)<<std::endl;
                     /*Random angle in [-Pi,Pi]*/
-                    // CRadians rand_rot_angle(c_rng->Uniform(CRange<Real>(-CRadians::PI_OVER_TWO.GetValue(), CRadians::PI_OVER_TWO.GetValue())));
-                    // bias += rand_rot_angle;
-
+                    CRadians rand_rot_angle(c_rng->Uniform(CRange<Real>(-CRadians::PI_OVER_TWO.GetValue(), CRadians::PI_OVER_TWO.GetValue())));
+                    bias += rand_rot_angle;
+                    /***************************************************************************************/
                     
                     bias.SignedNormalize(); //map angle in [-pi,pi]
                     // std::cout<<"biasSignedNormalized:"<<ToDegrees(bias)<<std::endl;

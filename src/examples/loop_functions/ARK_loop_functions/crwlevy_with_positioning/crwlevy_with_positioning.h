@@ -67,8 +67,9 @@ enum bias_command {
 };
 
 enum Experiment_type {
-    BIAS_EXPERIMENT = 1,
-    OBSTACLE_AVOIDANCE_EXPERIMENT = 2
+    SIMPLE_EXPERIMENT = 1,
+    OBSTACLE_AVOIDANCE_EXPERIMENT = 2,
+    BOUNCING_ANGLE_EXPERIMENT = 3
 };
 
 class CCrwlevyALFPositioning : public CALF
@@ -207,6 +208,9 @@ private:
   
     /* random number generator */
     CRandom::CRNG* c_rng;
+
+    /* Experiment_type*/
+    UInt16 experiment_type;
 
     /* crwlevy exponents */
     Real crw_exponent;
