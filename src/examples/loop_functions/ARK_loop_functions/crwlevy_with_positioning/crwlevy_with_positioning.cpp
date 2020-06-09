@@ -354,16 +354,13 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
         case NOT_TARGET_FOUND:
         case TARGET_COMMUNICATED:
             {
-                if(experiment_type == OBSTACLE_AVOIDANCE_EXPERIMENT)
+                if(experiment_type == OBSTACLE_AVOIDANCE_EXPERIMENT && GetKilobotLedColor(c_kilobot_entity) == CColor::BLUE && bias_prob!=0.0)
                 {
-                    if(GetKilobotLedColor(c_kilobot_entity) == CColor::BLUE && bias_prob!=0.0)
-                    {
-                        m_vecKilobotStates[unKilobotID] = BIASING;
-                    }
-                    else if(Distance(GetKilobotPosition(c_kilobot_entity),CVector2(0,0)) > wall_threshold && facing_wall && GetKilobotLedColor(c_kilobot_entity) != CColor::BLUE && m_ArenaStructure.Radius != 0.0)
-                    {
-                        m_vecKilobotStates[unKilobotID] = COLLIDING;
-                    }
+                    m_vecKilobotStates[unKilobotID] = BIASING;
+                }
+                else if(experiment_type == OBSTACLE_AVOIDANCE_EXPERIMENT && Distance(GetKilobotPosition(c_kilobot_entity),CVector2(0,0)) > wall_threshold && facing_wall && GetKilobotLedColor(c_kilobot_entity) != CColor::BLUE && m_ArenaStructure.Radius != 0.0)
+                {
+                    m_vecKilobotStates[unKilobotID] = COLLIDING;
                 }
 
                 else{
@@ -537,7 +534,7 @@ void CCrwlevyALFPositioning::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entit
     tKilobotMessage.m_sID = unKilobotID;
 
 
-    // PrintKilobotState(c_kilobot_entity);
+    PrintKilobotState(c_kilobot_entity);
 
     // se non é cominciato l'esperimento, manda i parametri
     if(!start_experiment)
@@ -822,30 +819,29 @@ void CCrwlevyALFPositioning::PostExperiment()
 void CCrwlevyALFPositioning::PrintKilobotState(CKilobotEntity& c_kilobot_entity)
 {
     UInt16 unKilobotID=GetKilobotId(c_kilobot_entity);
-    // if(m_vecKilobotStates[unKilobotID] == m_vecKilobotStatesLog[unKilobotID])
-    //     return;
-    std::cerr<<"LOG state:";
-    switch (m_vecKilobotStatesLog[unKilobotID])
-    {
-        case NOT_TARGET_FOUND:
-            std::cerr<<"NOT_TARGET_FOUND"<<"\t";
-            break;
-        case TARGET_FOUND:
-            std::cerr<<"TARGET_FOUND"<<"\t";
-            break;
-        case TARGET_COMMUNICATED:
-            std::cerr<<"TARGET_COMMUNICATED"<<"\t";
-            break;
-        case BIASING:
-            std::cerr<<"BIASING"<<"\t";
-            break;
-        case COLLIDING:
-            std::cerr<<"COLLIDING"<<"\t";
-            break;
+
+    // std::cerr<<"LOG state:";
+    // switch (m_vecKilobotStatesLog[unKilobotID])
+    // {
+    //     case NOT_TARGET_FOUND:
+    //         std::cerr<<"NOT_TARGET_FOUND"<<"\t";
+    //         break;
+    //     case TARGET_FOUND:
+    //         std::cerr<<"TARGET_FOUND"<<"\t";
+    //         break;
+    //     case TARGET_COMMUNICATED:
+    //         std::cerr<<"TARGET_COMMUNICATED"<<"\t";
+    //         break;
+    //     case BIASING:
+    //         std::cerr<<"BIASING"<<"\t";
+    //         break;
+    //     case COLLIDING:
+    //         std::cerr<<"COLLIDING"<<"\t";
+    //         break;
         
-        default:
-            break;
-    }
+    //     default:
+    //         break;
+    // }
 
     std::cerr<<"Actual state:";
     switch (m_vecKilobotStates[unKilobotID])
