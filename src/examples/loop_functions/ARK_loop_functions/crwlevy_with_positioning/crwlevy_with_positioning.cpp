@@ -467,26 +467,26 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
                     // std::cout<<"Atan2+PI:"<< ATan2(kiloPosition.GetY(),kiloPosition.GetX()) + CRadians::PI <<std::endl;
 
                     /**************************Bouncing angle***************************/
-                    // CRadians alpha = NormalizedDifference(ATan2(kiloPosition.GetY(),kiloPosition.GetX()) + CRadians::PI , kiloOrientation);
-                    // // std::cout<<"NormDiff:"<<ToDegrees(alpha) <<std::endl;
-                    // // std::cout<<"Sin(alpha):"<<Sin(alpha);
-                    // // std::cout<<"Sin(gamma)"<<Distance(kiloPosition, CVector2(0,0)) / radius * Sin(alpha)<<std::endl;
-                    // CRadians bouncing_angle = ASin( Distance(kiloPosition, CVector2(0,0)) / radius * Sin(alpha) );
-                    // // std::cout<<"Asin(alpha): "<<ToDegrees(bouncing_angle)<<std::endl;
+                    CRadians alpha = NormalizedDifference(ATan2(kiloPosition.GetY(),kiloPosition.GetX()) + CRadians::PI , kiloOrientation);
+                    // std::cout<<"NormDiff:"<<ToDegrees(alpha) <<std::endl;
+                    // std::cout<<"Sin(alpha):"<<Sin(alpha);
+                    // std::cout<<"Sin(gamma)"<<Distance(kiloPosition, CVector2(0,0)) / radius * Sin(alpha)<<std::endl;
+                    CRadians bouncing_angle = ASin( Distance(kiloPosition, CVector2(0,0)) / radius * Sin(alpha) );
+                    // std::cout<<"Asin(alpha): "<<ToDegrees(bouncing_angle)<<std::endl;
 
-                    // CRadians bias = CRadians::PI - 2.0 * bouncing_angle;
+                    CRadians bias = CRadians::PI - 2.0 * bouncing_angle;
                     // std::cout<<"bias before control:"<<ToDegrees(bias)<<std::endl;
                     // std::cout<<"bias:"<<ToDegrees(bias)<<std::endl;
                     /*********************************************************************************************************/
 
                     /******************* Bias angle + random in [-90,+90] *****************************/
-                    CRadians bias = ATan2(-kiloPosition.GetY(), 
-                                                        -kiloPosition.GetX()) 
-                                                        - kiloOrientation; //+ CRadians::PI_OVER_TWO;
-                    // std::cout<<"pathorientation:"<<ToDegrees(pathOrientation)<<std::endl;
-                    /*Random angle in [-Pi,Pi]*/
-                    CRadians rand_rot_angle(c_rng->Uniform(CRange<Real>(-CRadians::PI_OVER_TWO.GetValue(), CRadians::PI_OVER_TWO.GetValue())));
-                    bias += rand_rot_angle;
+                    // CRadians bias = ATan2(-kiloPosition.GetY(), 
+                    //                                     -kiloPosition.GetX()) 
+                    //                                     - kiloOrientation; //+ CRadians::PI_OVER_TWO;
+                    // // std::cout<<"pathorientation:"<<ToDegrees(pathOrientation)<<std::endl;
+                    // /*Random angle in [-Pi,Pi]*/
+                    // CRadians rand_rot_angle(c_rng->Uniform(CRange<Real>(-CRadians::PI_OVER_TWO.GetValue(), CRadians::PI_OVER_TWO.GetValue())));
+                    // bias += rand_rot_angle;
                     /***************************************************************************************/
                     
                     bias.SignedNormalize(); //map angle in [-pi,pi]
@@ -534,7 +534,7 @@ void CCrwlevyALFPositioning::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entit
     tKilobotMessage.m_sID = unKilobotID;
 
 
-    PrintKilobotState(c_kilobot_entity);
+    // PrintKilobotState(c_kilobot_entity);
 
     // se non é cominciato l'esperimento, manda i parametri
     if(!start_experiment)

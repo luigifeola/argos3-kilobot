@@ -536,7 +536,7 @@ void random_walk()
       last_motion_ticks = kilo_ticks;
       turning_ticks = (uint32_t)((bias_angle / M_PI) * max_turning_ticks);
       //reinizializza il passo
-      straight_ticks = (uint32_t)(fabs(levy(std_motion_steps, levy_exponent)));
+      // straight_ticks = (uint32_t)(fabs(levy(std_motion_steps, levy_exponent)));
       set_motion(bias_rotation);  // bias_rotation is LEFT or RIGHT
     } 
     else

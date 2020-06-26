@@ -6,9 +6,9 @@
     <!-- ************************* -->
     <framework>
         <system threads="6" />
-        <experiment length="__TIMEEXPERIMENT__"
+        <experiment length="1800"
         ticks_per_second="10"
-        random_seed="__SEED__" />
+        random_seed="51" />
     </framework>
     
     <!-- *************** -->
@@ -52,21 +52,21 @@
         
             <!-- initialization = "true" -->
         <variables
-            datafilename="__OUTPUT__"
-            positionsfilename="__POSOUTPUT__"
+            datafilename="seed#51_time_results.tsv"
+            positionsfilename="seed#51_position.tsv"
             dataacquisitionfrequency="100"  
             environmentplotupdatefrequency="1"
             timeforonemessage="0.05"
-            crw = "__CRW__"
-            levy = "__LEVY__"
-            bias_prob = "__BIASPROB__"
-            experiment_type="__EXPERIMENT__">
+            crw = "0.3"
+            levy = "2.0"
+            bias_prob = "0.0"
+            experiment_type="2">
         </variables>
     
         <environments>
             <Area position="0,0" radius="0.033" color="255,0,0,125" >
             </Area>
-            <Perimeter radius="__RADIUS__" width="0.02" height="0.05" walls="__NUMWALLS__">
+            <Perimeter radius="0.46" width="0.02" height="0.05" walls="100">
             </Perimeter>
         </environments>
     
@@ -76,12 +76,12 @@
     <!-- *********************** -->
     <!-- * Arena configuration * -->
     <!-- *********************** -->
-    <arena size="__ARENASIZE__" center="0,0,0.5" pixel_per_meter="100">
+    <arena size="2, 2, 4" center="0,0,0.5" pixel_per_meter="100">
 
         <distribute>
             <position method="uniform" min="0.2,0.2,0" max="0.7,0.7,0" />
             <orientation method="uniform" min="0,0,0" max="360,0,0" />
-            <entity quantity="__NUMROBOTS__" max_trials="100">
+            <entity quantity="100" max_trials="100">
                 <kilobot id="kb">
                     <controller config="listener"/> <dynamics2d friction="0.7" />
                 </kilobot>
