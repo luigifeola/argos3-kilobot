@@ -181,7 +181,7 @@ private:
     std::vector<CVector2> m_vecKilobotsPositions;
     std::vector<std::vector<CVector2>> m_vecKilobotsPositionsHistory;
     std::vector<CRadians> m_vecKilobotsOrientations;
-    std::vector<CRadians> m_vecKilobotsBiasAngle;
+    std::vector<CRadians> m_vecKilobotsBiasAngle; //bias angle command in radians
     
     /** Structure to contain data to evaluate first passage time and
      *  convergence time of the experiment

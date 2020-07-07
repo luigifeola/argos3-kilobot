@@ -98,8 +98,8 @@ void CCrwlevyALFPositioning::SetupInitialKilobotStates() {
         // Target positioned in the arena, avoiding positions where there are kilobots
         do{
             c_random_angle = c_rng->Uniform(CRange<Real>(-CRadians::PI.GetValue(), CRadians::PI.GetValue()));
-            c_position.SetX(c_rng->Uniform(CRange<Real>(0, m_ArenaStructure.Radius - c_radius)) * sin(c_random_angle));
-            c_position.SetY(c_rng->Uniform(CRange<Real>(0, m_ArenaStructure.Radius - c_radius)) * cos(c_random_angle));
+            c_position.SetX(c_rng->Uniform(CRange<Real>(0, m_ArenaStructure.Radius - m_ArenaStructure.Wall_width - c_radius - kKiloDiameter)) * sin(c_random_angle));
+            c_position.SetY(c_rng->Uniform(CRange<Real>(0, m_ArenaStructure.Radius - m_ArenaStructure.Wall_width - c_radius - kKiloDiameter)) * cos(c_random_angle));
             
             //check if there is some kilobot on top of the area
             kilobot_on_the_top = 
@@ -256,11 +256,11 @@ void CCrwlevyALFPositioning::SetupVirtualEnvironments(TConfigurationNode& t_tree
     GetNodeAttribute(t_VirtualClusteringHubNode, "color", m_sClusteringHub.Color);
 
     /* Show origin position */
-    // SVirtualArea temp_area2;
-    // temp_area2.Center = CVector2(0,0);
-    // temp_area2.Radius = 0.0165;
-    // temp_area2.Color = CColor::MAGENTA;
-    // m_TargetAreas.push_back(temp_area2);
+    SVirtualArea temp_area2;
+    temp_area2.Center = CVector2(0,0);
+    temp_area2.Radius = 0.0165;
+    temp_area2.Color = CColor::MAGENTA;
+    m_TargetAreas.push_back(temp_area2);
     /* Show some position */
     // SVirtualArea temp_area3;
     // temp_area3.Center = CVector2(0,0.45);
@@ -312,7 +312,7 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
 
         CRadians robot_bearing = GetBearingRobotPosition(c_kilobot_entity);
         bool facing_wall = NormalizedDifference(m_vecKilobotsOrientations[unKilobotID],robot_bearing).GetAbsoluteValue() <=CRadians::PI_OVER_TWO.GetValue();//((m_vecKilobotsOrientations[unKilobotID] >= CRadians::ZERO && robot_bearing >= CRadians::ZERO) || (m_vecKilobotsOrientations[unKilobotID] < CRadians::ZERO && robot_bearing < CRadians::ZERO));
-        Real wall_threshold = m_ArenaStructure.Radius-m_ArenaStructure.Wall_width-kKiloDiameter/2;
+        Real wall_threshold = m_ArenaStructure.Radius-m_ArenaStructure.Wall_width-kKiloDiameter;
         // std::cout<<"threshold"<<wall_threshold<<" arena radius:"<<m_ArenaStructure.Radius<<"Wall width:"<<m_ArenaStructure.Wall_width<<" kilosize: "<<kKiloDiameter<<std::endl;
 
         // std::cout<<"KbAngle "<< ToDegrees( GetKilobotOrientation(c_kilobot_entity));
@@ -467,26 +467,26 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
                     // std::cout<<"Atan2+PI:"<< ATan2(kiloPosition.GetY(),kiloPosition.GetX()) + CRadians::PI <<std::endl;
 
                     /**************************Bouncing angle***************************/
-                    CRadians alpha = NormalizedDifference(ATan2(kiloPosition.GetY(),kiloPosition.GetX()) + CRadians::PI , kiloOrientation);
+                    // CRadians alpha = NormalizedDifference(ATan2(kiloPosition.GetY(),kiloPosition.GetX()) + CRadians::PI , kiloOrientation);
                     // std::cout<<"NormDiff:"<<ToDegrees(alpha) <<std::endl;
                     // std::cout<<"Sin(alpha):"<<Sin(alpha);
                     // std::cout<<"Sin(gamma)"<<Distance(kiloPosition, CVector2(0,0)) / radius * Sin(alpha)<<std::endl;
-                    CRadians bouncing_angle = ASin( Distance(kiloPosition, CVector2(0,0)) / radius * Sin(alpha) );
+                    // CRadians bouncing_angle = ASin( Distance(kiloPosition, CVector2(0,0)) / radius * Sin(alpha) );
                     // std::cout<<"Asin(alpha): "<<ToDegrees(bouncing_angle)<<std::endl;
 
-                    CRadians bias = CRadians::PI - 2.0 * bouncing_angle;
+                    // CRadians bias = CRadians::PI - 2.0 * bouncing_angle;
                     // std::cout<<"bias before control:"<<ToDegrees(bias)<<std::endl;
                     // std::cout<<"bias:"<<ToDegrees(bias)<<std::endl;
                     /*********************************************************************************************************/
 
                     /******************* Bias angle + random in [-90,+90] *****************************/
-                    // CRadians bias = ATan2(-kiloPosition.GetY(), 
-                    //                                     -kiloPosition.GetX()) 
-                    //                                     - kiloOrientation; //+ CRadians::PI_OVER_TWO;
-                    // // std::cout<<"pathorientation:"<<ToDegrees(pathOrientation)<<std::endl;
-                    // /*Random angle in [-Pi,Pi]*/
-                    // CRadians rand_rot_angle(c_rng->Uniform(CRange<Real>(-CRadians::PI_OVER_TWO.GetValue(), CRadians::PI_OVER_TWO.GetValue())));
-                    // bias += rand_rot_angle;
+                    CRadians bias = ATan2(-kiloPosition.GetY(), 
+                                                        -kiloPosition.GetX()) 
+                                                        - kiloOrientation; //+ CRadians::PI_OVER_TWO;
+                    // std::cout<<"pathorientation:"<<ToDegrees(pathOrientation)<<std::endl;
+                    /*Random angle in [-Pi,Pi]*/
+                    CRadians rand_rot_angle(c_rng->Uniform(CRange<Real>(-CRadians::PI_OVER_TWO.GetValue(), CRadians::PI_OVER_TWO.GetValue())));
+                    bias += rand_rot_angle;
                     /***************************************************************************************/
                     
                     bias.SignedNormalize(); //map angle in [-pi,pi]
@@ -546,7 +546,7 @@ void CCrwlevyALFPositioning::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entit
         m_tMessages[unKilobotID].type = 255;
         // std::cerr<<"bias_prob"<<bias_prob<<std::endl;
         //m_sType is just 4-bit ->[0,16]
-        tKilobotMessage.m_sType = bias_prob*10;
+        tKilobotMessage.m_sType = bias_prob*10.0;
         // std::cerr<<"message bias_prob"<<tKilobotMessage.m_sType<<std::endl;
 
         tKilobotMessage.m_sData = (crw << 5);

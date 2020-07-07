@@ -88,8 +88,8 @@ double crw_exponent = -1; // go straight often
 
 /* Bias parameters */
 double bias_prob = -1;    // probability of facing home 
-double bias_angle = -1;
-motion_t bias_rotation = STOP;
+double bias_angle = -1;   // the amount of degree which kilobot should rotate
+motion_t bias_rotation = STOP; // rotate to LEFT or RIGHT
 // uint8_t previous_state_color = RGB(0,0,0);
 // uint8_t previous_state = RGB(0,0,0);
 bool coll_avoid = false;
@@ -297,10 +297,9 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
         sa_payload = ((msg->data[1]&0b11) << 8) | (msg->data[2]);
         levy_exponent = (double) (sa_payload & 0x1F) /10;
         crw_exponent = (double) ((sa_payload >> 5) & 0x1F) /10;
-        // bias_prob = (double) sa_type/10;
         
-        // sa_type in [0,10], so bias_prob checked with rand_soft() in [0,255]
-        bias_prob = sa_type * 255 / 10.0;
+        bias_prob = (double) sa_type/10;
+        // bias_prob = sa_type * 255 / 10.0;
         // bias_prob = 6 * 255 / 10;  //60% probability
     }
     // printf("bias_prob = %f\n", bias_prob);
@@ -312,8 +311,8 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
         sa_payload = ((msg->data[4]&0b11)  << 8) | (msg->data[5]);
         levy_exponent = (double) (sa_payload & 0x1F) /10;
         crw_exponent = (double) ((sa_payload >> 5) & 0x1F) /10;
-        bias_prob = sa_type * 255 / 10.0;
-        // bias_prob = 6 * 255 / 10;  //60% probability
+        
+        bias_prob = (double) sa_type/10;
     }
     if (id3 == kilo_uid) {
         // unpack type
@@ -322,8 +321,8 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
         sa_payload = ((msg->data[7]&0b11)  << 8) | (msg->data[8]);
         levy_exponent = (double) (sa_payload & 0x1F) /10;
         crw_exponent = (double) ((sa_payload >> 5) & 0x1F) /10;
-        bias_prob = sa_type * 255 / 10.0;
-        // bias_prob = 6 * 255 / 10;  //60% probability
+        
+        bias_prob = (double) sa_type/10;
     }
     // printf("bias_prob = %f\n", bias_prob);
     // printf("crw_exponent = %f\n", crw_exponent);
@@ -434,7 +433,8 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
     }
     
     // printf("coll_avoid = %d\n", coll_avoid);
-    // printf("bias_rotation = %d\n", bias_rotation);
+    printf("bias_rotation = %d\t", bias_rotation);
+    printf("bias_angle = %f\n", bias_angle);
     break;
   }
 
@@ -536,8 +536,8 @@ void random_walk()
       last_motion_ticks = kilo_ticks;
       turning_ticks = (uint32_t)((bias_angle / M_PI) * max_turning_ticks);
       //reinizializza il passo
-      // straight_ticks = (uint32_t)(fabs(levy(std_motion_steps, levy_exponent)));
-      set_motion(bias_rotation);  // bias_rotation is LEFT or RIGHT
+      straight_ticks = (uint32_t)(fabs(levy(std_motion_steps, levy_exponent)));
+      set_motion(bias_rotation);  
     } 
     else
     {

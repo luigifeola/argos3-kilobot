@@ -2,7 +2,13 @@
 
 /****************************************/
 /****************************************/
-double KiloDiameter = 0.033;
+namespace{
+const double KiloDiameter = 0.033;
+const double kDistThreshold = 0.0002;   //0.002
+const double kDistPushed = 0.001; //0.0001
+const double kAngleThreshold = 0.17;    //0.17 Radians 9,740283 Degrees
+const double kForwardAngleThreshold = 0.78; //The angle threshold at which the kilobot should rotate to aling to the goal position
+}
 
 CNavigationALF::CNavigationALF()
     {
@@ -416,9 +422,9 @@ command CNavigationALF::GoToWithOrientation(CKilobotEntity &c_kilobot_entity)
 
         else 
         {
-            std::cerr<<"Go Forward!"<<std::endl;
+            // std::cerr<<"Go Forward!"<<std::endl;
             CRadians pathOrientation = ATan2(init_d_position.GetY() - kiloPos.GetY(), init_d_position.GetX()-kiloPos.GetX()) - kiloOrientation;
-            if(pathOrientation.GetAbsoluteValue() < 0.78)
+            if(pathOrientation.GetAbsoluteValue() < kForwardAngleThreshold)
             {
                 cmd = FORWARD;
             }
@@ -472,7 +478,7 @@ command CNavigationALF::GoToWithOrientation(CKilobotEntity &c_kilobot_entity)
             //angle_offset = desired_orientation - kiloOrientation
             if(angle_offset.GetAbsoluteValue() > kAngleThreshold)
             {
-                std::cerr<<"Apply Rotation!"<<std::endl;            
+                // std::cerr<<"Apply Rotation!"<<std::endl;            
                 if(angle_offset.GetValue() > 0) 
                 {
                     cmd = LEFT;

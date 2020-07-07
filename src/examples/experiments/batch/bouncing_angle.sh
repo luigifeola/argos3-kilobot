@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ "$#" -ne 2 ]; then
-    echo "Usage: bouncing_angle.sh (from src folder) <base_config_dir> <base_config_file_name>"
+    echo "Usage: random_angle.sh (from src folder) <base_config_dir> <base_config_file_name>"
     exit 11
 fi
 
@@ -15,7 +15,7 @@ if [ ! -e $base_config ]; then
     fi
 fi
 
-res_dir=$wdir/"results/bouncing_angle_100"
+res_dir=$wdir/"results/random_angle_20"
 if [[ ! -e $res_dir ]]; then
     mkdir $res_dir
 else
@@ -27,7 +27,7 @@ base_dir=`dirname $base_config`
 echo base_dir $base_dir
 echo "$CONFIGURATION_FILE" | egrep "^$SHARED_DIR" &> /dev/null || exit 1
 
-numrobots="100"
+numrobots="10 20 50 100"
 
 # 1 for SIMPLE_EXPERIMENT
 # 2 for OBSTACLE_AVOIDANCE_EXPERIMENT
@@ -35,10 +35,8 @@ experiment_type="2"
 
 # controlla che sia bouncing angle e non random angle
 #aggiusta levy crw e seed
-# levy="1.2 1.6 2.0"
-# crw="0.0 0.3 0.6 0.9"
-levy="2.0"
-crw="0.3 0.6 0.9"
+levy="1.2 1.6 2.0"
+crw="0.0 0.3 0.6 0.9"
 bias_prob="0.0"
 numWalls="100"
 arenaSize="2, 2, 4"
@@ -49,17 +47,17 @@ radius="0.46"
 #################################
 experiment_length="1800"
 date_time=`date "+%Y-%m-%d"`
-RUNS=100
+RUNS=20
 
 for nrob in $numrobots; do
     for par1 in $levy; do
         for par2 in $crw; do
-        param_dir=$res_dir/$date_time"_robots#"$nrob"_alpha#"$par1"_rho#"$par2"_baseline_"$experiment_length
+        param_dir=$res_dir/$date_time"_robots#"$nrob"_alpha#"$par1"_rho#"$par2"_"$experiment_length
         if [[ ! -e $param_dir ]]; then
             mkdir $param_dir
         fi
 
-            for it in $(seq 51 98); do
+            for it in $(seq 1 $RUNS); do
 
                 config=`printf 'config_nrob%d_levy%02d_crw%03d_seed%03d.argos' $nrob $par1 $par2 $it`
                 echo config $config
@@ -81,7 +79,7 @@ for nrob in $numrobots; do
                 sed -i "s|__POSOUTPUT__|$positions_file|g" $config
 
                 
-                echo "Running next configuration LEVY $par1 CRW $par2"
+                echo "Running next configuration Robots $nrob LEVY $par1 CRW $par2"
                 echo "argos3 -c $1$config"
                 argos3 -c './'$config
             mv $output_file $param_dir && mv $positions_file $param_dir

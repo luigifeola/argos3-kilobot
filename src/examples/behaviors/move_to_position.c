@@ -274,14 +274,18 @@ void loop()
   }
 
   set_motion(received_command);
-  if(received_command == TURN_LEFT || received_command == TURN_RIGHT)
+  if(received_command == STOP)
   {
-    set_color(RGB(0, 3, 0));
-    delay(500);
-    set_color(RGB(3, 0, 0));
-    delay(500);
-
+    set_color(RGB(3,3,3));
   }
+  // if(received_command == TURN_LEFT || received_command == TURN_RIGHT)
+  // {
+  //   set_color(RGB(0, 3, 0));
+  //   delay(500);
+  //   set_color(RGB(3, 0, 0));
+  //   delay(500);
+
+  // }
 }
   
 

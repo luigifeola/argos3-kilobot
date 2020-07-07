@@ -110,9 +110,7 @@ public:
     std::vector<bool>  v_arrivedInOrientation;
 
     //std::vector <int> assignedTargets;
-    const double kDistThreshold = 0.0002;   //0.002
-    const double kDistPushed = 0.001; //0.0001
-    const double kAngleThreshold = 0.17;    //0.17 Radians 9,740283 Degrees
+    
 
 private:
 
