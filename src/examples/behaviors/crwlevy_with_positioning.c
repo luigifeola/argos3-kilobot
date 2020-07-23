@@ -50,7 +50,8 @@ typedef enum {
     OUTSIDE_TARGET = 0,
     DISCOVERED_TARGET = 1,
     COMMUNICATED_TARGET = 2,
-    BIASING = 3
+    BIASING = 3,
+    ASKING_FOR_BIAS = 4
 } state_t;
 
 /* current motion type */
@@ -132,6 +133,9 @@ void print_state()
     case BIASING:
       printf("BIASING\t");
       break;
+    case ASKING_FOR_BIAS:
+      printf("ASKING_FOR_BIAS\t");
+      break;
       
     default:
       printf("Error, no one of the possible state happens\n");
@@ -177,6 +181,10 @@ void check_state()
       break;
     case BIASING:
       set_color(RGB(0,0,3));
+      break;
+
+    case ASKING_FOR_BIAS:
+      set_color(RGB(3,0,3));
       break;
       
     default:
@@ -298,8 +306,8 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
         levy_exponent = (double) (sa_payload & 0x1F) /10;
         crw_exponent = (double) ((sa_payload >> 5) & 0x1F) /10;
         
-        bias_prob = (double) sa_type/10;
-        // bias_prob = sa_type * 255 / 10.0;
+        // bias_prob = (double) sa_type/10;
+        bias_prob = sa_type * 255 / 10.0; //this is because bias_prob will be compareted with rando_soft()
         // bias_prob = 6 * 255 / 10;  //60% probability
     }
     // printf("bias_prob = %f\n", bias_prob);
@@ -312,7 +320,8 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
         levy_exponent = (double) (sa_payload & 0x1F) /10;
         crw_exponent = (double) ((sa_payload >> 5) & 0x1F) /10;
         
-        bias_prob = (double) sa_type/10;
+        // bias_prob = (double) sa_type/10;
+        bias_prob = sa_type * 255 / 10.0; //this is because bias_prob will be compareted with rando_soft()
     }
     if (id3 == kilo_uid) {
         // unpack type
@@ -322,9 +331,10 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
         levy_exponent = (double) (sa_payload & 0x1F) /10;
         crw_exponent = (double) ((sa_payload >> 5) & 0x1F) /10;
         
-        bias_prob = (double) sa_type/10;
+        // bias_prob = (double) sa_type/10;
+        bias_prob = sa_type * 255 / 10.0; //this is because bias_prob will be compareted with rando_soft()
     }
-    // printf("bias_prob = %f\n", bias_prob);
+    // printf("bias_prob = %f\n", bias_prob/255.0);
     // printf("crw_exponent = %f\n", crw_exponent);
     // printf("levy_exponent = %f\n", levy_exponent);
     break;
@@ -403,38 +413,59 @@ void message_rx(message_t *msg, distance_measurement_t *d) {
     int id1 = (msg->data[0] & 0x7F) << 2 | (msg->data[1] >> 6);
     int id2 = (msg->data[3] & 0x7F) << 2 | (msg->data[4] >> 6);
     int id3 = (msg->data[6] & 0x7F) << 2 | (msg->data[7] >> 6);
+    
     if (id1 == kilo_uid) {
-      // unpack payload 
       coll_avoid = (msg->data[0] >> 7) & 0x01;
       if(coll_avoid == true){
         set_color(RGB(0,0,3));
-        set_motion(WAIT_ANGLE);
-        // delay(2000);
         previous_state = current_state;
-        current_state = BIASING;
       }
-      
-      bias_angle = (((msg->data[1]&0b11) << 8) | (msg->data[2])) * M_PI / 255;
+      else{
+        set_color(RGB(3,0,3));
+      }
+      // delay(2000);
+      current_state = BIASING;
+      // printf("not remapped angle = %d\t", (((msg->data[1]&0b11) << 8) | (msg->data[2])));
+      bias_angle = (((msg->data[1]&0b11) << 8) | (msg->data[2])) * M_PI / 255.0;
       bias_rotation = msg->data[1] >> 2 & 0x0F;
-    } 
+    }
+
     if (id2 == kilo_uid) {
       coll_avoid = (msg->data[3] >> 7) & 0x01;
-      if(coll_avoid)
+      if(coll_avoid == true){
         set_color(RGB(0,0,3));
-      bias_angle = ((msg->data[4]&0b11)  << 8) | (msg->data[5]);
+        previous_state = current_state;
+      }
+      else{
+        set_color(RGB(3,0,3));
+      }
+      // delay(2000);
+      current_state = BIASING;
+      // printf("not remapped angle = %d\t", (((msg->data[4]&0b11) << 8) | (msg->data[5])));
+      bias_angle = (((msg->data[4]&0b11)  << 8) | (msg->data[5])) * M_PI / 255.0;
       bias_rotation = msg->data[4] >> 2 & 0x0F;
     }
+
     if (id3 == kilo_uid) {
       coll_avoid = (msg->data[6] >> 7) & 0x01;
-      if(coll_avoid)
+      if(coll_avoid == true){
         set_color(RGB(0,0,3));
-      bias_angle = ((msg->data[7]&0b11)  << 8) | (msg->data[8]);
+        previous_state = current_state;
+      }
+      else{
+        set_color(RGB(3,0,3));
+      }
+        
+      current_state = BIASING;
+      // printf("not remapped angle = %d\t", (((msg->data[7]&0b11) << 8) | (msg->data[8])));
+      bias_angle = (((msg->data[7]&0b11)  << 8) | (msg->data[8])) * M_PI / 255.0;
       bias_rotation = msg->data[7] >> 2 & 0x0F;
     }
     
     // printf("coll_avoid = %d\n", coll_avoid);
-    printf("bias_rotation = %d\t", bias_rotation);
-    printf("bias_angle = %f\n", bias_angle);
+    // printf("bias_rotation = %d\t", bias_rotation);
+    // printf("bias_angle = %f\n", bias_angle);
+    set_motion(WAIT_ANGLE);
     break;
   }
 
@@ -494,11 +525,11 @@ void random_walk()
       if(bias_prob-rand_soft() > 0) 
       {
         // printf("It's time to rotate \n");
-        set_color(RGB(0,0,3));
-        set_motion(WAIT_ANGLE);
-        delay(1000);
+        set_color(RGB(3,0,3));
+        // delay(2000);
         previous_state = current_state;
-        current_state = BIASING;
+        current_state = ASKING_FOR_BIAS;
+        set_motion(WAIT_ANGLE);
       }
       else if (rand_soft() % 2)
       {
@@ -526,17 +557,15 @@ void random_walk()
     break;
 
   case WAIT_ANGLE:
-    // Questo if serve solo per l'esperimento open space
+    // Questo if serve solo per l'esperimento con bias (open_space, bounciong_, random_angle)
     if (bias_angle != -1 && bias_rotation != STOP)
     {
 
-      // printf("Qui non entro mai\n");
       // update lat motion to current
       // turning ticks based on agle from ark
       last_motion_ticks = kilo_ticks;
       turning_ticks = (uint32_t)((bias_angle / M_PI) * max_turning_ticks);
-      //reinizializza il passo
-      straight_ticks = (uint32_t)(fabs(levy(std_motion_steps, levy_exponent)));
+      straight_ticks = (uint32_t)(fabs(levy(std_motion_steps, levy_exponent)));      //reinizializza il passo, commenta se vuoi bouncing_angle, scommenta se vuoi random_angle
       set_motion(bias_rotation);  
     } 
     else

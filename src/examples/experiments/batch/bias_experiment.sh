@@ -5,7 +5,7 @@ if [ "$#" -ne 2 ]; then
     exit 11
 fi
 
-RUNS=20
+RUNS=100
 
 wdir=`pwd`
 base_config=$1$2
@@ -17,7 +17,7 @@ if [ ! -e $base_config ]; then
     fi
 fi
 
-res_dir=$wdir/"results/bias_experiment_"$RUNS 
+res_dir=$wdir/"results/bias_experiment_"$RUNS"_runs" 
 if [[ ! -e $res_dir ]]; then
     mkdir $res_dir
 else
@@ -29,15 +29,17 @@ base_dir=`dirname $base_config`
 echo base_dir $base_dir
 echo "$CONFIGURATION_FILE" | egrep "^$SHARED_DIR" &> /dev/null || exit 1
 
-numrobots="10"
+numrobots="10 20 50 100"
+
+
 
 experiment_type="2"
 levy="1.2 1.6 2.0"
 crw="0.0 0.3 0.6 0.9"
 bias_prob="0.1"
 numWalls="0"
-# arenaSize="30, 30, 4"
-arenaSize="5, 5, 4"
+arenaSize="50, 50, 4"
+# arenaSize="10, 10, 4"
 radius="0.25"
 #################################
 # experiment_length is in seconds

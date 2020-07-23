@@ -5,6 +5,8 @@ if [ "$#" -ne 2 ]; then
     exit 11
 fi
 
+RUNS=100
+
 wdir=`pwd`
 base_config=$1$2
 if [ ! -e $base_config ]; then
@@ -15,7 +17,7 @@ if [ ! -e $base_config ]; then
     fi
 fi
 
-res_dir=$wdir/"results/random_angle_20"
+res_dir=$wdir/"results/random_angle_"$RUNS"_runs" 
 if [[ ! -e $res_dir ]]; then
     mkdir $res_dir
 else
@@ -27,7 +29,7 @@ base_dir=`dirname $base_config`
 echo base_dir $base_dir
 echo "$CONFIGURATION_FILE" | egrep "^$SHARED_DIR" &> /dev/null || exit 1
 
-numrobots="10 20 50 100"
+numrobots="50"
 
 # 1 for SIMPLE_EXPERIMENT
 # 2 for OBSTACLE_AVOIDANCE_EXPERIMENT
@@ -47,7 +49,6 @@ radius="0.46"
 #################################
 experiment_length="1800"
 date_time=`date "+%Y-%m-%d"`
-RUNS=20
 
 for nrob in $numrobots; do
     for par1 in $levy; do
@@ -57,7 +58,7 @@ for nrob in $numrobots; do
             mkdir $param_dir
         fi
 
-            for it in $(seq 1 $RUNS); do
+            for it in $(seq 21 $RUNS); do
 
                 config=`printf 'config_nrob%d_levy%02d_crw%03d_seed%03d.argos' $nrob $par1 $par2 $it`
                 echo config $config
