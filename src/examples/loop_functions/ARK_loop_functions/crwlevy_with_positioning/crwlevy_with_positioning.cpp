@@ -256,11 +256,12 @@ void CCrwlevyALFPositioning::SetupVirtualEnvironments(TConfigurationNode& t_tree
     GetNodeAttribute(t_VirtualClusteringHubNode, "color", m_sClusteringHub.Color);
 
     /* Show origin position */
-    SVirtualArea temp_area2;
-    temp_area2.Center = CVector2(0,0);
-    temp_area2.Radius = 0.0165;
-    temp_area2.Color = CColor::MAGENTA;
-    m_TargetAreas.push_back(temp_area2);
+    // SVirtualArea temp_area2;
+    // temp_area2.Center = CVector2(0,0);
+    // temp_area2.Radius = 0.0165;
+    // temp_area2.Color = CColor::MAGENTA;
+    // m_TargetAreas.push_back(temp_area2);
+    
     /* Show some position */
     // SVirtualArea temp_area3;
     // temp_area3.Center = CVector2(0,0.45);
@@ -523,7 +524,7 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
     
 void CCrwlevyALFPositioning::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity){
     /*Create ARK-type messages variables*/
-    m_tALFKilobotMessage tKilobotMessage,tEmptyMessage,tMessage;
+    m_tALFKilobotMessage tKilobotMessage, tEmptyMessage, tMessage;
     /* Get the kilobot ID and state (Only Position in this example) */
     UInt16 unKilobotID=GetKilobotId(c_kilobot_entity);
     

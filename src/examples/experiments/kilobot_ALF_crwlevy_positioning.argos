@@ -8,7 +8,7 @@
         <system threads="6" />
         <experiment length="5000"
         ticks_per_second="10"
-        random_seed="51" />
+        random_seed="0" />
     </framework>
     
     <!-- *************** -->
@@ -50,15 +50,15 @@
         </tracking>
 
         <variables
-            crw = "0.9"
-            levy = "2.0"
-            bias_prob = "0.1"
+            crw = "0.0"
+            levy = "1.2"
+            bias_prob = "0.0"
             positionsfilename="positions_file.tsv"
             datafilename="data_file.tsv"
             dataacquisitionfrequency="100"  
             environmentplotupdatefrequency="1"
             timeforonemessage="0.05"
-            experiment_type="2">
+            experiment_type="1">
         </variables>
     
         <environments>
@@ -67,7 +67,7 @@
 
             <Area1 position="0,0.5" radius="0.016" color="0,255,0,125" >
             </Area1>
-            <Perimeter radius="0.25" width="0.02" height="0.05" walls="0">
+            <Perimeter radius="0.46" width="0.02" height="0.05" walls="100">
             </Perimeter>
         </environments>
     
@@ -82,7 +82,7 @@
         <distribute>
             <position method="uniform" min="0.2,0.2,0" max="0.7,0.7,0" />
             <orientation method="uniform" min="0,0,0" max="360,0,0" />
-            <entity quantity="1" max_trials="100">
+            <entity quantity="10" max_trials="100">
                 <kilobot id="kb">
                     <controller config="listener"/> <dynamics2d friction="0.7" />
                 </kilobot>

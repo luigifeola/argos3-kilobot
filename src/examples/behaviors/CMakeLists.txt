@@ -107,6 +107,12 @@ if(ARGOS_BUILD_FOR_SIMULATOR)
   target_link_libraries(crwlevy argos3plugin_simulator_kilolib)
 
   #
+  # ARK loop function : client server dhtf
+  #
+  add_executable(kilobot_ALF_dhtf kilobot_ALF_dhtf.c)  
+  target_link_libraries(kilobot_ALF_dhtf argos3plugin_simulator_kilolib)
+
+  #
   # ARK loop function: crwlevy_with_positioning
   #
   add_executable(crwlevy_with_positioning crwlevy_with_positioning.c)  

@@ -72,7 +72,7 @@
     <!-- *********************** -->
     <!-- * Arena configuration * -->
     <!-- *********************** -->
-    <arena size="2, 2, 4" center="0,0,0.5" pixel_per_meter="200">
+    <arena size="2, 2, 4" center="0,0,0.5" pixel_per_meter="400">
         
         <box id="wall_north" size="2,0.01,0.1" movable="false">
             <body position="0,1,0" orientation="0,0,0" />
@@ -100,7 +100,7 @@
 
         <floor id="floor"
         source="loop_functions"
-        pixels_per_meter="100" />
+        pixels_per_meter="500" />
         
     </arena>
     
