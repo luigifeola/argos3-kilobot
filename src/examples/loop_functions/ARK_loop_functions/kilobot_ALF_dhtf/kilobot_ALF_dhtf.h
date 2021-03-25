@@ -22,6 +22,9 @@ namespace argos
 #include <unistd.h>
 #include <numeric>
 #include <array>
+#include <random>
+#include <algorithm>
+#include <vector>
 
 #include <argos3/core/simulator/loop_functions.h>
 #include <argos3/plugins/robots/kilobot/simulator/ALF.h>
@@ -91,6 +94,12 @@ public:
     /** Used to plot the Virtual environment on the floor */
     virtual CColor GetFloorColor(const CVector2 &vec_position_on_plane);
 
+    /** 2D vector rotation */
+    CVector2 VectorRotation2D(Real angle, CVector2 vec);
+
+    /** Simulate proximity sensor*/
+    std::vector<int> Proximity_sensor(CVector2 obstacle_direction, Real kOrientation, int num_sectors);
+
 private:
     /************************************/
     /*  Virtual Environment variables   */
@@ -98,6 +107,7 @@ private:
     /* virtual environment struct*/
     struct SVirtualArea //parameters of the circular areas
     {
+        int id;
         CVector2 Center;
         Real Radius;
         CColor Color;
@@ -112,6 +122,20 @@ private:
         LEAVING = 2,
     } SRobotState;
 
+    typedef enum
+    {
+        kBLUE = 0,
+        kRED = 1,
+    } colour;
+
+    typedef enum
+    {
+        kBB = 1,
+        kBR = 2,
+        kRB = 3,
+        kRR = 5,
+    } waiting_times;
+
     struct FloorColorData //contains components of area color
     {
         UInt8 R;
@@ -120,28 +144,37 @@ private:
     };
     std::vector<FloorColorData> m_vecKilobotData;
 
-    std::string mode;         //can be SERVER or CLIENT
-    bool augmented_knowledge; //TRUE: ARK knows the color of areas on the other arena; FALSE: ARK knows color of its own areas only; timeout constant are set consequently
-    unsigned int random_seed;
-    UInt8 desired_num_of_areas; //number of exploitable areas for the experiment (max 16)
-    float hard_tasks;           //the number of red areas
-    int otherColor[10];         //Color of the areas on the other ARK
-    char inputBuffer[30];       //array containing the message received from the socket e.g.
-    std::string outputBuffer;   //array  containing the message to send to the other side
-    char storeBuffer[30];       //array where to store input message to keep it available
-    int bytesReceived;          //length of received string
-    int serverSocket;
-    int clientSocket;
-    UInt8 num_of_areas; //number of clustering areas i.e. 16
-    int arena_update_counter;
-    bool initializing; // false when client ACK the initial setup
+    std::string mode;    //can be SERVER or CLIENT
+    std::string IP_ADDR; //ip address where to connect
+    UInt16 TIMEOUT_CONST;
+    bool augmented_knowledge;                  //TRUE: ARK knows the color of areas on the other arena; FALSE: ARK knows color of its own areas only; timeout constant are set consequently
+    unsigned int random_seed;                  //to reproduce same random tests
+    UInt8 desired_num_of_areas;                //number of exploitable areas for the experiment (max 16)
+    UInt8 hard_tasks;                          //the number of red areas (the ones that require more robots)
+    std::vector<int> otherColor;               //Color of the areas on the other ARK
+    bool IsNotZero(int i) { return (i != 0); } //to count how non 0 emelent there are in sending/receiving buffer
+    char inputBuffer[30];                      // array containing the message received from the socket e.g.
+    std::string initialise_buffer;             // buffer containing setup values (active and type of the task)
+    std::string outputBuffer;                  //array  containing the message to send
+    char storeBuffer[30];                      //array where to store input message to keep it available
+    int bytesReceived;                         //length of received string
+    int serverSocket;                          //socket variable
+    int clientSocket;                          //socket variable
+    UInt8 num_of_areas;                        //initial number of clustering areas i.e. 16, will be reduced to desired_num_of_areas
+    double kRespawnTimer;                      //when completed, timer starts and when it will expire the area is reactivated
+    std::vector<double> vCompletedTime;        //vector with completition time
+    bool initialised;                          // true when client ACK the initial setup
 
+    /**********************************************************
+     ** PROBABILMENTE STA ROBA SPARISCE, SFRUTTA area.h **
+     *****************************************************/
     /*vectors as long as the number of kilobots*/
     std::vector<UInt8> request; //vector that determines waiting time: 1 for kilobots on blue areas and 3 for the ones on red areas (multiplied times 500 gives the number of cycles before timeout)
     std::vector<SInt8> whereis; // says in which area the KB is: -1 if walking, (index of area) if inside an area
 
     /*vectors as long as the number of areas*/
     std::vector<UInt8> contained; //how many KBs the area "i" contains
+                                  /*********************************************************/
 
     std::vector<SRobotState> m_vecKilobotStates_ALF;
     std::vector<SRobotState> m_vecKilobotStates_transmit;

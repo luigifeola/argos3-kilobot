@@ -485,7 +485,11 @@ void finite_state_machine()
     if (location == OUTSIDE)
     {
       current_state = RANDOM_WALKING;
+#ifdef ARGOS_SIMULATION
+      set_color(RGB(0, 0, 0));
+#else
       set_color(RGB(0, 3, 0));
+#endif
     }
     break;
   }
