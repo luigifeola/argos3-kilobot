@@ -16,10 +16,10 @@ namespace
     const CVector2 left_direction(1.0, 0.0);
     const CVector2 right_direction(-1.0, 0.0);
     const int proximity_bits = 8;
-
+    int internal_counter = 0;
 }
 
-CALFClientServer::CALFClientServer() : m_unDataAcquisitionFrequency(10)
+CALFClientServer::CALFClientServer() : m_unDataAcquisitionFrequency(20)
 {
 }
 
@@ -32,7 +32,9 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
     CALF::Init(t_node);
 
     /*********** LOG FILES *********/
-    m_cOutput.open(m_strOutputFileName, std::ios_base::trunc | std::ios_base::out);
+    m_kiloOutput.open(m_strKiloOutputFileName, std::ios_base::trunc | std::ios_base::out);
+    m_areaOutput.open(m_strAreaOutputFileName, std::ios_base::trunc | std::ios_base::out);
+    m_taskOutput.open(m_strTaskOutputFileName, std::ios_base::trunc | std::ios_base::out);
 
     /* Read parameters from .argos*/
     TConfigurationNode &tModeNode = GetNode(t_node, "extra_parameters");
@@ -252,13 +254,20 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
 
 void CALFClientServer::Reset()
 {
-    m_cOutput.close();
-    m_cOutput.open(m_strOutputFileName, std::ios_base::trunc | std::ios_base::out);
+    m_kiloOutput.close();
+    m_kiloOutput.open(m_strKiloOutputFileName, std::ios_base::trunc | std::ios_base::out);
+    m_areaOutput.close();
+    m_areaOutput.open(m_strAreaOutputFileName, std::ios_base::trunc | std::ios_base::out);
+    m_taskOutput.close();
+    m_taskOutput.open(m_strTaskOutputFileName, std::ios_base::trunc | std::ios_base::out);
 }
 
 void CALFClientServer::Destroy()
 {
-    m_cOutput.close();
+    m_kiloOutput.close();
+    m_areaOutput.close();
+    m_taskOutput.close();
+
     if (mode == "SERVER")
     {
         close(clientSocket);
@@ -272,7 +281,8 @@ void CALFClientServer::Destroy()
 void CALFClientServer::SetupInitialKilobotStates()
 {
     m_vecKilobotStates_ALF.resize(m_tKilobotEntities.size());
-    m_vecKilobotData.resize(m_tKilobotEntities.size());
+    m_vecKilobotsPositions.resize(m_tKilobotEntities.size());
+    m_vecKilobotsOrientations.resize(m_tKilobotEntities.size());
     m_vecLastTimeMessaged.resize(m_tKilobotEntities.size());
     m_fMinTimeBetweenTwoMsg = Max<Real>(1.0, m_tKilobotEntities.size() * m_fTimeForAMessage / 3.0);
 
@@ -292,6 +302,9 @@ void CALFClientServer::SetupInitialKilobotState(CKilobotEntity &c_kilobot_entity
     UInt16 unKilobotID = GetKilobotId(c_kilobot_entity);
     m_vecKilobotStates_ALF[unKilobotID] = OUTSIDE_AREAS;
     m_vecLastTimeMessaged[unKilobotID] = -1000;
+
+    m_vecKilobotsPositions[unKilobotID] = GetKilobotPosition(c_kilobot_entity);
+    m_vecKilobotsOrientations[unKilobotID] = GetKilobotOrientation(c_kilobot_entity);
 }
 
 void CALFClientServer::SetupVirtualEnvironments(TConfigurationNode &t_tree)
@@ -318,14 +331,13 @@ void CALFClientServer::SetupVirtualEnvironments(TConfigurationNode &t_tree)
         TConfigurationNode &t_VirtualClusteringHubNode = GetNode(tVirtualEnvironmentsNode, var);
         GetNodeAttribute(t_VirtualClusteringHubNode, "position", multiArea[i].Center);
         GetNodeAttribute(t_VirtualClusteringHubNode, "radius", multiArea[i].Radius);
-        //GetNodeAttribute(t_VirtualClusteringHubNode, "color", multiArea[i].Color);    // use this to read areas color from .argos
     }
     /* Blue set as default color, then some of the areas turn red */
     for (int ai = 0; ai < num_of_areas; ai++)
     {
         multiArea[ai].id = ai;
         multiArea[ai].Completed = false;
-        multiArea[ai].Color = argos::CColor::BLUE;
+        multiArea[ai].Color = argos::CColor::WHITE;
     }
 
     /* Initialization of areas variables */
@@ -335,7 +347,9 @@ void CALFClientServer::SetupVirtualEnvironments(TConfigurationNode &t_tree)
 void CALFClientServer::GetExperimentVariables(TConfigurationNode &t_tree)
 {
     TConfigurationNode &tExperimentVariablesNode = GetNode(t_tree, "variables");
-    GetNodeAttribute(tExperimentVariablesNode, "datafilename", m_strOutputFileName);
+    GetNodeAttribute(tExperimentVariablesNode, "kilo_filename", m_strKiloOutputFileName);
+    GetNodeAttribute(tExperimentVariablesNode, "area_filename", m_strAreaOutputFileName);
+    GetNodeAttribute(tExperimentVariablesNode, "task_filename", m_strTaskOutputFileName);
     GetNodeAttributeOrDefault(tExperimentVariablesNode, "dataacquisitionfrequency", m_unDataAcquisitionFrequency, m_unDataAcquisitionFrequency);
     GetNodeAttributeOrDefault(tExperimentVariablesNode, "m_unEnvironmentPlotUpdateFrequency", m_unEnvironmentPlotUpdateFrequency, m_unEnvironmentPlotUpdateFrequency);
     GetNodeAttributeOrDefault(tExperimentVariablesNode, "timeforonemessage", m_fTimeForAMessage, m_fTimeForAMessage);
@@ -344,7 +358,8 @@ void CALFClientServer::GetExperimentVariables(TConfigurationNode &t_tree)
 void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
 {
     UInt16 unKilobotID = GetKilobotId(c_kilobot_entity);
-    CVector2 cKilobotPosition = GetKilobotPosition(c_kilobot_entity);
+    m_vecKilobotsPositions[unKilobotID] = GetKilobotPosition(c_kilobot_entity);
+    m_vecKilobotsOrientations[unKilobotID] = GetKilobotOrientation(c_kilobot_entity);
 
     /* Listen for the other ALF communication */
     memset(inputBuffer, 0, 30);
@@ -425,6 +440,8 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
                 /*fill own color field */
                 if (client_task[i] == '1')
                     multiArea[i].Color = argos::CColor::RED;
+                else
+                    multiArea[i].Color = argos::CColor::BLUE;
             }
 
             std::cout << "Multi areas: \n";
@@ -573,19 +590,19 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
             }
         }
 
-        std::cout << "Sending: ";
+        // std::cout << "Sending: ";
         /* Send the message to the other ALF*/
         if (mode == "SERVER")
         {
             if (initialised == false)
             {
-                std::cout << initialise_buffer << std::endl;
+                // std::cout << initialise_buffer << std::endl;
                 send(clientSocket, initialise_buffer.c_str(), initialise_buffer.size() + 1, 0);
             }
             else
             {
                 // std::cout<<"mando update\n";
-                std::cout << outputBuffer << std::endl;
+                // std::cout << outputBuffer << std::endl;
                 send(clientSocket, outputBuffer.c_str(), outputBuffer.size() + 1, 0);
             }
         }
@@ -597,18 +614,18 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
             if (initialised == false)
             {
                 client_str = "Missing parameters";
-                std::cout << client_str << std::endl;
+                // std::cout << client_str << std::endl;
                 send(serverSocket, client_str.c_str(), client_str.size() + 1, 0);
             }
             else if (storeBuffer[0] == 73) //73 is the ASCII binary for "I"
             {
                 client_str = "Received parameters";
-                std::cout << client_str << std::endl;
+                // std::cout << client_str << std::endl;
                 send(serverSocket, client_str.c_str(), client_str.size() + 1, 0);
             }
             else
             {
-                std::cout << outputBuffer << std::endl;
+                // std::cout << outputBuffer << std::endl;
                 send(serverSocket, outputBuffer.c_str(), outputBuffer.size() + 1, 0);
             }
         }
@@ -624,7 +641,7 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
             /* Check if the kilobot is entered in a task area */
             for (int i = 0; i < num_of_areas; i++)
             {
-                Real fDistance = Distance(cKilobotPosition, multiArea[i].Center);
+                Real fDistance = Distance(m_vecKilobotsPositions[unKilobotID], multiArea[i].Center);
                 if ((fDistance < (multiArea[i].Radius * 1)) && (multiArea[i].Completed == false))
                 { //*1 is a threshold, to include the boarder increase it
                     m_vecKilobotStates_ALF[unKilobotID] = INSIDE_AREA;
@@ -702,7 +719,7 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
         case LEAVING:
         {
             /* Case in which the robot is inside an area but it is moving */
-            Real fDistance = Distance(cKilobotPosition, multiArea[whereis[unKilobotID]].Center);
+            Real fDistance = Distance(m_vecKilobotsPositions[unKilobotID], multiArea[whereis[unKilobotID]].Center);
             /* Check when the robot is back outside  */
             if (fDistance > (multiArea[whereis[unKilobotID]].Radius) || multiArea[whereis[unKilobotID]].Completed == true)
             {
@@ -794,35 +811,33 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
 
     /********* WALL AVOIDANCE STUFF *************/
     UInt8 proximity_sensor_dec = 0; //8 bit proximity sensor as decimal
-    CVector2 cKilobotPosition = GetKilobotPosition(c_kilobot_entity);
-    CRadians cKilobotOrientation = GetKilobotOrientation(c_kilobot_entity);
     UInt16 unKilobotID = GetKilobotId(c_kilobot_entity);
 
-    // std::cerr<<unKilobotID<<'\t'<<cKilobotPosition<<std::endl;
-    if (fabs(cKilobotPosition.GetX()) > kDistance_threshold ||
-        fabs(cKilobotPosition.GetY()) > kDistance_threshold)
+    // std::cerr<<unKilobotID<<'\t'<<m_vecKilobotsPositions[unKilobotID]<<std::endl;
+    if (fabs(m_vecKilobotsPositions[unKilobotID].GetX()) > kDistance_threshold ||
+        fabs(m_vecKilobotsPositions[unKilobotID].GetY()) > kDistance_threshold)
     {
         std::vector<int> proximity_vec;
 
-        if (cKilobotPosition.GetX() > kDistance_threshold)
+        if (m_vecKilobotsPositions[unKilobotID].GetX() > kDistance_threshold)
         {
             // std::cerr<<"RIGHT\n";
-            proximity_vec = Proximity_sensor(right_direction, cKilobotOrientation.GetValue(), proximity_bits);
+            proximity_vec = Proximity_sensor(right_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
         }
-        else if (cKilobotPosition.GetX() < -1.0 * kDistance_threshold)
+        else if (m_vecKilobotsPositions[unKilobotID].GetX() < -1.0 * kDistance_threshold)
         {
             // std::cerr<<"LEFT\n";
-            proximity_vec = Proximity_sensor(left_direction, cKilobotOrientation.GetValue(), proximity_bits);
+            proximity_vec = Proximity_sensor(left_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
         }
 
-        if (cKilobotPosition.GetY() > kDistance_threshold)
+        if (m_vecKilobotsPositions[unKilobotID].GetY() > kDistance_threshold)
         {
             // std::cerr<<"UP\n";
             if (proximity_vec.empty())
-                proximity_vec = Proximity_sensor(up_direction, cKilobotOrientation.GetValue(), proximity_bits);
+                proximity_vec = Proximity_sensor(up_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
             else
             {
-                std::vector<int> prox = Proximity_sensor(up_direction, cKilobotOrientation.GetValue(), proximity_bits);
+                std::vector<int> prox = Proximity_sensor(up_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
                 std::vector<int> elementwiseOr;
                 elementwiseOr.reserve(prox.size());
                 std::transform(proximity_vec.begin(), proximity_vec.end(), prox.begin(), std::back_inserter(elementwiseOr), std::logical_or<>());
@@ -830,14 +845,14 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
                 proximity_vec = elementwiseOr;
             }
         }
-        else if (cKilobotPosition.GetY() < -1.0 * kDistance_threshold)
+        else if (m_vecKilobotsPositions[unKilobotID].GetY() < -1.0 * kDistance_threshold)
         {
             // std::cerr<<"DOWN\n";
             if (proximity_vec.empty())
-                proximity_vec = Proximity_sensor(down_direction, cKilobotOrientation.GetValue(), proximity_bits);
+                proximity_vec = Proximity_sensor(down_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
             else
             {
-                std::vector<int> prox = Proximity_sensor(up_direction, cKilobotOrientation.GetValue(), proximity_bits);
+                std::vector<int> prox = Proximity_sensor(up_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
                 std::vector<int> elementwiseOr;
                 elementwiseOr.reserve(prox.size());
                 std::transform(proximity_vec.begin(), proximity_vec.end(), prox.begin(), std::back_inserter(elementwiseOr), std::logical_or<>());
@@ -900,7 +915,7 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
             // std::cerr<<"sending outside from leaving\n";
         }
 
-        if ((fabs(cKilobotPosition.GetX()) > kDistance_threshold || fabs(cKilobotPosition.GetY()) > kDistance_threshold) &&
+        if ((fabs(m_vecKilobotsPositions[unKilobotID].GetX()) > kDistance_threshold || fabs(m_vecKilobotsPositions[unKilobotID].GetY()) > kDistance_threshold) &&
             ((int)m_vecKilobotStates_ALF[unKilobotID] != INSIDE_AREA))
         {
             tKilobotMessage.m_sData = proximity_sensor_dec;
@@ -969,7 +984,61 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
     }
 }
 
-CColor CALFClientServer::GetFloorColor(const CVector2 &vec_position_on_plane)
+void CALFClientServer::PostStep()
+{
+    KiloLOG();
+}
+
+void CALFClientServer::KiloLOG()
+{
+
+    internal_counter += 1;
+    if (internal_counter % m_unDataAcquisitionFrequency == 0 || internal_counter <= 1)
+    {
+        std::cerr << "Logging kiloposition\n";
+        m_kiloOutput.open(m_strKiloOutputFileName, std::ios_base::app);
+
+        m_kiloOutput
+            << std::noshowpos << std::setw(4) << std::setprecision(0) << std::setfill('0')
+            << m_fTimeInSeconds << '\t';
+        for (size_t kID = 0; kID < m_vecKilobotsPositions.size(); kID++)
+        {
+            m_kiloOutput
+                // << kID << '\t'
+                // << m_vecKilobotStates_ALF[kID] << '\t' //TODO: this should be the colour, but for now is the state
+                // << m_vecKilobotsPositions[kID].GetX() << '\t'
+                // << m_vecKilobotsPositions[kID].GetY() << '\t'
+                // << m_vecKilobotsOrientations[kID] << '\t'
+                // << m_vecKilobotStates_ALF[kID];
+
+                // << std::noshowpos
+                << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
+                << kID << '\t'
+                << std::noshowpos << std::setw(1) << std::setprecision(0)
+                << m_vecKilobotStates_ALF[kID] << '\t' //TODO: this should be the colour, but for now is the state
+                << std::internal << std::showpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
+                << m_vecKilobotsPositions[kID].GetX() << '\t'
+                << std::internal << std::showpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
+                << m_vecKilobotsPositions[kID].GetY() << '\t'
+                << std::internal << std::showpos << std::setw(6) << std::setprecision(4) << std::setfill('0') << std::fixed
+                << m_vecKilobotsOrientations[kID].GetValue() << '\t'
+                << std::noshowpos << std::setw(1) << std::setprecision(0)
+                << m_vecKilobotStates_ALF[kID] << '\t';
+
+            std::cerr
+                << m_vecKilobotsPositions[kID].GetX() << '\t'
+                << m_vecKilobotsPositions[kID].GetY() << '\n';
+        }
+        m_kiloOutput << std::endl;
+        std::cerr << std::endl;
+
+        //internal_counter = 0;
+    }
+    m_kiloOutput.close();
+}
+
+CColor
+CALFClientServer::GetFloorColor(const CVector2 &vec_position_on_plane)
 {
     CColor cColor = CColor::WHITE;
     /* Draw areas until they are needed, once that task is completed the corresponding area disappears */

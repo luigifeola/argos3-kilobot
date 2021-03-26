@@ -2,4 +2,4 @@ build
 results
 data_file.tsv
 data_file.txt
-positions_file.tsv
+*.tsv

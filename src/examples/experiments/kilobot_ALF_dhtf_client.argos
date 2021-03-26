@@ -54,8 +54,10 @@
 
         
         <variables
-            datafilename="data_file.txt"
-            dataacquisitionfrequency="100"  
+            kilo_filename="kiloLOG_client.tsv"
+            area_filename="areaLOG_client.tsv"
+            task_filename="completed_taskLOG_client.tsv"
+            dataacquisitionfrequency="20"  
             environmentplotupdatefrequency="10"
             timeforonemessage="0.05">
         </variables>
@@ -119,7 +121,7 @@
         <distribute>
             <position method="uniform" min="-0.4,-0.4,0" max="0.4,0.4,0" />
             <orientation method="uniform" min="0,0,0" max="360,0,0" />
-            <entity quantity="50" max_trials="100">
+            <entity quantity="10" max_trials="100">
                 <kilobot id="kb">
                     <controller config="listener"/> <dynamics2d friction="0.7" />
                 </kilobot>

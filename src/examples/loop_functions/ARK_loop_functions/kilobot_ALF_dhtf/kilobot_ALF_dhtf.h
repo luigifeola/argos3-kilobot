@@ -67,6 +67,8 @@ public:
 
     virtual void Reset();
 
+    virtual void PostStep();
+
     virtual void Destroy();
 
     /** Setup the initial state of the Kilobots in the space */
@@ -99,6 +101,9 @@ public:
 
     /** Simulate proximity sensor*/
     std::vector<int> Proximity_sensor(CVector2 obstacle_direction, Real kOrientation, int num_sectors);
+
+    /** Get the message to send to a Kilobot according to its position */
+    void KiloLOG();
 
 private:
     /************************************/
@@ -142,7 +147,6 @@ private:
         UInt8 G;
         UInt8 B;
     };
-    std::vector<FloorColorData> m_vecKilobotData;
 
     std::string mode;    //can be SERVER or CLIENT
     std::string IP_ADDR; //ip address where to connect
@@ -176,8 +180,6 @@ private:
     std::vector<UInt8> contained; //how many KBs the area "i" contains
                                   /*********************************************************/
 
-    std::vector<SRobotState> m_vecKilobotStates_ALF;
-    std::vector<SRobotState> m_vecKilobotStates_transmit;
     std::vector<Real> m_vecLastTimeMessaged;
     Real m_fMinTimeBetweenTwoMsg;
 
@@ -185,11 +187,20 @@ private:
     /*       Experiment variables       */
     /************************************/
 
-    /* output file for data acquizition */
-    std::ofstream m_cOutput;
+    /*Kilobots properties*/
+    std::vector<CVector2> m_vecKilobotsPositions;
+    std::vector<CRadians> m_vecKilobotsOrientations;
+    std::vector<SRobotState> m_vecKilobotStates_ALF;
+
+    /* output LOG files */
+    std::ofstream m_kiloOutput;
+    std::ofstream m_areaOutput;
+    std::ofstream m_taskOutput;
 
     /* output file name*/
-    std::string m_strOutputFileName;
+    std::string m_strKiloOutputFileName;
+    std::string m_strAreaOutputFileName;
+    std::string m_strTaskOutputFileName;
 
     /* data acquisition frequency in ticks */
     UInt16 m_unDataAcquisitionFrequency;
