@@ -69,6 +69,8 @@ public:
 
     virtual void PostStep();
 
+    virtual void PostExperiment();
+
     virtual void Destroy();
 
     /** Setup the initial state of the Kilobots in the space */
@@ -108,6 +110,9 @@ public:
     /** Log area pos, type, state (completed or not) */
     void AreaLOG();
 
+    /** Log areas when completed */
+    void experimentLOG(int &areaID);
+
 private:
     /************************************/
     /*  Virtual Environment variables   */
@@ -121,8 +126,11 @@ private:
         CColor Color;
         int contained;
         bool Completed; //set to "true" after the task is completed
+        Real creationTime;
+        Real completitionTime;
     };
     std::vector<SVirtualArea> multiArea;
+    std::vector<SVirtualArea> completedAreas;
 
     typedef enum //states of the kilobots
     {
