@@ -110,9 +110,6 @@ public:
     /** Log area pos, type, state (completed or not) */
     void AreaLOG();
 
-    /** Log areas when completed */
-    void experimentLOG(int &areaID);
-
 private:
     /************************************/
     /*  Virtual Environment variables   */
@@ -178,7 +175,6 @@ private:
     int clientSocket;                          //socket variable
     UInt8 num_of_areas;                        //initial number of clustering areas i.e. 16, will be reduced to desired_num_of_areas
     double kRespawnTimer;                      //when completed, timer starts and when it will expire the area is reactivated
-    std::vector<double> vCompletedTime;        //vector with completition time
     bool initialised;                          // true when client ACK the initial setup
 
     /**********************************************************
