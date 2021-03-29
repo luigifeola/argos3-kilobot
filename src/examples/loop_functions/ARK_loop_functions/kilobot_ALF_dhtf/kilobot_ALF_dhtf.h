@@ -102,8 +102,11 @@ public:
     /** Simulate proximity sensor*/
     std::vector<int> Proximity_sensor(CVector2 obstacle_direction, Real kOrientation, int num_sectors);
 
-    /** Get the message to send to a Kilobot according to its position */
+    /** Log Kilobot pose and state */
     void KiloLOG();
+
+    /** Log area pos, type, state (completed or not) */
+    void AreaLOG();
 
 private:
     /************************************/
@@ -116,6 +119,7 @@ private:
         CVector2 Center;
         Real Radius;
         CColor Color;
+        int contained;
         bool Completed; //set to "true" after the task is completed
     };
     std::vector<SVirtualArea> multiArea;
