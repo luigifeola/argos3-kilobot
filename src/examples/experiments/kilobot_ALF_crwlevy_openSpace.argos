@@ -50,7 +50,7 @@
         </tracking>
 
         <variables
-            crw = "0.3"
+            crw = "0.9"
             levy = "2.0"
             bias_prob = "0.1"
             positionsfilename="positions_file.tsv"

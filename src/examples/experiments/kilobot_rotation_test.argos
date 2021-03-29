@@ -5,10 +5,9 @@
   <!-- * General configuration * -->
   <!-- ************************* -->
   <framework>
-    <system threads="0" />
+    <system threads="4" />
     <experiment length="0"
-                ticks_per_second="31"
-                random_seed="124" />
+                ticks_per_second="10" />
   </framework>
 
   <!-- *************** -->
@@ -18,6 +17,9 @@
 
     <kilobot_controller id="kbc">
       <actuators>
+        <differential_steering implementation="default" />
+        bias_avg="0"
+        bias_stddev="0"
         <kilobot_led implementation="default" />
       </actuators>
       <sensors />
@@ -54,7 +56,14 @@
   <visualization>
     <qt-opengl>
       <camera>
-        <placement idx="0" position="-0.0718156,0,0.109999" look_at="0.642327,0,-0.590002" lens_focal_length="20" />
+          <placement idx="0" position="-0.0718156,0,0.109999" look_at="0.642327,0,-0.590002" lens_focal_length="20" />
+          <placement idx="1" position="0.0,-0.00001,0.5" look_at="0,0,0" lens_focal_length="12" />
+          <placement idx="7" position="0,0,1" look_at="0,0,0" lens_focal_length="12" />
+          <placement idx="2" position="0.45,-0.45,1" look_at="0.45,-0.45,0" lens_focal_length="20" />
+          <placement idx="3" position="0.45,0.45,1" look_at="0.45,0.45,0" lens_focal_length="20" />
+          <placement idx="4" position="-0.45,0.45,1" look_at="-0.45,0.45,0" lens_focal_length="20" />
+          <placement idx="5" position="-0.45,-0.45,1" look_at="-0.45,-0.45,0" lens_focal_length="20" />
+          <placement idx="6" position="-0.0229259,-0.177184,0.0725521" look_at="0.0273839,0.812385,-0.0624333" lens_focal_length="20" />
       </camera>
     </qt-opengl>
   </visualization>

@@ -6,7 +6,7 @@ if(ARGOS_BUILD_FOR_SIMULATOR)
   #
   add_executable(blinky blinky.c)
   target_link_libraries(blinky argos3plugin_simulator_kilolib)
-
+ 
   #
   # Lab1.2: Simple Movement
   #
@@ -113,8 +113,16 @@ if(ARGOS_BUILD_FOR_SIMULATOR)
   target_link_libraries(crwlevy_with_positioning argos3plugin_simulator_kilolib)
 
   #
+  # My test : pi/2 left rotation
+  #
+  add_executable(test_rotation test_rotation.c)
+  target_link_libraries(test_rotation argos3plugin_simulator_kilolib)
+
+  #
   # Debugging example
   #
   add_executable(test_debug test_debug.h test_debug.c)
   target_link_libraries(test_debug argos3plugin_simulator_kilolib)
   endif(ARGOS_BUILD_FOR_SIMULATOR)
+
+

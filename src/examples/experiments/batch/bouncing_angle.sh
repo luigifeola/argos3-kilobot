@@ -17,7 +17,7 @@ if [ ! -e $base_config ]; then
     fi
 fi
 
-res_dir=$wdir/"results/random_angle_"$RUNS"_runs" 
+res_dir=$wdir/"results/new_alpha/random_angle_"$RUNS"_runs_100_robots" 
 if [[ ! -e $res_dir ]]; then
     mkdir $res_dir
 else
@@ -29,7 +29,7 @@ base_dir=`dirname $base_config`
 echo base_dir $base_dir
 echo "$CONFIGURATION_FILE" | egrep "^$SHARED_DIR" &> /dev/null || exit 1
 
-numrobots="50"
+numrobots="100"
 
 # 1 for SIMPLE_EXPERIMENT
 # 2 for OBSTACLE_AVOIDANCE_EXPERIMENT
@@ -37,11 +37,11 @@ experiment_type="2"
 
 # controlla che sia bouncing angle e non random angle
 #aggiusta levy crw e seed
-levy="1.2 1.6 2.0"
+levy="1.4 1.8"
 crw="0.0 0.3 0.6 0.9"
 bias_prob="0.0"
 numWalls="100"
-arenaSize="2, 2, 4"
+arenaSize="1, 1, 4"
 radius="0.46"
 
 #################################
@@ -58,7 +58,7 @@ for nrob in $numrobots; do
             mkdir $param_dir
         fi
 
-            for it in $(seq 21 $RUNS); do
+            for it in $(seq 1 $RUNS); do
 
                 config=`printf 'config_nrob%d_levy%02d_crw%03d_seed%03d.argos' $nrob $par1 $par2 $it`
                 echo config $config

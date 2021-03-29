@@ -17,7 +17,7 @@ if [ ! -e $base_config ]; then
     fi
 fi
 
-res_dir=$wdir/"results/bias_experiment_"$RUNS"_runs" 
+res_dir=$wdir/"results/new_alpha/bias_experiment_"$RUNS"_runs_100_robs" 
 if [[ ! -e $res_dir ]]; then
     mkdir $res_dir
 else
@@ -29,12 +29,12 @@ base_dir=`dirname $base_config`
 echo base_dir $base_dir
 echo "$CONFIGURATION_FILE" | egrep "^$SHARED_DIR" &> /dev/null || exit 1
 
-numrobots="10 20 50 100"
+numrobots="10 20 50"
 
-
-
+# 1 for SIMPLE_EXPERIMENT
+# 2 for OBSTACLE_AVOIDANCE_EXPERIMENT
 experiment_type="2"
-levy="1.2 1.6 2.0"
+levy="1.4 1.8"
 crw="0.0 0.3 0.6 0.9"
 bias_prob="0.1"
 numWalls="0"

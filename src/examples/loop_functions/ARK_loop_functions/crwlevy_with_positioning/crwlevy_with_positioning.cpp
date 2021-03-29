@@ -48,7 +48,6 @@ void CCrwlevyALFPositioning::Reset() {
     /* Reopen the file, erasing its contents */
     m_cOutput.open(m_strOutputFileName, std::ios_base::trunc | std::ios_base::out);
     m_cOutputPositions.open(m_strPositionsFileName, std::ios_base::trunc | std::ios_base::out);
-
 }
 
 /****************************************/
@@ -256,11 +255,12 @@ void CCrwlevyALFPositioning::SetupVirtualEnvironments(TConfigurationNode& t_tree
     GetNodeAttribute(t_VirtualClusteringHubNode, "color", m_sClusteringHub.Color);
 
     /* Show origin position */
-    SVirtualArea temp_area2;
-    temp_area2.Center = CVector2(0,0);
-    temp_area2.Radius = 0.0165;
-    temp_area2.Color = CColor::MAGENTA;
-    m_TargetAreas.push_back(temp_area2);
+    // SVirtualArea temp_area2;
+    // temp_area2.Center = CVector2(0,0);
+    // temp_area2.Radius = 0.0165;
+    // temp_area2.Color = CColor::MAGENTA;
+    // m_TargetAreas.push_back(temp_area2);
+    
     /* Show some position */
     // SVirtualArea temp_area3;
     // temp_area3.Center = CVector2(0,0.45);
@@ -470,18 +470,18 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
 
                     /**************************Bouncing angle***************************/
                     // CRadians alpha = NormalizedDifference(ATan2(kiloPosition.GetY(),kiloPosition.GetX()) + CRadians::PI , kiloOrientation);
-                    // std::cout<<"NormDiff:"<<ToDegrees(alpha) <<std::endl;
-                    // std::cout<<"Sin(alpha):"<<Sin(alpha);
-                    // std::cout<<"Sin(gamma)"<<Distance(kiloPosition, CVector2(0,0)) / radius * Sin(alpha)<<std::endl;
+                    // // std::cout<<"NormDiff:"<<ToDegrees(alpha) <<std::endl;
+                    // // std::cout<<"Sin(alpha):"<<Sin(alpha);
+                    // // std::cout<<"Sin(gamma)"<<Distance(kiloPosition, CVector2(0,0)) / radius * Sin(alpha)<<std::endl;
                     // CRadians bouncing_angle = ASin( Distance(kiloPosition, CVector2(0,0)) / radius * Sin(alpha) );
-                    // std::cout<<"Asin(alpha): "<<ToDegrees(bouncing_angle)<<std::endl;
+                    // // std::cout<<"Asin(alpha): "<<ToDegrees(bouncing_angle)<<std::endl;
 
                     // CRadians bias = CRadians::PI - 2.0 * bouncing_angle;
-                    // std::cout<<"bias before control:"<<ToDegrees(bias)<<std::endl;
-                    // std::cout<<"bias:"<<ToDegrees(bias)<<std::endl;
+                    // // std::cout<<"bias before control:"<<ToDegrees(bias)<<std::endl;
+                    // // std::cout<<"bias:"<<ToDegrees(bias)<<std::endl;
                     /*********************************************************************************************************/
 
-                    /******************* Bias angle + random in [-90,+90] *****************************/
+                    /******************* RANDOM_ANGLE : Bias angle + random in [-90,+90] *************************************/
                     CRadians bias = ATan2(-kiloPosition.GetY(), 
                                                         -kiloPosition.GetX()) 
                                                         - kiloOrientation; //+ CRadians::PI_OVER_TWO;
@@ -489,7 +489,7 @@ void CCrwlevyALFPositioning::UpdateKilobotState(CKilobotEntity &c_kilobot_entity
                     /*Random angle in [-Pi,Pi]*/
                     CRadians rand_rot_angle(c_rng->Uniform(CRange<Real>(-CRadians::PI_OVER_TWO.GetValue(), CRadians::PI_OVER_TWO.GetValue())));
                     bias += rand_rot_angle;
-                    /***************************************************************************************/
+                    /**********************************************************************************************************/
                     
                     bias.SignedNormalize(); //map angle in [-pi,pi]
                     // std::cout<<"biasSignedNormalized:"<<ToDegrees(bias)<<std::endl;

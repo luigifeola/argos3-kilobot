@@ -5,6 +5,8 @@ if [ "$#" -ne 2 ]; then
     exit 11
 fi
 
+RUNS=100
+
 wdir=`pwd`
 base_config=$1$2
 if [ ! -e $base_config ]; then
@@ -15,9 +17,10 @@ if [ ! -e $base_config ]; then
     fi
 fi
 
-res_dir=$wdir/"results/simple_experiment_100"
+res_dir=$wdir/"results/new_alpha/simple_experiment_"$RUNS"_runs"
 if [[ ! -e $res_dir ]]; then
     mkdir $res_dir
+    echo "mkdir: directory '$res_dir' "
 else
     echo "Error: directory '$res_dir' already exists" 
     exit 1
@@ -32,20 +35,18 @@ numrobots="10 20 50 100"
 # 1 for SIMPLE_EXPERIMENT
 # 2 for OBSTACLE_AVOIDANCE_EXPERIMENT
 experiment_type="1"
-
-levy="1.2 1.6 2.0"
+levy="1.4 1.8"
 crw="0.0 0.3 0.6 0.9"
 bias_prob="0.0"
 numWalls="100"
 arenaSize="3, 3, 4"
-arenaRadius="0.46"
+radius="0.46"
 
 #################################
 # experiment_length is in seconds
 #################################
 experiment_length="1800"
 date_time=`date "+%Y-%m-%d"`
-RUNS=20
 
 for nrob in $numrobots; do
     for par1 in $levy; do
@@ -62,7 +63,7 @@ for nrob in $numrobots; do
                 cp $base_config $config
                 sed -i "s|__NUMROBOTS__|$nrob|g" $config
                 sed -i "s|__BIASPROB__|$bias_prob|g" $config
-                sed -i "s|__RADIUS__|$arenaRadius|g" $config
+                sed -i "s|__RADIUS__|$radius|g" $config
                 sed -i "s|__EXPERIMENT__|$experiment_type|g" $config
                 sed -i "s|__NUMWALLS__|$numWalls|g" $config
                 sed -i "s|__ARENASIZE__|$arenaSize|g" $config
