@@ -6,7 +6,7 @@
     <!-- ************************* -->
     <framework>
         <system threads="4" />
-        <experiment length="900"
+        <experiment length="60"
         ticks_per_second="10"
         random_seed="89" />
     </framework>
@@ -43,7 +43,8 @@
             mode="CLIENT"
             ip_addr="127.0.0.1"
             augmented_knowledge="true"
-            timeout_const="5">
+            timeout_const="5"
+            factor_timer ="1">
         </extra_parameters>    
 
         <tracking

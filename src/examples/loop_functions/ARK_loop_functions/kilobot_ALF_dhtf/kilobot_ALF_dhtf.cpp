@@ -1,5 +1,6 @@
 #include "kilobot_ALF_dhtf.h"
 
+// #define DEBUG
 namespace
 {
     const int port = 7001;
@@ -44,6 +45,7 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
     GetNodeAttribute(tModeNode, "ip_addr", IP_ADDR);
     GetNodeAttribute(tModeNode, "timeout_const", TIMEOUT_CONST);
     GetNodeAttribute(tModeNode, "augmented_knowledge", augmented_knowledge);
+    GetNodeAttribute(tModeNode, "factor_timer", kTimerMultiplier);
 
     /* Randomly select the desired number of tasks between the available ones, set color and communicate them to the client */
     if (mode == "SERVER")
@@ -64,9 +66,6 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
         std::vector<int> hard_tasks_vec;
         std::vector<int> hard_tasks_client_vec;
         otherColor.resize(desired_num_of_areas);
-
-        vCompletedTime.resize(desired_num_of_areas);
-        std::fill(vCompletedTime.begin(), vCompletedTime.end(), 0.0);
 
         num_of_areas = desired_num_of_areas;
         /* Active IDs */
@@ -116,6 +115,7 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
         }
         std::sort(hard_tasks_client_vec.begin(), hard_tasks_client_vec.end());
 
+#ifdef DEBUG
         std::cout << "***********Active areas*****************\n";
         for (int ac_ar : activated_areas)
         {
@@ -136,6 +136,7 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
             std::cout << h_t_c << '\t';
         }
         std::cout << std::endl;
+#endif
 
         /* 0-1 vector indicatind if the active area is hard or soft type */
         // preparint initialise ("I") server message
@@ -237,6 +238,7 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
         char service[NI_MAXSERV];
         memset(host, 0, NI_MAXHOST);
         memset(service, 0, NI_MAXSERV);
+#ifdef DEBUG
         if (getnameinfo((sockaddr *)&client, sizeof(client), host, NI_MAXHOST, service, NI_MAXSERV, 0) == 0)
         {
             std::cout << host << " connected on port " << service << std::endl;
@@ -248,6 +250,12 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
             std::cout << host << " connected on port " << ntohs(client.sin_port) << std::endl;
             std::cout << "Somebody has connected on port " << service << std::endl;
         }
+#else
+        if (getnameinfo((sockaddr *)&client, sizeof(client), host, NI_MAXHOST, service, NI_MAXSERV, 0) != 0)
+        {
+            inet_ntop(AF_INET, &client.sin_addr, host, NI_MAXHOST);
+        }
+#endif
         close(serverSocket);
     }
     if (mode == "CLIENT")
@@ -387,8 +395,9 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
         // Print received message
         // std::cout<<storeBuffer<<std::endl;
         std::string my_string(inputBuffer);
-        if (!my_string.empty())
-            std::cout << "Received:" << my_string << std::endl;
+
+        // if (!my_string.empty())
+        //     std::cout << m_fTimeInSeconds << "\tReceived:" << my_string << std::endl;
     }
     // else
     // {
@@ -412,9 +421,10 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
             otherColor.resize(num_of_areas);
             std::string server_task(storebuffer.begin() + num_of_areas, storebuffer.begin() + 2 * num_of_areas);
             std::string client_task(storebuffer.begin() + 2 * num_of_areas, storebuffer.end());
-            std::cout << server_task << std::endl;
-            std::cout << client_task << std::endl;
-            std::cout << "num of areas: " << num_of_areas << std::endl;
+
+            // std::cout << server_task << std::endl;
+            // std::cout << client_task << std::endl;
+            // std::cout << "num of areas: " << num_of_areas << std::endl;
 
             std::vector<int> active_areas;
             for (int i = 0; i < num_of_areas; i++)
@@ -423,11 +433,11 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
                 // std::cout << "storebuffer[i] "<< storebuffer[i] << std::endl;
             }
 
-            std::cout << "Active areas: \n";
-            for (int id : active_areas)
-            {
-                std::cout << id << std::endl;
-            }
+            // std::cout << "Active areas: \n";
+            // for (int id : active_areas)
+            // {
+            //     std::cout << id << std::endl;
+            // }
 
             for (int i = 0; i < multiArea.size(); i++)
             {
@@ -448,11 +458,11 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
                     multiArea[i].Color = argos::CColor::BLUE;
             }
 
-            std::cout << "Multi areas: \n";
-            for (int id : active_areas)
-            {
-                std::cout << id << std::endl;
-            }
+            // std::cout << "Multi areas: \n";
+            // for (int id : active_areas)
+            // {
+            //     std::cout << id << std::endl;
+            // }
 
             // std::cout<<"Recv_str "<<storeBuffer<<std::endl;
             initialised = true;
@@ -466,12 +476,37 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
             {
                 if (storeBuffer[a + 1] - 48 == 0)
                 {
-                    multiArea[a].Completed = false;
+                    if (multiArea[a].Completed == true)
+                    {
+                        multiArea[a].Completed = false;
+                        multiArea[a].contained = 0;
+                        multiArea[a].creationTime = m_fTimeInSeconds;
+                    }
                 }
                 else
                 {
-                    multiArea[a].Completed = true;
-                    // TODO : here you should manage experiment log file for client
+                    if (multiArea[a].Completed == false)
+                    {
+                        multiArea[a].Completed = true;
+                        // WARNING : maybe the bug is here
+                        // multiArea[a].completitionTime = m_fTimeInSeconds;
+                        // completedAreas.push_back(multiArea[a]);
+                        // m_taskOutput
+                        //     << std::noshowpos
+                        //     << std::setw(8) << std::setprecision(4) << std::setfill('0')
+                        //     << multiArea[a].completitionTime << '\t'
+                        //     << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
+                        //     << multiArea[a].id << '\t'
+                        //     << std::internal << std::noshowpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
+                        //     << multiArea[a].creationTime << '\t'
+                        //     << std::internal << std::noshowpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
+                        //     << multiArea[a].completitionTime << '\t'
+                        //     << std::noshowpos << std::setw(1) << std::setprecision(0)
+                        //     << (multiArea[a].Color == argos::CColor::RED ? 1 : 0) << '\t'
+                        //     << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
+                        //     << multiArea[a].contained
+                        //     << std::endl;
+                    }
                 }
             }
         }
@@ -484,7 +519,7 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
         for (int i = 0; i < num_of_areas; i++)
         {
             if ((multiArea[i].Completed == true) &&
-                (m_fTimeInSeconds - vCompletedTime[i] >= kRespawnTimer))
+                (m_fTimeInSeconds - multiArea[i].completitionTime >= kRespawnTimer))
             {
                 multiArea[i].Completed = false;
                 multiArea[i].contained = 0;
@@ -503,14 +538,12 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
                         if ((multiArea[j].Color == argos::CColor::RED) && (multiArea[j].contained >= kHardTask))
                         {
                             multiArea[j].Completed = true;
-                            vCompletedTime[j] = m_fTimeInSeconds;
-                            std::cout << "red-red task completed" << std::endl;
+                            // std::cout << m_fTimeInSeconds << "\tred-red task completed" << std::endl;
                         }
                         if ((multiArea[j].Color == argos::CColor::BLUE) && (multiArea[j].contained >= kSoftTask))
                         {
                             multiArea[j].Completed = true;
-                            vCompletedTime[j] = m_fTimeInSeconds;
-                            std::cout << "blue-red task completed" << std::endl;
+                            // std::cout << m_fTimeInSeconds << "\tblue-red task completed" << std::endl;
                         }
                     }
                     if (otherColor[j] == kBLUE)
@@ -518,22 +551,34 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
                         if ((multiArea[j].Color == argos::CColor::RED) && (multiArea[j].contained >= kHardTask))
                         {
                             multiArea[j].Completed = true;
-                            vCompletedTime[j] = m_fTimeInSeconds;
-                            std::cout << "red-blue task completed" << std::endl;
+                            // std::cout << m_fTimeInSeconds << "\tred-blue task completed" << std::endl;
                         }
                         if ((multiArea[j].Color == argos::CColor::BLUE) && (multiArea[j].contained >= kSoftTask))
                         {
                             multiArea[j].Completed = true;
-                            vCompletedTime[j] = m_fTimeInSeconds;
-                            std::cout << "blue-blue task completed" << std::endl;
+                            // std::cout << m_fTimeInSeconds << "\tblue-blue task completed" << std::endl;
                         }
                     }
 
                     if (multiArea[j].Completed == true)
                     {
-                        //experimentLOG(j);
                         multiArea[j].completitionTime = m_fTimeInSeconds;
-                        completedAreas.push_back(multiArea[j]);
+                        // WARNING : maybe the bug is here
+                        // m_taskOutput
+                        //     << std::noshowpos
+                        //     << std::setw(8) << std::setprecision(4) << std::setfill('0')
+                        //     << multiArea[j].completitionTime << '\t'
+                        //     << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
+                        //     << multiArea[j].id << '\t'
+                        //     << std::internal << std::noshowpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
+                        //     << multiArea[j].creationTime << '\t'
+                        //     << std::internal << std::noshowpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
+                        //     << multiArea[j].completitionTime << '\t'
+                        //     << std::noshowpos << std::setw(1) << std::setprecision(0)
+                        //     << (multiArea[j].Color == argos::CColor::RED ? 1 : 0) << '\t'
+                        //     << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
+                        //     << multiArea[j].contained
+                        //     << std::endl;
                     }
                 }
             }
@@ -598,7 +643,9 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
             }
             else if (storeBuffer[0] == 82)
             {
+#ifdef DEBUG
                 std::cout << "ACK init by client*********\n";
+#endif
                 initialised = true;
             }
         }
@@ -669,18 +716,18 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
                             {
                                 if (otherColor[i] == kRED)
                                 {
-                                    request[unKilobotID] = kRR;
+                                    request[unKilobotID] = kTimerMultiplier * kRR;
                                     // std::cout<<"red-red task 50s\n";
                                 }
                                 if (otherColor[i] == kBLUE)
                                 {
-                                    request[unKilobotID] = kRB;
+                                    request[unKilobotID] = kTimerMultiplier * kRB;
                                     // std::cout<<"red-blue task 30s\n";
                                 }
                             }
                             else
                             {
-                                request[unKilobotID] = kRB;
+                                request[unKilobotID] = kTimerMultiplier * kRB;
                                 // std::cout<<"unknown\n";
                             }
                         }
@@ -690,18 +737,18 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
                             {
                                 if (otherColor[i] == kRED)
                                 {
-                                    request[unKilobotID] = kBR;
+                                    request[unKilobotID] = kTimerMultiplier * kBR;
                                     // std::cout<<"blue-red task 20s\n";
                                 }
                                 if (otherColor[i] == kBLUE)
                                 {
-                                    request[unKilobotID] = kBB;
+                                    request[unKilobotID] = kTimerMultiplier * kBB;
                                     // std::cout<<"blue-blue task 10s\n";
                                 }
                             }
                             else
                             {
-                                request[unKilobotID] = kBB;
+                                request[unKilobotID] = kTimerMultiplier * kBB;
                                 // std::cout<<"unknown\n";
                             }
                         }
@@ -796,6 +843,7 @@ std::vector<int> CALFClientServer::Proximity_sensor(CVector2 obstacle_direction,
 
 void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
 {
+    std::cout << m_fTimeInSeconds << std::endl;
     // std::cerr<< "**Active areas**\n";
     // for (auto item : otherColor)
     // {
@@ -999,66 +1047,18 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
 
 void CALFClientServer::PostStep()
 {
-    internal_counter += 1;
-    if (internal_counter % m_unDataAcquisitionFrequency == 0 || internal_counter <= 1)
-    {
-        // KiloLOG();
-        // AreaLOG();
-    }
+    // internal_counter += 1;
+    // if (internal_counter % m_unDataAcquisitionFrequency == 0 || internal_counter <= 1)
+    // {
+    //     KiloLOG();
+    //     AreaLOG();
+    // }
 }
-
-void CALFClientServer::PostExperiment()
-{
-    // m_taskOutput.open(m_strTaskOutputFileName, std::ios_base::app);
-
-    std::cout << "*************PostExperiment Logging exp variable\n";
-    for (const auto &area : completedAreas)
-    {
-        m_taskOutput
-            << std::noshowpos
-            << std::setw(8) << std::setprecision(4) << std::setfill('0')
-            << area.completitionTime << '\t'
-            << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
-            << area.id << '\t'
-            << std::internal << std::noshowpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
-            << area.creationTime << '\t'
-            << std::internal << std::noshowpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
-            << area.completitionTime << '\t'
-            << std::noshowpos << std::setw(1) << std::setprecision(0)
-            << (area.Color == argos::CColor::RED ? 1 : 0) << '\t'
-            << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
-            << area.contained
-            << std::endl;
-    }
-    // m_taskOutput.close();
-}
-
-// TODO : if not used, remove this func
-// void CALFClientServer::experimentLOG(int &areaID)
-// {
-//     std::cerr << "Logging exp variable\t" << m_fTimeInSeconds << '\t' << multiArea[areaID].id << "\n ";
-//     m_taskOutput.open(m_strTaskOutputFileName, std::ios_base::app);
-//     m_taskOutput
-//         /*<< std::noshowpos */
-//         /*<< std::setw(8) << std::setprecision(4) << std::setfill('0')*/
-//         << m_fTimeInSeconds << '\t'
-//         /*<< std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')*/
-//         << multiArea[areaID].id << '\t'
-//         // << std::internal << std::noshowpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
-//         // << multiArea[areaID].creationTime << '\t'
-//         // << multiArea[areaID].completitionTime << '\t'
-//         // << std::noshowpos << std::setw(1) << std::setprecision(0)
-//         // << (multiArea[areaID].Color == argos::CColor::RED ? 1 : 0) << '\t'
-//         // << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
-//         // << multiArea[areaID].contained
-//         << std::endl;
-//     m_taskOutput.close();
-// }
 
 void CALFClientServer::AreaLOG()
 {
-    std::cerr << "Logging arePosition\n";
-    m_areaOutput.open(m_strAreaOutputFileName, std::ios_base::app);
+    // std::cerr << "Logging arePosition\n";
+    // m_areaOutput.open(m_strAreaOutputFileName, std::ios_base::app);
     m_areaOutput
         << std::noshowpos << std::setw(4) << std::setprecision(0) << std::setfill('0')
         << m_fTimeInSeconds << '\t';
@@ -1079,12 +1079,12 @@ void CALFClientServer::AreaLOG()
         // << multiArea[areaID].
     }
     m_areaOutput << std::endl;
-    m_areaOutput.close();
+    // m_areaOutput.close();
 }
 void CALFClientServer::KiloLOG()
 {
-    std::cerr << "Logging kiloPosition\n";
-    m_kiloOutput.open(m_strKiloOutputFileName, std::ios_base::app);
+    // std::cerr << "Logging kiloPosition\n";
+    // m_kiloOutput.open(m_strKiloOutputFileName, std::ios_base::app);
 
     m_kiloOutput
         << std::noshowpos << std::setw(4) << std::setprecision(0) << std::setfill('0')
@@ -1113,14 +1113,14 @@ void CALFClientServer::KiloLOG()
             << std::noshowpos << std::setw(1) << std::setprecision(0)
             << m_vecKilobotStates_ALF[kID] << '\t';
 
-        std::cerr
-            << m_vecKilobotsPositions[kID].GetX() << '\t'
-            << m_vecKilobotsPositions[kID].GetY() << '\n';
+        // std::cerr
+        //     << m_vecKilobotsPositions[kID].GetX() << '\t'
+        //     << m_vecKilobotsPositions[kID].GetY() << '\n';
     }
     m_kiloOutput << std::endl;
-    std::cerr << std::endl;
+    // std::cerr << std::endl;
 
-    m_kiloOutput.close();
+    // m_kiloOutput.close();
 }
 
 CColor
