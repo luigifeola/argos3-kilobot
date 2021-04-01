@@ -1,5 +1,7 @@
-#ifndef CLUSTRING_ALF_H
-#define CLUSTRING_ALF_H
+#ifndef DHTF_ALF_H
+#define DHTF_ALF_H
+
+#define DEBUGGING
 
 namespace argos
 {
@@ -69,7 +71,11 @@ public:
 
     virtual void PostStep();
 
-    virtual void PostExperiment();
+    /** Log area pos, type, state (completed or not) */
+    void AreaLOG();
+
+    /** Log Kilobot pose and state */
+    void KiloLOG();
 
     virtual void Destroy();
 
@@ -104,12 +110,6 @@ public:
     /** Simulate proximity sensor*/
     std::vector<int> Proximity_sensor(CVector2 obstacle_direction, Real kOrientation, int num_sectors);
 
-    /** Log Kilobot pose and state */
-    void KiloLOG();
-
-    /** Log area pos, type, state (completed or not) */
-    void AreaLOG();
-
 private:
     /************************************/
     /*  Virtual Environment variables   */
@@ -117,17 +117,18 @@ private:
     /* virtual environment struct*/
     struct SVirtualArea //parameters of the circular areas
     {
+#ifdef DEBUGGING
+        Real creationTime = 0.0;
+        Real completitionTime = 0.0;
+#endif
         int id;
         CVector2 Center;
         Real Radius;
         CColor Color;
         int contained;
         bool Completed; //set to "true" after the task is completed
-        Real creationTime;
-        Real completitionTime;
     };
     std::vector<SVirtualArea> multiArea;
-    std::vector<SVirtualArea> completedAreas;
 
     typedef enum //states of the kilobots
     {
@@ -157,9 +158,8 @@ private:
         UInt8 B;
     };
 
-    std::string mode;    //can be SERVER or CLIENT
-    std::string IP_ADDR; //ip address where to connect
-    UInt16 TIMEOUT_CONST;
+    std::string mode;                          //can be SERVER or CLIENT
+    std::string IP_ADDR;                       //ip address where to connect
     bool augmented_knowledge;                  //TRUE: ARK knows the color of areas on the other arena; FALSE: ARK knows color of its own areas only; timeout constant are set consequently
     unsigned int random_seed;                  //to reproduce same random tests
     UInt8 desired_num_of_areas;                //number of exploitable areas for the experiment (max 16)
@@ -174,7 +174,11 @@ private:
     int serverSocket;                          //socket variable
     int clientSocket;                          //socket variable
     UInt8 num_of_areas;                        //initial number of clustering areas i.e. 16, will be reduced to desired_num_of_areas
+    double kTimerMultiplier;                   //multiplicative constant for the timeout study
     double kRespawnTimer;                      //when completed, timer starts and when it will expire the area is reactivated
+                                               // #ifndef DEBUG
+    std::vector<double> vCompletedTime;        //vector with completition time
+                                               // #endif
     bool initialised;                          // true when client ACK the initial setup
 
     /**********************************************************
