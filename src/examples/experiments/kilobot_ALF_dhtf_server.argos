@@ -6,8 +6,9 @@
     <!-- ************************* -->
     <framework>
         <system threads="0" />
-        <experiment length="60" 
-        ticks_per_second="10"/>
+        <experiment length="1000" 
+        ticks_per_second="10"
+        random_seed="89" />
     </framework>
     
     <!-- *************** -->
@@ -18,8 +19,8 @@
         <kilobot_controller id="listener">
             <actuators>
                 <differential_steering implementation="default"
-                bias_avg="0"
-                bias_stddev="0"
+                bias_avg="0.0"
+                bias_stddev="0.0"
                 />
                 <kilobot_led implementation="default" />
             </actuators>
@@ -46,8 +47,7 @@
             desired_num_of_areas="8"
             hard_tasks="4"
             reactivation_timer="40.0"
-            timeout_const="5"
-            factor_timer ="1">
+            timeout_const="1">
         </extra_parameters>
         <!-- Not used if mode set to CLIENT -->
 
@@ -157,7 +157,7 @@
     <!-- ****************** -->
     <!-- * Visualization  * -->
     <!-- ****************** -->
-    <visualization>
+    <!-- <visualization>
         <qt-opengl>
             <frame_grabbing directory="./server_images" base_name="server_" format="png" quality="100" headless_grabbing="false" headless_frame_size="1600x1200" headless_frame_rate="1" />
             <camera>
@@ -170,6 +170,6 @@
                 <placement idx="6" position="-0.0229259,-0.177184,0.0725521" look_at="0.0273839,0.812385,-0.0624333" lens_focal_length="20" />
             </camera>
         </qt-opengl>
-    </visualization>
+    </visualization> -->
     
 </argos-configuration>

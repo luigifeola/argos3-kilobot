@@ -17,7 +17,7 @@ fi
 
 res_dir=$wdir/"results/homogeneus_red_exp"
 if [[ ! -e $res_dir ]]; then
-    mkdir $res_dir
+    cmake -E make_directory $res_dir
 else
     echo "Error: directory '$res_dir' already exists" 
     exit 1
@@ -42,7 +42,7 @@ RUNS=2
 for par1 in $timeout; do
     param_dir=$res_dir/$date_time"_robots#"$numrobots"_"$experiment_length
     if [[ ! -e $param_dir ]]; then
-        mkdir $param_dir
+        cmake -E make_directory $param_dir
     fi
 
     for it in $(seq 1 $RUNS); do
