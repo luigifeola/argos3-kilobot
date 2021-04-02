@@ -6,9 +6,9 @@
     <!-- ************************* -->
     <framework>
         <system threads="0" />
-        <experiment length="1000"
+        <experiment length="__TIMEEXPERIMENT__" 
         ticks_per_second="10"
-        random_seed="89" />
+        random_seed="__SEED__" />
     </framework>
     
     <!-- *************** -->
@@ -40,11 +40,16 @@
         label="kilobot_ALF_dhtf_loop_function">
     
         <extra_parameters
-            mode="CLIENT"
-            ip_addr="127.0.0.1"
+            mode="SERVER"
+            ip_addr="0.0.0.0"
             augmented_knowledge="true"
-            timeout_const="1">
-        </extra_parameters>    
+            random_seed="12" 
+            desired_num_of_areas="8"
+            hard_tasks="__HARDTASKS__"
+            reactivation_timer="40.0"
+            timeout_const="__TIMEOUT__">
+        </extra_parameters>
+        <!-- Not used if mode set to CLIENT -->
 
         <tracking
             position="true"
@@ -54,9 +59,9 @@
 
         
         <variables
-            kilo_filename="kiloLOG_client.tsv"
-            area_filename="areaLOG_client.tsv"
-            task_filename="completed_taskLOG_client.tsv"
+            kilo_filename="__ROBPOSOUTPUT__"
+            area_filename="__AREAPOSOUTPUT__"
+            task_filename="__OUTPUT__"
             dataacquisitionfrequency="20"  
             environmentplotupdatefrequency="10"
             timeforonemessage="0.05">
@@ -121,7 +126,7 @@
         <distribute>
             <position method="uniform" min="-0.4,-0.4,0" max="0.4,0.4,0" />
             <orientation method="uniform" min="0,0,0" max="360,0,0" />
-            <entity quantity="50" max_trials="100">
+            <entity quantity="__NUMROBOTS__" max_trials="100">
                 <kilobot id="kb">
                     <controller config="listener"/> <dynamics2d friction="0.7" />
                 </kilobot>
@@ -152,9 +157,9 @@
     <!-- ****************** -->
     <!-- * Visualization  * -->
     <!-- ****************** -->
-    <visualization>
+    <!-- <visualization>
         <qt-opengl>
-            <frame_grabbing directory="./client_images" base_name="client_" format="png" quality="100" headless_grabbing="false" headless_frame_size="1600x1200" headless_frame_rate="1" />
+            <frame_grabbing directory="./server_images" base_name="server_" format="png" quality="100" headless_grabbing="false" headless_frame_size="1600x1200" headless_frame_rate="1" />
             <camera>
                 <placement idx="0" position="0.0,-0.00001,0.5" look_at="0,0,0" lens_focal_length="12"/>
                 <placement idx="1" position="0,0,1" look_at="0,0,0" lens_focal_length="12" />
@@ -165,6 +170,6 @@
                 <placement idx="6" position="-0.0229259,-0.177184,0.0725521" look_at="0.0273839,0.812385,-0.0624333" lens_focal_length="20" />
             </camera>
         </qt-opengl>
-    </visualization>
+    </visualization> -->
     
 </argos-configuration>

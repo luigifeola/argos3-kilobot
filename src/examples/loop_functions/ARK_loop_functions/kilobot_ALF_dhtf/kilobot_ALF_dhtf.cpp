@@ -48,7 +48,8 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
     /* Randomly select the desired number of tasks between the available ones, set color and communicate them to the client */
     if (mode == "SERVER")
     {
-        GetNodeAttribute(tModeNode, "random_seed", random_seed);
+        random_seed = GetSimulator().GetRandomSeed();
+        //GetNodeAttribute(tModeNode, "random_seed", random_seed);
         GetNodeAttribute(tModeNode, "desired_num_of_areas", desired_num_of_areas);
         GetNodeAttribute(tModeNode, "hard_tasks", hard_tasks);
         GetNodeAttribute(tModeNode, "reactivation_timer", kRespawnTimer);
@@ -252,7 +253,12 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
     }
     if (mode == "CLIENT")
     {
-        connect(serverSocket, (sockaddr *)&hint, sizeof(hint));
+        int conn = -1;
+        do
+        {
+            conn = connect(serverSocket, (sockaddr *)&hint, sizeof(hint));
+            // std::cout << "CONNECTION VALUE: " << conn << std::endl;
+        } while (conn != 0);
     }
 }
 
@@ -280,9 +286,6 @@ void CALFClientServer::Destroy()
     {
         close(serverSocket);
     }
-#ifndef DEBUGGING
-    multiArea.clear();
-#endif
 }
 
 void CALFClientServer::SetupInitialKilobotStates()
