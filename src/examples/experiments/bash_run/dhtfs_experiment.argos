@@ -5,7 +5,7 @@
     <!-- * General configuration * -->
     <!-- ************************* -->
     <framework>
-        <system threads="8" />
+        <system threads="0" />
         <experiment length="__TIMEEXPERIMENT__" 
         ticks_per_second="10"
         random_seed="__SEED__" />
@@ -46,6 +46,7 @@
             random_seed="12" 
             desired_num_of_areas="8"
             hard_tasks="__HARDTASKS__"
+            mixed="__MIXED__"
             reactivation_timer="40.0"
             timeout_const="__TIMEOUT__">
         </extra_parameters>

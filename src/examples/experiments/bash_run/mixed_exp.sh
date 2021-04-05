@@ -2,7 +2,7 @@
 
 ### How it works for me ###
 # in ARGoS folder run the following:
-# ./src/examples/experiments/bash_run/homogeneus_red_exp.sh /src/examples/experiments/bash_run dhtfs_experiment.argos dhtfc_experiment.argos
+# ./src/examples/experiments/bash_run/mixed_exp.sh /src/examples/experiments/bash_run dhtfs_experiment.argos dhtfc_experiment.argos
 
 if [ "$#" -ne 3 ]; then
     echo "Usage: simple_experiment.sh (from src folder) <base_config_dir> <base_config_file_name_server> <base_config_file_name_client>"
@@ -29,7 +29,7 @@ if [ ! -e $base_config_c ]; then
     fi
 fi
 
-res_dir=$wdir/"results/homogeneus_red_exp"
+res_dir=$wdir/"results/mixed_exp"
 if [[ ! -e $res_dir ]]; then
     cmake -E make_directory $res_dir
 # else
@@ -43,11 +43,11 @@ base_dir=`dirname $base_config_s`
 # echo base_dir $base_dir
 echo "$CONFIGURATION_FILE" | egrep "^$SHARED_DIR" &> /dev/null || exit 1
 
-numrobots="48"
+numrobots="32"
 reactivation_timer="60"
-hard_tasks="8"
-timeout="5 60 120"
-mixed="false"
+hard_tasks="4"
+timeout="60"
+mixed="true"
 
 ###################################
 # experiment_length is in seconds #
@@ -68,7 +68,7 @@ for par1 in $timeout; do
         cmake -E make_directory $param_dir
     fi
 
-    for it in $(seq 1 $RUNS); do
+    for it in $(seq 70 $RUNS); do
 
         #server config
         configs=`printf 'configs_nrob%d_timeout%03d_seed%03d.argos' $numrobots $par1 $it`

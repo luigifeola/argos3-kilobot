@@ -164,6 +164,7 @@ private:
     UInt32 random_seed;                        //to reproduce same random tests
     UInt8 desired_num_of_areas;                //number of exploitable areas for the experiment (max 16)
     UInt8 hard_tasks;                          //the number of red areas (the ones that require more robots)
+    bool mixed = false;                        //if mixed, we will have only red-blue or blue-red areas
     std::vector<int> otherColor;               //Color of the areas on the other ARK
     bool IsNotZero(int i) { return (i != 0); } //to count how non 0 emelent there are in sending/receiving buffer
     char inputBuffer[30];                      // array containing the message received from the socket e.g.

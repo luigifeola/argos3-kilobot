@@ -1,5 +1,8 @@
 #include "kilobot_ALF_dhtf.h"
 
+/** Used for mixed experiment */
+inline int xor_func(int i) { return i ^ 1; }
+
 namespace
 {
     const int port = 7001;
@@ -52,6 +55,7 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
         //GetNodeAttribute(tModeNode, "random_seed", random_seed);
         GetNodeAttribute(tModeNode, "desired_num_of_areas", desired_num_of_areas);
         GetNodeAttribute(tModeNode, "hard_tasks", hard_tasks);
+        GetNodeAttribute(tModeNode, "mixed", mixed);
         GetNodeAttribute(tModeNode, "reactivation_timer", kRespawnTimer);
 
         /* Select areas */
@@ -104,18 +108,21 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
         std::sort(hard_tasks_vec.begin(), hard_tasks_vec.end());
 
         /* Hard task for the client */
-        while (hard_tasks_client_vec.size() < hard_tasks)
+        if (mixed == false)
         {
-            std::uniform_int_distribution<int> distr(0, max_area_id);
-            int random_number;
-            do
+            while (hard_tasks_client_vec.size() < hard_tasks)
             {
-                random_number = distr(re);
-            } while (std::find(activated_areas.begin(), activated_areas.end(), random_number) == activated_areas.end() ||
-                     std::find(hard_tasks_client_vec.begin(), hard_tasks_client_vec.end(), random_number) != hard_tasks_client_vec.end());
-            hard_tasks_client_vec.push_back(random_number);
+                std::uniform_int_distribution<int> distr(0, max_area_id);
+                int random_number;
+                do
+                {
+                    random_number = distr(re);
+                } while (std::find(activated_areas.begin(), activated_areas.end(), random_number) == activated_areas.end() ||
+                         std::find(hard_tasks_client_vec.begin(), hard_tasks_client_vec.end(), random_number) != hard_tasks_client_vec.end());
+                hard_tasks_client_vec.push_back(random_number);
+            }
+            std::sort(hard_tasks_client_vec.begin(), hard_tasks_client_vec.end());
         }
-        std::sort(hard_tasks_client_vec.begin(), hard_tasks_client_vec.end());
 
         std::cout << "***********Active areas*****************\n";
         for (int ac_ar : activated_areas)
@@ -131,16 +138,21 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
         }
         std::cout << std::endl;
 
-        std::cout << "Hard task client id\n";
-        for (int h_t_c : hard_tasks_client_vec)
+        if (mixed == false)
         {
-            std::cout << h_t_c << '\t';
+            std::cout << "Hard task client id\n";
+            for (int h_t_c : hard_tasks_client_vec)
+            {
+                std::cout << h_t_c << '\t';
+            }
+            std::cout << std::endl;
         }
-        std::cout << std::endl;
-
+        else
+            std::cout << "Hard task client is dual of server\n";
         /* 0-1 vector indicatind if the active area is hard or soft type */
         // preparint initialise ("I") server message
-        std::vector<int> server_task_type(activated_areas.size(), 0);
+        std::vector<int>
+            server_task_type(activated_areas.size(), 0);
         std::vector<int> client_task_type(activated_areas.size(), 0);
 
         initialise_buffer = "I";
@@ -152,11 +164,21 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
             std::string s(1, A);
             initialise_buffer.append(s);
 
-            if (std::find(hard_tasks_vec.begin(), hard_tasks_vec.end(), activated_areas[i]) != hard_tasks_vec.end())
-                server_task_type[i] = 1;
+            if (mixed == false)
+            {
+                if (std::find(hard_tasks_vec.begin(), hard_tasks_vec.end(), activated_areas[i]) != hard_tasks_vec.end())
+                    server_task_type[i] = 1;
 
-            if (std::find(hard_tasks_client_vec.begin(), hard_tasks_client_vec.end(), activated_areas[i]) != hard_tasks_client_vec.end())
-                client_task_type[i] = 1;
+                if (std::find(hard_tasks_client_vec.begin(), hard_tasks_client_vec.end(), activated_areas[i]) != hard_tasks_client_vec.end())
+                    client_task_type[i] = 1;
+            }
+            else
+            {
+                if (std::find(hard_tasks_vec.begin(), hard_tasks_vec.end(), activated_areas[i]) != hard_tasks_vec.end())
+                    server_task_type[i] = 1;
+                else
+                    client_task_type[i] = 1;
+            }
         }
 
         for (int s_task : server_task_type)
@@ -168,7 +190,7 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
             initialise_buffer.append(std::to_string(c_task));
         }
 
-        // std::cout << "initialise_buffer: " << initialise_buffer << std::endl;
+        std::cout << "initialise_buffer: " << initialise_buffer << std::endl;
 
         //Remove the extra multiArea loaded from .argos file
         for (int i = 0; i < multiArea.size(); i++)

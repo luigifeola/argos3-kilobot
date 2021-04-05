@@ -47,6 +47,7 @@ numrobots="16"
 reactivation_timer="60"
 hard_tasks="0"
 timeout="5 60 120"
+mixed="false"
 
 ###################################
 # experiment_length is in seconds #
@@ -67,8 +68,9 @@ for par1 in $timeout; do
         cmake -E make_directory $param_dir
     fi
 
-    for it in $(seq 21 $RUNS); do
+    for it in $(seq 1 $RUNS); do
 
+        #server config
         configs=`printf 'configs_nrob%d_timeout%03d_seed%03d.argos' $numrobots $par1 $it`
         echo configs $configs
         cp $base_config_s $configs
@@ -76,6 +78,7 @@ for par1 in $timeout; do
         sed -i "s|__SEED__|$it|g" $configs
         sed -i "s|__NUMROBOTS__|$numrobots|g" $configs
         sed -i "s|__HARDTASKS__|$hard_tasks|g" $configs
+        sed -i "s|__MIXED__|$mixed|g" $configs
         sed -i "s|__TIMEOUT__|$par1|g" $configs
         
         output_file="seed#${it}_completed_taskLOG_server.tsv"
@@ -87,6 +90,7 @@ for par1 in $timeout; do
         area_positions_file="seed#${it}_areaLOG_server.tsv"
         sed -i "s|__AREAPOSOUTPUT__|$area_positions_file|g" $configs
 
+        #client config
         configc=`printf 'configc_nrob%d_timeout%03d_seed%03d.argos' $numrobots $par1 $it`
         echo configc $configc
         cp $base_config_c $configc
