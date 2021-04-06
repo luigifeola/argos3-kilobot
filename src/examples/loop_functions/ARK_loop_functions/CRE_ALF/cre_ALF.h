@@ -1,7 +1,7 @@
-#ifndef DHTF_ALF_H
-#define DHTF_ALF_H
+#ifndef CRE_ALF_H
+#define CRE_ALF_H
 
-#define DEBUGGING
+// #define LOGGING
 
 namespace argos
 {
@@ -69,6 +69,7 @@ public:
 
     virtual void Reset();
 
+#ifdef LOGGING
     virtual void PostStep();
 
     /** Log area pos, type, state (completed or not) */
@@ -76,6 +77,7 @@ public:
 
     /** Log Kilobot pose and state */
     void KiloLOG();
+#endif
 
     virtual void Destroy();
 
@@ -117,11 +119,6 @@ private:
     /* virtual environment struct*/
     struct SVirtualArea //parameters of the circular areas
     {
-#ifdef DEBUGGING
-        Real creationTime = 0.0;
-        Real completitionTime = 0.0;
-#endif
-        int id;
         CVector2 Center;
         Real Radius;
         CColor Color;
@@ -137,55 +134,64 @@ private:
         LEAVING = 2,
     } SRobotState;
 
-    typedef enum
-    {
-        kBLUE = 0,
-        kRED = 1,
-    } colour;
-
-    typedef enum
-    {
-        kBB = 1,
-        kBR = 2,
-        kRB = 3,
-        kRR = 5,
-    } waiting_times;
-
     struct FloorColorData //contains components of area color
     {
-        UInt8 R;
-        UInt8 G;
-        UInt8 B;
+        int R;
+        int G;
+        int B;
+    };
+    std::vector<FloorColorData> m_vecKilobotData;
+
+    struct TransmittingKilobot //parameters of the circular areas
+    {
+        int xCoord;
+        int yCoord;
+        int commit;
+    };
+    std::vector<TransmittingKilobot> multiTransmittingKilobot;
+
+    struct decisionMessage //structure for decision-making robot message
+    {
+        UInt8 ID;
+        UInt8 resource_red;
+        UInt8 resource_blue;
     };
 
-    std::string mode;                          //can be SERVER or CLIENT
-    std::string IP_ADDR;                       //ip address where to connect
-    bool augmented_knowledge;                  //TRUE: ARK knows the color of areas on the other arena; FALSE: ARK knows color of its own areas only; timeout constant are set consequently
-    UInt32 random_seed;                        //to reproduce same random tests
-    UInt8 desired_num_of_areas;                //number of exploitable areas for the experiment (max 16)
-    UInt8 hard_tasks;                          //the number of red areas (the ones that require more robots)
-    bool mixed = false;                        //if mixed, we will have only red-blue or blue-red areas
-    std::vector<int> otherColor;               //Color of the areas on the other ARK
-    bool IsNotZero(int i) { return (i != 0); } //to count how non 0 emelent there are in sending/receiving buffer
-    char inputBuffer[30];                      // array containing the message received from the socket e.g.
-    std::string initialise_buffer;             // buffer containing setup values (active and type of the task)
-    std::string outputBuffer;                  //array  containing the message to send
-    char storeBuffer[30];                      //array where to store input message to keep it available
-    int bytesReceived;                         //length of received string
-    int serverSocket;                          //socket variable
-    int clientSocket;                          //socket variable
-    UInt8 num_of_areas;                        //initial number of clustering areas i.e. 16, will be reduced to desired_num_of_areas
-    double kTimerMultiplier;                   //multiplicative constant for the timeout study
-    double kRespawnTimer;                      //when completed, timer starts and when it will expire the area is reactivated
-                                               // #ifndef DEBUG
-    std::vector<double> vCompletedTime;        //vector with completition time
-                                               // #endif
-    bool initialised;                          // true when client ACK the initial setup
+    std::string mode;
+    std::string IP_ADDR; //ip address where to connect
+    UInt32 random_seed;
+    float vision_range;
+    int desired_red_areas;
+    int desired_blue_areas;
+    float reactivation_rate;
+    float communication_range;
+    char inputBuffer[2000];   //array containing the message received from the socket
+    std::string outputBuffer; //array  containing the message to send
+    char storeBuffer[2000];   //array where to store input message to keep it available
+    int bytesReceived;        //length of received string
+    int serverSocket;
+    int clientSocket;
+    int num_of_areas; //number of clustering areas
+    int lenMultiArea;
+    int num_of_kbs; //number of kilobots on the field
+    int arena_update_counter;
+    bool initializing;
+    bool flag;
 
     /*vectors as long as the number of kilobots*/
-    std::vector<UInt8> request; //vector that determines waiting time: 1 for kilobots on blue areas and 3 for the ones on red areas (multiplied times 500 gives the number of cycles before timeout)
-    std::vector<SInt8> whereis; // says in which area the KB is: -1 if walking, (index of area) if inside an area
+    std::vector<int> actual_orientation; //vector containing real time orientations
+    std::vector<int> command;            // contains informations about actual semiplan direction where the robot tends to go
+    std::vector<int> visible_blue;
+    std::vector<int> visible_red;
+    std::vector<int> activated_red_areas;
+    std::vector<int> activated_blue_areas;
+    const int max_red_area_id = 49;
+    const int max_blue_area_id = 99;
 
+    /*vectors as long as the number of areas*/
+
+    std::vector<SRobotState> m_vecKilobotStates_ALF;      //kb state from ARK poin of view
+    std::vector<SRobotState> m_vecKilobotStates_transmit; //state to be transmitted to the robot
     std::vector<Real> m_vecLastTimeMessaged;
     Real m_fMinTimeBetweenTwoMsg;
 
@@ -193,20 +199,11 @@ private:
     /*       Experiment variables       */
     /************************************/
 
-    /*Kilobots properties*/
-    std::vector<CVector2> m_vecKilobotsPositions;
-    std::vector<CRadians> m_vecKilobotsOrientations;
-    std::vector<SRobotState> m_vecKilobotStates_ALF;
-
-    /* output LOG files */
-    std::ofstream m_kiloOutput;
-    std::ofstream m_areaOutput;
-    std::ofstream m_taskOutput;
+    /* output file for data acquizition */
+    std::ofstream m_cOutput;
 
     /* output file name*/
-    std::string m_strKiloOutputFileName;
-    std::string m_strAreaOutputFileName;
-    std::string m_strTaskOutputFileName;
+    std::string m_strOutputFileName;
 
     /* data acquisition frequency in ticks */
     UInt16 m_unDataAcquisitionFrequency;
