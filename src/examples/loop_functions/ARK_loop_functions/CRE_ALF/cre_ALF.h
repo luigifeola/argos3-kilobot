@@ -1,8 +1,7 @@
 #ifndef CRE_ALF_H
 #define CRE_ALF_H
 
-// #define LOGGING
-
+#define LOGGING
 namespace argos
 {
     class CSpace;
@@ -106,11 +105,13 @@ public:
     /** Used to plot the Virtual environment on the floor */
     virtual CColor GetFloorColor(const CVector2 &vec_position_on_plane);
 
-    /** 2D vector rotation */
-    CVector2 VectorRotation2D(Real angle, CVector2 vec);
+    // #ifdef WALL_AVOIDANCE
+    //     /** 2D vector rotation */
+    //     CVector2 VectorRotation2D(Real angle, CVector2 vec);
 
-    /** Simulate proximity sensor*/
-    std::vector<int> Proximity_sensor(CVector2 obstacle_direction, Real kOrientation, int num_sectors);
+    //     /** Simulate proximity sensor*/
+    //     std::vector<int> Proximity_sensor(CVector2 obstacle_direction, Real kOrientation, int num_sectors);
+    // #endif
 
 private:
     /************************************/
@@ -126,21 +127,6 @@ private:
         bool Completed; //set to "true" after the task is completed
     };
     std::vector<SVirtualArea> multiArea;
-
-    typedef enum //states of the kilobots
-    {
-        OUTSIDE_AREAS = 0,
-        INSIDE_AREA = 1,
-        LEAVING = 2,
-    } SRobotState;
-
-    struct FloorColorData //contains components of area color
-    {
-        int R;
-        int G;
-        int B;
-    };
-    std::vector<FloorColorData> m_vecKilobotData;
 
     struct TransmittingKilobot //parameters of the circular areas
     {
@@ -173,7 +159,6 @@ private:
     int clientSocket;
     int num_of_areas; //number of clustering areas
     int lenMultiArea;
-    int num_of_kbs; //number of kilobots on the field
     int arena_update_counter;
     bool initializing;
     bool flag;
@@ -190,8 +175,6 @@ private:
 
     /*vectors as long as the number of areas*/
 
-    std::vector<SRobotState> m_vecKilobotStates_ALF;      //kb state from ARK poin of view
-    std::vector<SRobotState> m_vecKilobotStates_transmit; //state to be transmitted to the robot
     std::vector<Real> m_vecLastTimeMessaged;
     Real m_fMinTimeBetweenTwoMsg;
 
@@ -204,6 +187,18 @@ private:
 
     /* output file name*/
     std::string m_strOutputFileName;
+
+    /*Kilobots properties*/
+    std::vector<CVector2> m_vecKilobotsPositions;
+    std::vector<CRadians> m_vecKilobotsOrientations;
+
+    /* output LOG files */
+    std::ofstream m_kiloOutput;
+    std::ofstream m_taskOutput;
+
+    /* output file name*/
+    std::string m_strKiloOutputFileName;
+    std::string m_strTaskOutputFileName;
 
     /* data acquisition frequency in ticks */
     UInt16 m_unDataAcquisitionFrequency;

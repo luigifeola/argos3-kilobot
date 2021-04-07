@@ -59,8 +59,9 @@
 
         
         <variables
-            datafilename="data_file.txt"
-            dataacquisitionfrequency="100"  
+            kilo_filename="kiloLOG_server.tsv"
+            task_filename="completed_taskLOG_server.tsv"
+            dataacquisitionfrequency="20"  
             environmentplotupdatefrequency="10"
             timeforonemessage="0.05">
         </variables>

@@ -8,9 +8,9 @@ namespace
     const int port = 7001;
 
     // environment setup
-    const double arena_size = 1.0;
+    const double kArena_size = 1.0;
     const double kKiloDiameter = 0.033;
-    const double kDistance_threshold = arena_size / 2.0 - 2.0 * kKiloDiameter;
+    const double kDistance_threshold = kArena_size / 2.0 - 2.0 * kKiloDiameter;
     const int max_area_id = 15;
     const int kSoftTask = 2;
     const int kHardTask = 6;
