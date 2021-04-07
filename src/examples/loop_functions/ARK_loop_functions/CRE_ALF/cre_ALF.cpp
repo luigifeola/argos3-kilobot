@@ -6,9 +6,9 @@ namespace
 
     // environment setup
     const double kArena_size = 1.0;
-    const double kScaling = 0.5;
+    const double kScaling = 1.0;
     const double kKiloDiameter = 0.033;
-    const double kDistance_threshold = kArena_size * kScaling / 2.0 - 2.0 * kKiloDiameter;
+    const double kDistance_threshold = kArena_size / 2.0 - 2.0 * kKiloDiameter;
 
     // wall avoidance stuff
     const CVector2 up_direction(0.0, -1.0);
@@ -106,8 +106,6 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
     /* Initializations */
     bytesReceived = -1;
     memset(storeBuffer, 0, 2000);
-    arena_update_counter = 500;
-    flag = 0;
     outputBuffer = "";
 
     /* Opening communication port */
@@ -143,7 +141,12 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
     }
     if (mode == "CLIENT")
     {
-        connect(serverSocket, (sockaddr *)&hint, sizeof(hint));
+        int conn = -1;
+        do
+        {
+            conn = connect(serverSocket, (sockaddr *)&hint, sizeof(hint));
+            std::cout << "CONNECTION VALUE: " << conn << std::endl;
+        } while (conn != 0);
     }
 }
 
@@ -415,10 +418,11 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
         for (int i = 0; i < lenMultiArea; i++)
         {
             Real fDistance = Distance(m_vecKilobotsPositions[unKilobotID], multiArea[i].Center);
-            if ((fDistance < (multiArea[i].Radius * 1)) && (multiArea[i].Completed == false))
+            if ((fDistance < (multiArea[i].Radius * 1.0)) && (multiArea[i].Completed == false))
             {
                 multiArea[i].Completed = true;
                 /* Reactivate tasks to keep their number constant */
+
                 std::default_random_engine re;
                 re.seed(random_seed);
                 if (multiArea[i].Color == argos::CColor::RED)
@@ -472,38 +476,39 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
     }
 }
 
-// #ifdef WALL_AVOIDANCE
-// CVector2 CALFClientServer::VectorRotation2D(Real angle, CVector2 vec)
-// {
-//     Real kx = (cos(angle) * vec.GetX()) + (-1.0 * sin(angle) * vec.GetY());
-//     Real ky = (sin(angle) * vec.GetX()) + (cos(angle) * vec.GetY());
-//     CVector2 rotated_vector(kx, ky);
-//     return rotated_vector;
-// }
+#ifdef WALL_AVOIDANCE
+CVector2 CALFClientServer::VectorRotation2D(Real angle, CVector2 vec)
+{
+    Real kx = (cos(angle) * vec.GetX()) + (-1.0 * sin(angle) * vec.GetY());
+    Real ky = (sin(angle) * vec.GetX()) + (cos(angle) * vec.GetY());
+    CVector2 rotated_vector(kx, ky);
+    return rotated_vector;
+}
 
-// std::vector<int> CALFClientServer::Proximity_sensor(CVector2 obstacle_direction, Real kOrientation, int num_sectors)
-// {
-//     double sector = M_PI_2 / (num_sectors / 2.0);
-//     std::vector<int> proximity_values;
+std::vector<int> CALFClientServer::Proximity_sensor(CVector2 obstacle_direction, Real kOrientation, int num_sectors)
+{
+    double sector = M_PI_2 / (num_sectors / 2.0);
+    std::vector<int> proximity_values;
 
-//     for (int i = 0; i < num_sectors; i++)
-//     {
-//         CVector2 sector_dir_a = VectorRotation2D((kOrientation + M_PI_2 - i * sector), left_direction);
-//         CVector2 sector_dir_b = VectorRotation2D((kOrientation + M_PI_2 - (i + 1) * sector), left_direction);
+    for (int i = 0; i < num_sectors; i++)
+    {
+        CVector2 sector_dir_a = VectorRotation2D((kOrientation + M_PI_2 - i * sector), left_direction);
+        CVector2 sector_dir_b = VectorRotation2D((kOrientation + M_PI_2 - (i + 1) * sector), left_direction);
 
-//         if (obstacle_direction.DotProduct(sector_dir_a) >= 0.0 || obstacle_direction.DotProduct(sector_dir_b) >= 0.0)
-//         {
-//             proximity_values.push_back(0);
-//         }
-//         else
-//         {
-//             proximity_values.push_back(1);
-//         }
-//     }
+        if (obstacle_direction.DotProduct(sector_dir_a) >= 0.0 || obstacle_direction.DotProduct(sector_dir_b) >= 0.0)
+        {
+            proximity_values.push_back(0);
+        }
+        else
+        {
+            proximity_values.push_back(1);
+        }
+    }
 
-//     return proximity_values;
-// }
-// #endif
+    return proximity_values;
+}
+#endif
+
 void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
 {
     m_tALFKilobotMessage tKilobotMessage, tEmptyMessage, tMessage;
@@ -521,76 +526,6 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
         {
             return;
         }
-
-        // #ifdef WALL_AVOIDANCE
-        //         else if (fabs(m_vecKilobotsPositions[unKilobotID].GetX()) > kDistance_threshold ||
-        //                  fabs(m_vecKilobotsPositions[unKilobotID].GetY()) > kDistance_threshold)
-
-        //         {
-        //             std::vector<int> proximity_vec;
-
-        //             if (m_vecKilobotsPositions[unKilobotID].GetX() > kDistance_threshold)
-        //             {
-        //                 // std::cerr<<"RIGHT\n";
-        //                 proximity_vec = Proximity_sensor(right_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
-        //             }
-        //             else if (m_vecKilobotsPositions[unKilobotID].GetX() < -1.0 * kDistance_threshold)
-        //             {
-        //                 // std::cerr<<"LEFT\n";
-        //                 proximity_vec = Proximity_sensor(left_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
-        //             }
-
-        //             if (m_vecKilobotsPositions[unKilobotID].GetY() > kDistance_threshold)
-        //             {
-        //                 // std::cerr<<"UP\n";
-        //                 if (proximity_vec.empty())
-        //                     proximity_vec = Proximity_sensor(up_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
-        //                 else
-        //                 {
-        //                     std::vector<int> prox = Proximity_sensor(up_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
-        //                     std::vector<int> elementwiseOr;
-        //                     elementwiseOr.reserve(prox.size());
-        //                     std::transform(proximity_vec.begin(), proximity_vec.end(), prox.begin(), std::back_inserter(elementwiseOr), std::logical_or<>());
-
-        //                     proximity_vec = elementwiseOr;
-        //                 }
-        //             }
-        //             else if (m_vecKilobotsPositions[unKilobotID].GetY() < -1.0 * kDistance_threshold)
-        //             {
-        //                 // std::cerr<<"DOWN\n";
-        //                 if (proximity_vec.empty())
-        //                     proximity_vec = Proximity_sensor(down_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
-        //                 else
-        //                 {
-        //                     std::vector<int> prox = Proximity_sensor(up_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
-        //                     std::vector<int> elementwiseOr;
-        //                     elementwiseOr.reserve(prox.size());
-        //                     std::transform(proximity_vec.begin(), proximity_vec.end(), prox.begin(), std::back_inserter(elementwiseOr), std::logical_or<>());
-
-        //                     proximity_vec = elementwiseOr;
-        //                 }
-        //             }
-
-        //             proximity_sensor_dec = std::accumulate(proximity_vec.begin(), proximity_vec.end(), 0, [](int x, int y) { return (x << 1) + y; });
-        //             // To turn off the wall avoidance decomment this
-        //             //proximity_sensor_dec = 0;
-
-        //             /** Print proximity values */
-        //             // std::cerr<<"kID:"<< unKilobotID <<" sensor ";
-        //             // for(int item : proximity_vec)
-        //             // {
-        //             //     std::cerr<< item <<'\t';
-        //             // }
-        //             // std::cerr<<std::endl;
-
-        //             // std::cout<<"******Prox dec: "<<proximity_sensor_dec<<std::endl;
-
-        //             tKilobotMessage.m_sType = 3;
-        //             tKilobotMessage.m_sData = proximity_sensor_dec;
-        //             bMessageToSend = true;
-        //             // std::cerr<<"sending COLLIDING\n";
-        //         }
-        // #endif
 
         else
         {
@@ -652,6 +587,76 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
         {
             return;
         }
+
+#ifdef WALL_AVOIDANCE
+        else if (fabs(m_vecKilobotsPositions[unKilobotID].GetX()) > kDistance_threshold ||
+                 fabs(m_vecKilobotsPositions[unKilobotID].GetY()) > kDistance_threshold)
+
+        {
+            std::vector<int> proximity_vec;
+
+            if (m_vecKilobotsPositions[unKilobotID].GetX() > kDistance_threshold)
+            {
+                // std::cerr<<"RIGHT\n";
+                proximity_vec = Proximity_sensor(right_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
+            }
+            else if (m_vecKilobotsPositions[unKilobotID].GetX() < -1.0 * kDistance_threshold)
+            {
+                // std::cerr<<"LEFT\n";
+                proximity_vec = Proximity_sensor(left_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
+            }
+
+            if (m_vecKilobotsPositions[unKilobotID].GetY() > kDistance_threshold)
+            {
+                // std::cerr<<"UP\n";
+                if (proximity_vec.empty())
+                    proximity_vec = Proximity_sensor(up_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
+                else
+                {
+                    std::vector<int> prox = Proximity_sensor(up_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
+                    std::vector<int> elementwiseOr;
+                    elementwiseOr.reserve(prox.size());
+                    std::transform(proximity_vec.begin(), proximity_vec.end(), prox.begin(), std::back_inserter(elementwiseOr), std::logical_or<>());
+
+                    proximity_vec = elementwiseOr;
+                }
+            }
+            else if (m_vecKilobotsPositions[unKilobotID].GetY() < -1.0 * kDistance_threshold)
+            {
+                // std::cerr<<"DOWN\n";
+                if (proximity_vec.empty())
+                    proximity_vec = Proximity_sensor(down_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
+                else
+                {
+                    std::vector<int> prox = Proximity_sensor(up_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
+                    std::vector<int> elementwiseOr;
+                    elementwiseOr.reserve(prox.size());
+                    std::transform(proximity_vec.begin(), proximity_vec.end(), prox.begin(), std::back_inserter(elementwiseOr), std::logical_or<>());
+
+                    proximity_vec = elementwiseOr;
+                }
+            }
+
+            proximity_sensor_dec = std::accumulate(proximity_vec.begin(), proximity_vec.end(), 0, [](int x, int y) { return (x << 1) + y; });
+            // To turn off the wall avoidance decomment this
+            //proximity_sensor_dec = 0;
+
+            /** Print proximity values */
+            // std::cerr<<"kID:"<< unKilobotID <<" sensor ";
+            // for(int item : proximity_vec)
+            // {
+            //     std::cerr<< item <<'\t';
+            // }
+            // std::cerr<<std::endl;
+
+            // std::cout<<"******Prox dec: "<<proximity_sensor_dec<<std::endl;
+
+            tKilobotMessage.m_sType = 3;
+            // tKilobotMessage.m_sData = proximity_sensor_dec;
+            bMessageToSend = true;
+            // std::cerr<<"sending COLLIDING\n";
+        }
+#endif
         else
         {
             /* Compose the message for a kilobot */

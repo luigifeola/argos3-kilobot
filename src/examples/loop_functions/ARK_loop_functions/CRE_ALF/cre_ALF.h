@@ -2,6 +2,7 @@
 #define CRE_ALF_H
 
 #define LOGGING
+#define WALL_AVOIDANCE
 namespace argos
 {
     class CSpace;
@@ -105,13 +106,13 @@ public:
     /** Used to plot the Virtual environment on the floor */
     virtual CColor GetFloorColor(const CVector2 &vec_position_on_plane);
 
-    // #ifdef WALL_AVOIDANCE
-    //     /** 2D vector rotation */
-    //     CVector2 VectorRotation2D(Real angle, CVector2 vec);
+#ifdef WALL_AVOIDANCE
+    /** 2D vector rotation */
+    CVector2 VectorRotation2D(Real angle, CVector2 vec);
 
-    //     /** Simulate proximity sensor*/
-    //     std::vector<int> Proximity_sensor(CVector2 obstacle_direction, Real kOrientation, int num_sectors);
-    // #endif
+    /** Simulate proximity sensor*/
+    std::vector<int> Proximity_sensor(CVector2 obstacle_direction, Real kOrientation, int num_sectors);
+#endif
 
 private:
     /************************************/
@@ -159,9 +160,7 @@ private:
     int clientSocket;
     int num_of_areas; //number of clustering areas
     int lenMultiArea;
-    int arena_update_counter;
     bool initializing;
-    bool flag;
 
     /*vectors as long as the number of kilobots*/
     std::vector<int> actual_orientation; //vector containing real time orientations
