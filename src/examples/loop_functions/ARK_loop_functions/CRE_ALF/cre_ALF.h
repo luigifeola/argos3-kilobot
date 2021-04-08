@@ -134,6 +134,7 @@ private:
         UInt8 ID;
         UInt8 resource_North;
         UInt8 resource_South;
+        UInt8 wall_avoidance_bits;
     };
 
     std::string mode;

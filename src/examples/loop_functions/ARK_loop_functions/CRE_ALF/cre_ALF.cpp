@@ -2,23 +2,30 @@
 
 namespace
 {
-    const int port = 7001;
+    const int kPort = 7001;
 
     // environment setup
-    const double kArena_size = 2.0;
+    //default values, if you want modify these parameters check SetupVirtualEnvironments()
+    double vArena_size = 2.0;
     const double kScaling = 1.0;
-    const double kKiloDiameter = 0.033;
-    const double kDistance_threshold = kArena_size / 2.0 - 2.0 * kKiloDiameter;
+    const double kKiloDiameter = 0.034;
+    double vDistance_threshold = vArena_size / 2.0 - 2.0 * kKiloDiameter;
+    const double kM_TO_CM = 100.0;
+    const double kCLIENT_SERVER_SCALE = 4.0;
 
     // wall avoidance stuff
     const CVector2 up_direction(0.0, -1.0);
     const CVector2 down_direction(0.0, 1.0);
     const CVector2 left_direction(1.0, 0.0);
     const CVector2 right_direction(-1.0, 0.0);
-    const int proximity_bits = 8;
+    int proximity_bits = 8;
 
     //counter for LOG files, incremented each second
     int internal_counter = 0;
+
+    //decision message (for flying robots) bits in decimal
+    const double kResourceNorthBits = 64.0;
+    const double kResourceSouthBits = 64.0;
 }
 CALFClientServer::CALFClientServer() : m_unDataAcquisitionFrequency(20)
 {
@@ -110,11 +117,10 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
 
     /* Opening communication port */
     serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-    int port = 54000;
     std::string ipAddress = IP_ADDR;
     sockaddr_in hint;
     hint.sin_family = AF_INET;
-    hint.sin_port = htons(port);
+    hint.sin_port = htons(kPort);
     inet_pton(AF_INET, ipAddress.c_str(), &hint.sin_addr);
 
     if (mode == "SERVER")
@@ -203,6 +209,10 @@ void CALFClientServer::SetupInitialKilobotState(CKilobotEntity &c_kilobot_entity
 
 void CALFClientServer::SetupVirtualEnvironments(TConfigurationNode &t_tree)
 {
+    /* Read arena parameters */
+    vArena_size = argos::CSimulator::GetInstance().GetSpace().GetArenaSize().GetX();
+    vDistance_threshold = vArena_size / 2.0 - 2.0 * kKiloDiameter;
+
     TConfigurationNode &tVirtualEnvironmentsNode = GetNode(t_tree, "environments");
     TConfigurationNodeIterator itAct;
 
@@ -367,20 +377,20 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
             }
             else
             {
-                //check if a ground robot is under the cone of transmission of a flying robot ((MAX 20 FLYING AT THE MOMENT)
-                float xdisp = multiTransmittingKilobot[i].xCoord - (25 * (m_vecKilobotsPositions[unKilobotID].GetX() + 1)); //25* perchè moltiplico per 100 per considerare solo 2 decimali, poi divido per 4 per allineare le arene (una quadrupla dell'altra)
+                // TODO : remove 25 and use variables M_TO_CM=100 and SCALING=4 --> M_TO_CM / SCALING = 25
+                // check if a ground robot is under the cone of transmission of a flying robot
+                float xdisp = multiTransmittingKilobot[i].xCoord - ((kM_TO_CM / kCLIENT_SERVER_SCALE) * (m_vecKilobotsPositions[unKilobotID].GetX() + vArena_size / 2.0)); //25* perchè moltiplico per 100 per considerare solo 2 decimali, poi divido per 4 per allineare le arene (una quadrupla dell'altra)
                 //+1 per la traslazione, in modo da non avere il centro nel centro dell'arena ma nell'angolino (1 perchè l'arena è larga 2) | 1 = arena_size/2.0
                 // il 25 è *100 per prendere i decimali della posizione /4 perchè un'arena è il quadruplo dell'altra
-                float ydisp = multiTransmittingKilobot[i].yCoord - (25 * (m_vecKilobotsPositions[unKilobotID].GetY() + 1)); //+1 perchè coordinate traslate nell'origne prima di essere trasmesse, devo traslare anche queste
+                float ydisp = multiTransmittingKilobot[i].yCoord - ((kM_TO_CM / kCLIENT_SERVER_SCALE) * (m_vecKilobotsPositions[unKilobotID].GetY() + vArena_size / 2.0)); //+1 perchè coordinate traslate nell'origne prima di essere trasmesse, devo traslare anche queste
                 float displacement = sqrt((xdisp * xdisp) + (ydisp * ydisp));
                 if (displacement < communication_range)
                 {
                     //check if the flying robot is in the semiplane opposit to its commitment
-                    if (multiTransmittingKilobot[i].yCoord <= 25)
+                    if (multiTransmittingKilobot[i].yCoord <= (kM_TO_CM / kCLIENT_SERVER_SCALE))
                     {
                         if (multiTransmittingKilobot[i].commit == 1)
                         {
-                            std::cerr << "Sono entrato qui\n";
                             command[unKilobotID] = 1; //robot at south, committed for north
                         }
                     }
@@ -402,10 +412,10 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
     {
         /* Send position of each robot and the chosen direction */
         /* Transformation for expressing coordinates in 4 characters: origin translated to bottom right corner to have only positive values, then get first 2 digit after the comma */
-        std::string pos = std::to_string(m_vecKilobotsPositions[unKilobotID].GetX() + 0.25); //posizione del ground robot e la trasla in modo da mandare solo positivi
-        std::string pos2 = pos.substr(2, 2);                                                 //arrotondamento->2 elementi a partire dall'elemento 2, scarto praticamente lo "0."
+        std::string pos = std::to_string(m_vecKilobotsPositions[unKilobotID].GetX() + (vArena_size / 2.0)); //posizione del ground robot e la trasla in modo da mandare solo positivi
+        std::string pos2 = pos.substr(2, 2);                                                                //arrotondamento->2 elementi a partire dall'elemento 2, scarto praticamente lo "0."
         outputBuffer.append(pos2);
-        pos = std::to_string(m_vecKilobotsPositions[unKilobotID].GetY() + 0.25);
+        pos = std::to_string(m_vecKilobotsPositions[unKilobotID].GetY() + (vArena_size / 2.0));
         pos2 = pos.substr(2, 2);
         outputBuffer.append(pos2);
         /* append 0 for no preferred direction, 1 for left, 2 for right */
@@ -549,12 +559,67 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
                     }
                 }
             }
-            std::cout << "MultiArea size: " << multiArea.size() << std::endl;
+
+            if (fabs(m_vecKilobotsPositions[unKilobotID].GetX()) > vDistance_threshold ||
+                fabs(m_vecKilobotsPositions[unKilobotID].GetY()) > vDistance_threshold)
+
+            {
+                std::vector<int> proximity_vec;
+                proximity_bits = 6;
+
+                if (m_vecKilobotsPositions[unKilobotID].GetX() > vDistance_threshold)
+                {
+                    // std::cerr<<"RIGHT\n";
+                    proximity_vec = Proximity_sensor(right_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
+                }
+                else if (m_vecKilobotsPositions[unKilobotID].GetX() < -1.0 * vDistance_threshold)
+                {
+                    // std::cerr<<"LEFT\n";
+                    proximity_vec = Proximity_sensor(left_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
+                }
+
+                if (m_vecKilobotsPositions[unKilobotID].GetY() > vDistance_threshold)
+                {
+                    // std::cerr<<"UP\n";
+                    if (proximity_vec.empty())
+                        proximity_vec = Proximity_sensor(up_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
+                    else
+                    {
+                        std::vector<int> prox = Proximity_sensor(up_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
+                        std::vector<int> elementwiseOr;
+                        elementwiseOr.reserve(prox.size());
+                        std::transform(proximity_vec.begin(), proximity_vec.end(), prox.begin(), std::back_inserter(elementwiseOr), std::logical_or<>());
+
+                        proximity_vec = elementwiseOr;
+                    }
+                }
+                else if (m_vecKilobotsPositions[unKilobotID].GetY() < -1.0 * vDistance_threshold)
+                {
+                    // std::cerr<<"DOWN\n";
+                    if (proximity_vec.empty())
+                        proximity_vec = Proximity_sensor(down_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
+                    else
+                    {
+                        std::vector<int> prox = Proximity_sensor(up_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
+                        std::vector<int> elementwiseOr;
+                        elementwiseOr.reserve(prox.size());
+                        std::transform(proximity_vec.begin(), proximity_vec.end(), prox.begin(), std::back_inserter(elementwiseOr), std::logical_or<>());
+
+                        proximity_vec = elementwiseOr;
+                    }
+                }
+
+                proximity_sensor_dec = std::accumulate(proximity_vec.begin(), proximity_vec.end(), 0, [](int x, int y) { return (x << 1) + y; });
+                // To turn off the wall avoidance decomment this
+                //proximity_sensor_dec = 0;
+            }
+
             std::cout << r_on << " - " << r_off << " ------ " << b_on << " - " << b_off << std::endl;
             KilobotDecisionMsg.ID = unKilobotID;
-            KilobotDecisionMsg.resource_North = (UInt8)std::floor(255 * (r_on / (r_on + r_off)));
-            KilobotDecisionMsg.resource_South = (UInt8)std::floor(255 * (b_on / (b_on + b_off)));
-            std::cout << KilobotDecisionMsg.resource_North << " - " << KilobotDecisionMsg.resource_South << std::endl;
+            KilobotDecisionMsg.resource_North = (UInt8)std::floor(kResourceNorthBits * (r_on / (r_on + r_off)));
+            KilobotDecisionMsg.resource_South = (UInt8)std::floor(kResourceSouthBits * (b_on / (b_on + b_off)));
+            KilobotDecisionMsg.wall_avoidance_bits = proximity_sensor_dec;
+            std::cout << KilobotDecisionMsg.resource_North << " - " << KilobotDecisionMsg.resource_South << " \t wa " << KilobotDecisionMsg.wall_avoidance_bits << std::endl;
             m_vecLastTimeMessaged[unKilobotID] = m_fTimeInSeconds;
             bMessageToSend = true;
         }
@@ -565,7 +630,7 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
     {
 
         /*determine kilobot orientation*/
-        actual_orientation[unKilobotID] = (int)(m_vecKilobotsOrientations[unKilobotID].GetValue() * 10); //per semplificare i calcoli
+        actual_orientation[unKilobotID] = (int)(m_vecKilobotsOrientations[unKilobotID].GetValue() * 10); //per semplificare i calcoli, quantizzazione di Valerio
         // da 0 a 31 i positivi
         // da 100 a 131 i negativi
         if (actual_orientation[unKilobotID] < 0)
@@ -580,25 +645,24 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
             return;
         }
 
-        // #ifdef WALL_AVOIDANCE
-        else if (fabs(m_vecKilobotsPositions[unKilobotID].GetX()) > kDistance_threshold ||
-                 fabs(m_vecKilobotsPositions[unKilobotID].GetY()) > kDistance_threshold)
+        else if (fabs(m_vecKilobotsPositions[unKilobotID].GetX()) > vDistance_threshold ||
+                 fabs(m_vecKilobotsPositions[unKilobotID].GetY()) > vDistance_threshold)
 
         {
             std::vector<int> proximity_vec;
 
-            if (m_vecKilobotsPositions[unKilobotID].GetX() > kDistance_threshold)
+            if (m_vecKilobotsPositions[unKilobotID].GetX() > vDistance_threshold)
             {
                 // std::cerr<<"RIGHT\n";
                 proximity_vec = Proximity_sensor(right_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
             }
-            else if (m_vecKilobotsPositions[unKilobotID].GetX() < -1.0 * kDistance_threshold)
+            else if (m_vecKilobotsPositions[unKilobotID].GetX() < -1.0 * vDistance_threshold)
             {
                 // std::cerr<<"LEFT\n";
                 proximity_vec = Proximity_sensor(left_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
             }
 
-            if (m_vecKilobotsPositions[unKilobotID].GetY() > kDistance_threshold)
+            if (m_vecKilobotsPositions[unKilobotID].GetY() > vDistance_threshold)
             {
                 // std::cerr<<"UP\n";
                 if (proximity_vec.empty())
@@ -613,7 +677,7 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
                     proximity_vec = elementwiseOr;
                 }
             }
-            else if (m_vecKilobotsPositions[unKilobotID].GetY() < -1.0 * kDistance_threshold)
+            else if (m_vecKilobotsPositions[unKilobotID].GetY() < -1.0 * vDistance_threshold)
             {
                 // std::cerr<<"DOWN\n";
                 if (proximity_vec.empty())
@@ -706,9 +770,18 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
                 {
                     DecisionMsg = EmptyDecisionMsg;
                 }
-                m_tMessages[unKilobotID].data[i * 3] = DecisionMsg.ID;
-                m_tMessages[unKilobotID].data[1 + i * 3] = DecisionMsg.resource_North;
-                m_tMessages[unKilobotID].data[2 + i * 3] = DecisionMsg.resource_South;
+                // m_tMessages[unKilobotID].data[i * 3] = DecisionMsg.ID;
+                // m_tMessages[unKilobotID].data[1 + i * 3] = DecisionMsg.resource_North;
+                // m_tMessages[unKilobotID].data[2 + i * 3] = DecisionMsg.resource_South;
+
+                m_tMessages[unKilobotID].data[i * 3] = (DecisionMsg.ID << 2);
+                m_tMessages[unKilobotID].data[i * 3] = m_tMessages[unKilobotID].data[i * 3] | (DecisionMsg.resource_North >> 4);
+
+                m_tMessages[unKilobotID].data[1 + i * 3] = (DecisionMsg.resource_North << 4);
+                m_tMessages[unKilobotID].data[1 + i * 3] = m_tMessages[unKilobotID].data[1 + i * 3] | (DecisionMsg.resource_South >> 2);
+
+                m_tMessages[unKilobotID].data[2 + i * 3] = (DecisionMsg.resource_South << 6);
+                m_tMessages[unKilobotID].data[2 + i * 3] = m_tMessages[unKilobotID].data[2 + i * 3] | DecisionMsg.wall_avoidance_bits;
                 std::cout << "North:" << m_tMessages[unKilobotID].data[1 + i * 3] << " - South:" << m_tMessages[unKilobotID].data[2 + i * 3] << std::endl;
             }
         }
