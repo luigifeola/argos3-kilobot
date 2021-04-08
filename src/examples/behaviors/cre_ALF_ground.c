@@ -4,6 +4,10 @@
 #include <math.h>
 #include "distribution_functions.c"
 
+#define COLLISION_BITS 8
+#define SECTORS_IN_COLLISION 2
+#define ARGOS_SIMULATION
+
 typedef enum
 { // Enum for different motion types
     TURN_LEFT = 1,
@@ -23,7 +27,8 @@ typedef enum
     RANDOM_WALKING = 0,
     TURNING_NORTH = 1,
     TURNING_SOUTH = 2,
-    MOVING_TO_TARGET = 3,
+    WALL_AVOIDANCE = 3,
+    MOVING_TO_TARGET = 4,
 } action_t;
 
 typedef enum
@@ -31,6 +36,12 @@ typedef enum
     OUTSIDE = 0,
     INSIDE = 1,
 } position_t;
+
+typedef enum
+{ // Enum for the robot position wrt to areas
+    LEFT = 1,
+    RIGHT = 2,
+} Free_space;
 
 motion_t current_motion_type = STOP; // Current motion type
 
@@ -56,7 +67,19 @@ const uint16_t max_straight_ticks = 320;
 uint32_t last_motion_ticks = 0;
 /* ---------------------------------------------- */
 
-int sa_type = 0; //Variables for Smart Arena messages
+/***********WALL AVOIDANCE***********/
+// the kb is "equipped" with a proximity sensor
+
+const uint8_t sector_base = (pow(2, COLLISION_BITS / 2) - 1);
+uint8_t left_side = 0;
+uint8_t right_side = 0;
+uint8_t proximity_sensor = 0;
+Free_space free_space = LEFT;
+bool wall_avoidance_start = false;
+
+/* ---------------------------------------------- */
+/** Variables for Smart Arena messages */
+int sa_type = 0;
 int sa_payload = 0;
 bool new_sa_msg = false;
 
@@ -113,6 +136,33 @@ void set_motion(motion_t new_motion_type)
 }
 
 /*-------------------------------------------------------------------*/
+/* Parse ARK received messages                                       */
+/*-------------------------------------------------------------------*/
+void parse_smart_arena_message(uint8_t data[9], uint8_t kb_index)
+{
+    // index of first element in the 3 sub-blocks of data
+    uint8_t shift = kb_index * 3;
+
+    sa_type = data[shift + 1] >> 2 & 0x0F;
+    sa_payload = ((data[shift + 1] & 0b11) << 8) | (data[shift + 2]);
+    new_sa_msg = true;
+
+    imposed_direction = sa_type;
+
+    if (sa_type != 3)
+    {
+        current_kb_angle = sa_payload;
+    }
+
+    else
+    {
+        // avoid colliding with the wall
+        proximity_sensor = sa_payload;
+        wall_avoidance_start = true;
+    }
+}
+
+/*-------------------------------------------------------------------*/
 /* Callback function for message reception                           */
 /*-------------------------------------------------------------------*/
 void rx_message(message_t *msg, distance_measurement_t *d)
@@ -124,28 +174,23 @@ void rx_message(message_t *msg, distance_measurement_t *d)
         int id1 = msg->data[0] << 2 | (msg->data[1] >> 6);
         int id2 = msg->data[3] << 2 | (msg->data[4] >> 6);
         int id3 = msg->data[6] << 2 | (msg->data[7] >> 6);
+
         if (id1 == kilo_uid)
         {
-            sa_type = msg->data[1] >> 2 & 0x0F;
-            sa_payload = ((msg->data[1] & 0b11) << 8) | (msg->data[2]);
-            new_sa_msg = true;
+            parse_smart_arena_message(msg->data, 0);
         }
         if (id2 == kilo_uid)
         {
-            sa_type = msg->data[4] >> 2 & 0x0F;
-            sa_payload = ((msg->data[4] & 0b11) << 8) | (msg->data[5]);
-            new_sa_msg = true;
+            parse_smart_arena_message(msg->data, 1);
         }
         if (id3 == kilo_uid)
         {
-            sa_type = msg->data[7] >> 2 & 0x0F;
-            sa_payload = ((msg->data[7] & 0b11) << 8) | (msg->data[8]);
-            new_sa_msg = true;
+            parse_smart_arena_message(msg->data, 2);
         }
-        imposed_direction = sa_type;
-        current_kb_angle = sa_payload;
     }
-    /* For another kind of message */
+
+#ifndef ARGOS_SIMULATION
+    /* For ID identification */
     else if (msg->type == 120)
     {
         int id = (msg->data[0] << 8) | msg->data[1];
@@ -158,6 +203,7 @@ void rx_message(message_t *msg, distance_measurement_t *d)
             set_color(RGB(0, 3, 0));
         }
     }
+#endif
 }
 
 /*-------------------------------------------------------------------*/
@@ -236,6 +282,82 @@ void setup()
 }
 
 /*-------------------------------------------------------------------*/
+/* count 1s after decimal to binary conversion                       */
+/*-------------------------------------------------------------------*/
+uint8_t countOnes(uint8_t n)
+{
+    uint8_t count = 0;
+    // array to store binary number
+    // uint8_t binaryNum[8];
+
+    // counter for binary array
+    int i = 0;
+    while (n > 0)
+    {
+
+        // storing remainder in binary array
+        // binaryNum[i] = n % 2;
+        if ((n % 2) == 1)
+            count++;
+        n = n / 2;
+        i++;
+    }
+
+    return count;
+}
+
+/*-------------------------------------------------------------------*/
+/* Function implementing wall avoidance procedure                    */
+/*-------------------------------------------------------------------*/
+void wall_avoidance_procedure(uint8_t sensor_readings)
+{
+    right_side = sensor_readings & sector_base;
+    left_side = (sensor_readings >> (COLLISION_BITS / 2)) & sector_base;
+
+    uint8_t count_ones = countOnes(sensor_readings);
+    if (count_ones > SECTORS_IN_COLLISION)
+    {
+        if (right_side < left_side)
+        {
+            // set_color(RGB(0,0,3));
+            set_motion(TURN_RIGHT);
+            free_space = RIGHT;
+        }
+        else if (right_side > left_side)
+        {
+            // set_color(RGB(3,0,0));
+            set_motion(TURN_LEFT);
+            free_space = LEFT;
+        }
+
+        else
+        {
+            // set_color(RGB(0,3,0));
+            // random rotation strategy
+            // if (rand_soft() % 2)
+            // {
+            //   set_motion(TURN_LEFT);
+            // }
+            // else
+            // {
+            //   set_motion(TURN_RIGHT);
+            // }
+            //rotate towards the last free space kept in memory
+            set_motion(free_space);
+        }
+        if (kilo_ticks > last_motion_ticks + turning_ticks)
+        {
+            turning_ticks = (uint32_t)((M_PI / COLLISION_BITS) * max_turning_ticks);
+            straight_ticks = (uint32_t)(fabs(levy(std_motion_steps, levy_exponent)));
+        }
+    }
+    // else
+    // {
+    //   set_color(RGB(0,3,0));
+    // }
+}
+
+/*-------------------------------------------------------------------*/
 /* Function implementing kilobot FSM and state transitions           */
 /*-------------------------------------------------------------------*/
 void finite_state_machine()
@@ -247,11 +369,11 @@ void finite_state_machine()
     {
         if (imposed_direction != 0)
         {
-            printf("\nGIRO: imposed dir=%d   ori=%d", imposed_direction, current_kb_angle);
+            printf("\nGIRO: imposed dir=%d   ori=%d\n", imposed_direction, current_kb_angle);
             last_motion_ticks = kilo_ticks;
             // turning_ticks = (uint32_t)((M_PI_2 / M_PI) * max_turning_ticks);
             // straight_ticks = 300;
-            if (imposed_direction == 1)
+            if (imposed_direction == TURNING_NORTH)
             {
                 set_color(RGB(3, 0, 0));
                 current_state = TURNING_NORTH;
@@ -271,9 +393,9 @@ void finite_state_machine()
                 {
                     turn_timer = (1.33 * (45 - current_kb_angle % 100));
                 }
-                printf("\nangle=%d ---> tmr set to %d\n", current_kb_angle, turn_timer);
+                printf("angle=%d ---> tmr set to %d\n\n", current_kb_angle, turn_timer);
             }
-            else if (imposed_direction == 2)
+            else if (imposed_direction == TURNING_SOUTH)
             {
                 set_color(RGB(0, 3, 0));
                 current_state = TURNING_SOUTH;
@@ -295,10 +417,18 @@ void finite_state_machine()
                 }
             }
 
-            else if (imposed_direction == 3)
-            {
-                set_color(RGB(0, 0, 3));
-            }
+            // else if (imposed_direction == 3)
+            // {
+            //     printf("kID=%d \n", kilo_uid);
+            //     set_color(RGB(0, 0, 3));
+            //     delay(500);
+            //     set_color(RGB(3, 0, 3));
+            //     delay(500);
+            //     set_color(RGB(0, 3, 3));
+            //     delay(500);
+            //     set_color(RGB(3, 3, 3));
+            //     set_motion(STOP);
+            // }
         }
         break;
     }
@@ -371,8 +501,18 @@ void finite_state_machine()
 /*-------------------------------------------------------------------*/
 void loop()
 {
-    random_walk();
-    finite_state_machine();
+    if (wall_avoidance_start)
+    {
+        wall_avoidance_procedure(proximity_sensor);
+        proximity_sensor = 0;
+        wall_avoidance_start = false;
+    }
+    else
+    {
+        // set_color(RGB(0,3,0));
+        random_walk();
+        finite_state_machine();
+    }
 }
 
 int main()

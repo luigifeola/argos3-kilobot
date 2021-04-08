@@ -181,6 +181,7 @@ void parse_smart_arena_message(uint8_t data[9], uint8_t kb_index)
     break;
   }
 }
+
 /*-------------------------------------------------------------------*/
 /* Callback function for message reception                           */
 /*-------------------------------------------------------------------*/
