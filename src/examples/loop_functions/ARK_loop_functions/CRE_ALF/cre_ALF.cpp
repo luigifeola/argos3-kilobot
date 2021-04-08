@@ -141,12 +141,12 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
     }
     if (mode == "CLIENT")
     {
-        // int conn = -1;
-        // while (conn != 0)
-        // {
-        /*conn = */ connect(serverSocket, (sockaddr *)&hint, sizeof(hint));
-        // std::cout << "CONNECTION VALUE: " << conn << std::endl;
-        // }
+        int conn = -1;
+        while (conn != 0)
+        {
+            conn = connect(serverSocket, (sockaddr *)&hint, sizeof(hint));
+            std::cout << "CONNECTION VALUE: " << conn << std::endl;
+        }
     }
 }
 
