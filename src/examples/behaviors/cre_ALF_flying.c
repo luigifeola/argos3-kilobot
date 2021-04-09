@@ -36,6 +36,12 @@ typedef enum
   RIGHT = 2,
 } Free_space;
 
+typedef enum
+{ // Enum for the type of the resource
+  RESOURCE_NORTH = 0,
+  RESOURCE_SOUTH = 1,
+} resource_t;
+
 /*State*/
 motion_t current_motion_type = STOP;             // Current motion type
 decision_t current_decision_state = UNCOMMITTED; // Current state
@@ -68,7 +74,6 @@ uint8_t sa_payload_south = 0;
 bool new_sa_msg = false;
 uint8_t sent_message = 1;
 bool to_send_message = false;
-message_t interactive_message;
 message_t messageN;
 message_t messageS;
 
@@ -181,11 +186,11 @@ void parse_smart_arena_message(uint8_t data[9], uint8_t kb_index)
 
   if (sa_payload_north != 0)
   {
-    exponential_average(0, sa_payload_north);
+    exponential_average(RESOURCE_NORTH, sa_payload_north);
   }
   if (sa_payload_south != 0)
   {
-    exponential_average(1, sa_payload_south);
+    exponential_average(RESOURCE_SOUTH, sa_payload_south);
   }
   new_sa_msg = true;
 
@@ -194,6 +199,11 @@ void parse_smart_arena_message(uint8_t data[9], uint8_t kb_index)
   {
     wall_avoidance_start = true;
   }
+
+  // if (kilo_uid == 0)
+  // {
+  //   printf("N:%d \tS:%d \t WA:%d \n", sa_payload_north, sa_payload_south, proximity_sensor);
+  // }
 }
 
 void rx_message(message_t *msg, distance_measurement_t *d)
@@ -217,19 +227,13 @@ void rx_message(message_t *msg, distance_measurement_t *d)
     {
       parse_smart_arena_message(msg->data, 2);
     }
-
-    /*if(new_sa_msg == true){
-      printf("POPS %d\n", current_decision_state);
-      printf("pop0: %d\n", resources_pops[0]);
-      printf("pop1: %d\n", resources_pops[1]);
-    }*/
   }
 
   /*type 1 is for messages coming from other kilobots*/
   else if (msg->type == 1)
   {
-    printf("Receiving message\t");
-    printf("msg->data[0]= %d\n", msg->data[0]);
+    // printf("Receiving message\t");
+    // printf("msg->data[0]= %d\n", msg->data[0]);
     /* get id (always firt byte when coming from another kb) */
     uint8_t id = msg->data[0];
     // check that is a valid crc and another kb
@@ -237,7 +241,7 @@ void rx_message(message_t *msg, distance_measurement_t *d)
     {
       // store the message for later parsing to avoid the rx to interfer with the loop
       recruiter_state = msg->data[1];
-      printf("recruiter_state: %d\n", recruiter_state);
+      // printf("recruiter_state: %d\n", recruiter_state);
     }
   }
 }
@@ -252,7 +256,18 @@ message_t *message_tx()
     /* this one is filled in the loop */
     to_send_message = false;
 
-    return &interactive_message;
+    if (current_decision_state == COMMITTED_N)
+    {
+      return &messageN;
+    }
+    else if (current_decision_state == COMMITTED_S)
+    {
+      return &messageS;
+    }
+    else
+    {
+      return NULL;
+    }
   }
   else
   {
@@ -269,27 +284,10 @@ void message_tx_success()
 /* Tell the kilobot to send its own state */
 void send_own_state()
 {
-  if (current_decision_state == COMMITTED_N)
-  {
-    interactive_message = messageN;
-  }
-  else if (current_decision_state == COMMITTED_S)
-  {
-    interactive_message = messageS;
-  }
-  /*// fill my message before resetting the temp resource count
-    // fill up message type. Type 1 used for kbs
-    interactive_message.type = 1;
-    // fill up the current kb id
-    interactive_message.data[0] = kilo_uid;
-    // fill up the current states
-    interactive_message.data[1] = current_decision_state;
-    // fill up the crc
-    interactive_message.crc = message_crc(&interactive_message);*/
   if (current_decision_state != UNCOMMITTED)
   {
-    // printf("current_decision_state: %d\n", current_decision_state);
-    // tell that we have a msg to send
+
+    printf("kID: %d, current_decision_state: %d\n", kilo_uid, current_decision_state);
     to_send_message = true;
     // avoid rebroadcast to overwrite prev message
     sent_message = 0;
@@ -313,7 +311,8 @@ void take_decision()
       /* spontaneous commitment process through discovery */
       /****************************************************/
       uint8_t random_resource = rand_soft() % RESOURCES_SIZE;
-      // normalized between 0 and 255
+      printf("kID:%d, Random resource:%d\n", kilo_uid, random_resource);
+      // normalized between 0 and 63
       commitment = (uint8_t)floor(resources_pops[random_resource] * h * tau);
       /****************************************************/
       /* recruitment over a random agent            m_sData      */
@@ -330,14 +329,14 @@ void take_decision()
       /****************************************************/
       /* extraction                                       */
       /****************************************************/
-      /* check if the sum of all processes is below 1 (here 255 since normalize to uint_8) */
-      if ((uint16_t)commitment + (uint16_t)recruitment > 255)
+      /* check if the sum of all processes is below 1 (here 63 since normalize to 6 bit) */
+      if ((uint16_t)commitment + (uint16_t)recruitment > 63)
       {
         internal_error = true;
         return;
       }
       // a random number to extract next decision
-      uint8_t extraction = rand_soft();
+      uint8_t extraction = (uint8_t)(rand_soft() / (255 / 64)); // rand() / (RAND_MAX / N + 1)
       // if the extracted number is less than commitment, then commit
       if (extraction < commitment)
       {
@@ -372,13 +371,13 @@ void take_decision()
       /* extraction                                       */
       /****************************************************/
       /* check if the sum of all processes is below 1 (here 255 since normalize to uint_8) */
-      if ((uint16_t)cross_inhibition > 255)
+      if ((uint16_t)cross_inhibition > 63)
       {
         internal_error = true;
         return;
       }
       // a random number to extract next decision
-      uint8_t extraction = rand_soft();
+      uint8_t extraction = (uint8_t)(rand_soft() / (255 / 64)); // rand() / (RAND_MAX / N + 1)
       // subtract cross-inhibition
       if (extraction < cross_inhibition)
       {
@@ -532,12 +531,12 @@ void setup()
   messageN.type = 1;
   messageN.data[0] = kilo_uid;
   messageN.data[1] = COMMITTED_N;
-  messageN.crc = message_crc(&interactive_message);
+  messageN.crc = message_crc(&messageN);
 
   messageS.type = 1;
   messageS.data[0] = kilo_uid;
   messageS.data[1] = COMMITTED_S;
-  messageS.crc = message_crc(&interactive_message);
+  messageS.crc = message_crc(&messageS);
 }
 
 /*-------------------------------------------------------------------*/

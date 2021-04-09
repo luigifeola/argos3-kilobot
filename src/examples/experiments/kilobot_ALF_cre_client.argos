@@ -8,7 +8,7 @@
         <system threads="0" />
         <experiment length="0"
         ticks_per_second="10"
-        random_seed="123" />
+        random_seed="6" />
     </framework>
     
     <!-- *************** -->
@@ -42,9 +42,8 @@
         <extra_parameters
             mode="CLIENT"
             ip_addr="127.0.0.1"
-            desired_North_areas="10"
-            desired_South_areas="30"
-            random_seed="120" 
+            desired_North_areas="35"
+            desired_South_areas="35"
             communication_range="5">
         </extra_parameters>
 

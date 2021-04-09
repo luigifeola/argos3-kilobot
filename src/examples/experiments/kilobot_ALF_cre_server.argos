@@ -8,7 +8,7 @@
         <system threads="0" />
         <experiment length="0"
         ticks_per_second="10"
-        random_seed="250" />
+        random_seed="50" />
     </framework>
     
     <!-- *************** -->
@@ -44,7 +44,7 @@
             mode="SERVER"
             ip_addr="0.0.0.0"
             communication_range="1"
-            vision_range="0.4">
+            vision_range="0.06">
         </extra_parameters>
 
         <tracking

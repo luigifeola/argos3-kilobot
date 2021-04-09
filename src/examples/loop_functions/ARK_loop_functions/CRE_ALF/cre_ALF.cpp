@@ -24,8 +24,8 @@ namespace
     int internal_counter = 0;
 
     //decision message (for flying robots) bits in decimal
-    const double kResourceNorthBits = 64.0;
-    const double kResourceSouthBits = 64.0;
+    const double kResourceNorthBits = 63.0;
+    const double kResourceSouthBits = 63.0;
 }
 CALFClientServer::CALFClientServer() : m_unDataAcquisitionFrequency(20)
 {
@@ -614,12 +614,19 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
                 //proximity_sensor_dec = 0;
             }
 
-            std::cout << r_on << " - " << r_off << " ------ " << b_on << " - " << b_off << std::endl;
+            // std::cout << r_on << " - " << r_off << " ------ " << b_on << " - " << b_off << std::endl;
             KilobotDecisionMsg.ID = unKilobotID;
             KilobotDecisionMsg.resource_North = (UInt8)std::floor(kResourceNorthBits * (r_on / (r_on + r_off)));
             KilobotDecisionMsg.resource_South = (UInt8)std::floor(kResourceSouthBits * (b_on / (b_on + b_off)));
             KilobotDecisionMsg.wall_avoidance_bits = proximity_sensor_dec;
-            std::cout << KilobotDecisionMsg.resource_North << " - " << KilobotDecisionMsg.resource_South << " \t wa " << KilobotDecisionMsg.wall_avoidance_bits << std::endl;
+
+            if (unKilobotID == 0)
+            {
+                std::cout << "N:" << KilobotDecisionMsg.resource_North
+                          << "\tS:" << KilobotDecisionMsg.resource_South
+                          << "\tWA:" << KilobotDecisionMsg.wall_avoidance_bits
+                          << std::endl;
+            }
             m_vecLastTimeMessaged[unKilobotID] = m_fTimeInSeconds;
             bMessageToSend = true;
         }
@@ -782,7 +789,6 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
 
                 m_tMessages[unKilobotID].data[2 + i * 3] = (DecisionMsg.resource_South << 6);
                 m_tMessages[unKilobotID].data[2 + i * 3] = m_tMessages[unKilobotID].data[2 + i * 3] | DecisionMsg.wall_avoidance_bits;
-                std::cout << "North:" << m_tMessages[unKilobotID].data[1 + i * 3] << " - South:" << m_tMessages[unKilobotID].data[2 + i * 3] << std::endl;
             }
         }
         GetSimulator().GetMedium<CKilobotCommunicationMedium>("kilocomm").SendOHCMessageTo(c_kilobot_entity, &m_tMessages[unKilobotID]);
@@ -830,6 +836,13 @@ void CALFClientServer::KiloLOG()
 CColor CALFClientServer::GetFloorColor(const CVector2 &vec_position_on_plane)
 {
     CColor cColor = CColor::WHITE;
+
+    Real fKiloVision = Distance(vec_position_on_plane, m_vecKilobotsPositions[0]);
+    if (fKiloVision < vision_range)
+    {
+        cColor = CColor(0, 0, 125, 0);
+    }
+
     /* Draw areas until they are needed, once that task is completed the corresponding area disappears */
     for (int i = 0; i < multiArea.size(); i++)
     {

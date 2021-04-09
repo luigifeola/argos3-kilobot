@@ -91,9 +91,6 @@ int straight_timer;                 //time of straight walk toward target
 int turn_timer;                     //time of turning toward target
 double directed_motion_freq = 0.01; //frequency of motion toward target
 
-/* PARAMETER: change this value to determine timeout lenght */
-int TIMEOUT_CONST = 500;
-
 //bool conditioned = false;
 
 /*-------------------------------------------------------------------*/
