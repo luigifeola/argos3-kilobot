@@ -39,13 +39,6 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
 {
     CALF::Init(t_node);
 
-    /*********** LOG FILES *********/
-    m_kiloOutput.open(m_strKiloOutputFileName, std::ios_base::trunc | std::ios_base::out);
-    if (mode == "CLIENT")
-    {
-        m_taskOutput.open(m_strTaskOutputFileName, std::ios_base::trunc | std::ios_base::out);
-    }
-
     /* Read parameters */
     TConfigurationNode &tModeNode = GetNode(t_node, "extra_parameters");
     GetNodeAttribute(tModeNode, "mode", mode);
@@ -58,6 +51,12 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
         GetNodeAttribute(tModeNode, "desired_South_areas", desired_South_areas);
     }
     GetNodeAttribute(tModeNode, "communication_range", communication_range);
+
+    /*********** LOG FILES *********/
+    m_kiloOutput.open(m_strKiloOutputFileName, std::ios_base::trunc | std::ios_base::out);
+    m_taskOutput.open(m_strTaskOutputFileName, std::ios_base::trunc | std::ios_base::out);
+
+    /*******************************/
 
     if (mode == "SERVER")
     {
@@ -102,7 +101,7 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
             do
             {
                 random_number = distr(re);
-                std::cout << "actRed" << activated_South_areas.size() << " added:" << random_number << std::endl;
+                //std::cout << "actRed" << activated_South_areas.size() << " added:" << random_number << std::endl;
             } while (std::find(activated_South_areas.begin(), activated_South_areas.end(), random_number) != activated_South_areas.end());
             activated_South_areas.push_back(random_number);
             multiArea[random_number].Completed = false;
@@ -184,6 +183,7 @@ void CALFClientServer::Destroy()
 
 void CALFClientServer::SetupInitialKilobotStates()
 {
+    m_vecKilobotStates_ALF.resize(m_tKilobotEntities.size());
     m_vecKilobotsPositions.resize(m_tKilobotEntities.size());
     m_vecKilobotsOrientations.resize(m_tKilobotEntities.size());
     m_vecLastTimeMessaged.resize(m_tKilobotEntities.size());
@@ -205,6 +205,7 @@ void CALFClientServer::SetupInitialKilobotState(CKilobotEntity &c_kilobot_entity
     m_vecLastTimeMessaged[unKilobotID] = -1;
     m_vecKilobotsPositions[unKilobotID] = GetKilobotPosition(c_kilobot_entity);
     m_vecKilobotsOrientations[unKilobotID] = GetKilobotOrientation(c_kilobot_entity);
+    m_vecKilobotStates_ALF[unKilobotID] = UNCOMMITTED;
 }
 
 void CALFClientServer::SetupVirtualEnvironments(TConfigurationNode &t_tree)
@@ -253,10 +254,7 @@ void CALFClientServer::GetExperimentVariables(TConfigurationNode &t_tree)
 {
     TConfigurationNode &tExperimentVariablesNode = GetNode(t_tree, "variables");
     GetNodeAttribute(tExperimentVariablesNode, "kilo_filename", m_strKiloOutputFileName);
-    if (mode == "CLIENT")
-    {
-        GetNodeAttribute(tExperimentVariablesNode, "task_filename", m_strTaskOutputFileName);
-    }
+    GetNodeAttribute(tExperimentVariablesNode, "task_filename", m_strTaskOutputFileName);
     GetNodeAttributeOrDefault(tExperimentVariablesNode, "dataacquisitionfrequency", m_unDataAcquisitionFrequency, m_unDataAcquisitionFrequency);
     GetNodeAttributeOrDefault(tExperimentVariablesNode, "m_unEnvironmentPlotUpdateFrequency", m_unEnvironmentPlotUpdateFrequency, m_unEnvironmentPlotUpdateFrequency);
     GetNodeAttributeOrDefault(tExperimentVariablesNode, "timeforonemessage", m_fTimeForAMessage, m_fTimeForAMessage);
@@ -286,7 +284,7 @@ void CALFClientServer::UpdateKilobotStates()
                 outputBuffer.append("0");
             }
         }
-        //std::cout<<"outbuffer "<<outputBuffer<<std::endl;
+        // std::cout << "Sending " << outputBuffer << std::endl;
     }
 
     /* Send the message to the other ALF*/
@@ -329,7 +327,8 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
         {
             storeBuffer[i] = inputBuffer[i];
         }
-        //std::cout<<storeBuffer<<std::endl;
+        // std::cout << "inputBuffer" << inputBuffer << std::endl;
+        // std::cout << "storeBuffer" << storeBuffer << std::endl;
     }
 
     /* --------- SERVER --------- */
@@ -421,14 +420,17 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
         /* append 0 for no preferred direction, 1 for left, 2 for right */
         if (GetKilobotLedColor(c_kilobot_entity) == argos::CColor::RED)
         {
+            m_vecKilobotStates_ALF[unKilobotID] = COMMITTED_N;
             outputBuffer.append(std::to_string(1)); //kilobot committed for NORTH
         }
         if (GetKilobotLedColor(c_kilobot_entity) == argos::CColor::GREEN)
         {
+            m_vecKilobotStates_ALF[unKilobotID] = COMMITTED_S;
             outputBuffer.append(std::to_string(2)); //kilobot committed for SOUTH
         }
         else if (GetKilobotLedColor(c_kilobot_entity) == argos::CColor::BLACK)
         {
+            m_vecKilobotStates_ALF[unKilobotID] = UNCOMMITTED;
             outputBuffer.append(std::to_string(0)); //kilobot uncommitted
         }
     }
@@ -442,6 +444,19 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
             if ((fDistance < (multiArea[i].Radius * 1.0)) && (multiArea[i].Completed == false))
             {
                 multiArea[i].Completed = true;
+                std::cout << "Time:" << m_fTimeInSeconds << " exploited area at:" << multiArea[i].Center << (multiArea[i].Color == argos::CColor::RED ? 0 : 1) << std::endl;
+                /*Log exploited area as: time - posX - posY - colour(0 for North, 1 for South) */
+                m_taskOutput
+                    << std::noshowpos
+                    << std::setw(8) << std::setprecision(4) << std::setfill('0')
+                    << m_fTimeInSeconds << '\t'
+                    << std::internal << std::showpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
+                    << multiArea[i].Center.GetX() << '\t'
+                    << std::internal << std::showpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
+                    << multiArea[i].Center.GetY() << '\t'
+                    << std::noshowpos << std::setw(1) << std::setprecision(0)
+                    << (multiArea[i].Color == argos::CColor::RED ? 0 : 1) << '\t'
+                    << std::endl;
                 /* Reactivate tasks to keep their number constant */
                 std::default_random_engine re;
                 re.seed(random_seed);
@@ -620,13 +635,13 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
             KilobotDecisionMsg.resource_South = (UInt8)std::floor(kResourceSouthBits * (b_on / (b_on + b_off)));
             KilobotDecisionMsg.wall_avoidance_bits = proximity_sensor_dec;
 
-            if (unKilobotID == 0)
-            {
-                std::cout << "N:" << KilobotDecisionMsg.resource_North
-                          << "\tS:" << KilobotDecisionMsg.resource_South
-                          << "\tWA:" << KilobotDecisionMsg.wall_avoidance_bits
-                          << std::endl;
-            }
+            // if (unKilobotID == 0)
+            // {
+            //     std::cout << "N:" << KilobotDecisionMsg.resource_North
+            //               << "\tS:" << KilobotDecisionMsg.resource_South
+            //               << "\tWA:" << KilobotDecisionMsg.wall_avoidance_bits
+            //               << std::endl;
+            // }
             m_vecLastTimeMessaged[unKilobotID] = m_fTimeInSeconds;
             bMessageToSend = true;
         }
@@ -829,6 +844,12 @@ void CALFClientServer::KiloLOG()
             << m_vecKilobotsPositions[kID].GetY() << '\t'
             << std::internal << std::showpos << std::setw(6) << std::setprecision(4) << std::setfill('0') << std::fixed
             << m_vecKilobotsOrientations[kID].GetValue() << '\t';
+        if (mode == "SERVER")
+        {
+            m_kiloOutput
+                << std::noshowpos << std::setw(1) << std::setprecision(0)
+                << m_vecKilobotStates_ALF[kID] << '\t';
+        }
     }
     m_kiloOutput << std::endl;
 }

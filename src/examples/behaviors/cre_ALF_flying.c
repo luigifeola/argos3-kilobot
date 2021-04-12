@@ -78,16 +78,17 @@ message_t messageN;
 message_t messageS;
 
 /*Decision making*/
-const float tau = 1;
-const float h = 0.1111111;
-const float k = 0.8888889;
+const float tau = 1;                     //accelerare o rallentare il sistema
+const float h = 0.5;                     //0.1111111; self
+const float k = 0.5;                     //0.8888889; recruitment
 const uint16_t max_decision_ticks = 320; //10 secondi
 uint32_t last_decision_ticks = 0;
 
-uint8_t internal_error = 0;             //computation error
-const float ema_alpha = 0.1;            //exponential moving average
-uint8_t resources_pops[RESOURCES_SIZE]; //keep local knowledge about resources
-uint8_t recruiter_state = UNCOMMITTED;  //commitment communicated by another robot
+uint8_t internal_error = 0;                      //computation error
+const float ema_alpha = 0.1;                     //exponential moving average
+uint8_t resources_pops[RESOURCES_SIZE] = {0, 0}; //keep local knowledge about resources
+uint8_t recruiter_state = UNCOMMITTED;           //commitment communicated by another robot
+uint8_t communicated_by = 100;                   //kID of communicated commitment
 
 /*-------------------------------------------------------------------*/
 /* count 1s after decimal to binary conversion                       */
@@ -241,6 +242,7 @@ void rx_message(message_t *msg, distance_measurement_t *d)
     {
       // store the message for later parsing to avoid the rx to interfer with the loop
       recruiter_state = msg->data[1];
+      communicated_by = id;
       // printf("recruiter_state: %d\n", recruiter_state);
     }
   }
@@ -287,7 +289,7 @@ void send_own_state()
   if (current_decision_state != UNCOMMITTED)
   {
 
-    printf("kID: %d, current_decision_state: %d\n", kilo_uid, current_decision_state);
+    // printf("kID: %d, SENDING current_decision_state: %d\n", kilo_uid, current_decision_state);
     to_send_message = true;
     // avoid rebroadcast to overwrite prev message
     sent_message = 0;
@@ -306,14 +308,17 @@ void take_decision()
     /* Start decision process */
     if (current_decision_state == UNCOMMITTED)
     {
+      printf("kID:%d, UNCOMMITTED\n", kilo_uid);
       uint8_t commitment = 0;
       /****************************************************/
       /* spontaneous commitment process through discovery */
       /****************************************************/
       uint8_t random_resource = rand_soft() % RESOURCES_SIZE;
-      printf("kID:%d, Random resource:%d\n", kilo_uid, random_resource);
+      printf("kID:%d, random resource:%d\n", kilo_uid, random_resource);
       // normalized between 0 and 63
-      commitment = (uint8_t)floor(resources_pops[random_resource] * h * tau);
+      printf("kID:%d, resources_pops[random_resource]:%d\n", kilo_uid, resources_pops[random_resource]);
+      commitment = (uint8_t)floor((float)resources_pops[random_resource] * h * tau);
+      printf("kID:%d, commitment:%d\n", kilo_uid, commitment);
       /****************************************************/
       /* recruitment over a random agent            m_sData      */
       /****************************************************/
@@ -321,10 +326,12 @@ void take_decision()
       // if the recruiter is committed
       if (recruiter_state != UNCOMMITTED)
       {
+        printf("kID:%d, recruiter_state UNCOMMITTED\n", kilo_uid);
         /* get the correct index in case of quorum sensing mechanism */
         resource_index = recruiter_state - 1;
         // compute recruitment value for current agent
-        recruitment = (uint8_t)floor(resources_pops[resource_index] * k * tau);
+        recruitment = (uint8_t)floor((float)resources_pops[resource_index] * k * tau);
+        printf("kID:%d, recruitment:%d\n", kilo_uid, recruitment);
       }
       /****************************************************/
       /* extraction                                       */
@@ -333,23 +340,22 @@ void take_decision()
       if ((uint16_t)commitment + (uint16_t)recruitment > 63)
       {
         internal_error = true;
+        printf("Internal error true\n");
         return;
       }
       // a random number to extract next decision
-      uint8_t extraction = (uint8_t)(rand_soft() / (255 / 64)); // rand() / (RAND_MAX / N + 1)
+      uint8_t extraction = (uint8_t)(rand_soft() % 64);
+      printf("kID:%d, extraction:%d\n", kilo_uid, extraction);
       // if the extracted number is less than commitment, then commit
       if (extraction < commitment)
       {
-        current_decision_state = random_resource + 1;
-        return;
+        current_decision_state = (decision_t)(random_resource + 1); //RICONTROLLA
+        printf("kID:%d, extraction < commitment, current_decision_state:%d\n", kilo_uid, current_decision_state);
       }
-      // subtract commitments
-      extraction = extraction - commitment;
-      // if the extracted number is less than recruitment, then recruited
-      if (extraction < recruitment)
+      else if (extraction < recruitment + commitment)
       {
-        current_decision_state = recruiter_state;
-        return;
+        current_decision_state = (decision_t)recruiter_state;
+        printf("kID:%d, extraction < recruitment, current_decision_state:%d\n", kilo_uid, current_decision_state);
       }
     }
 
@@ -365,25 +371,27 @@ void take_decision()
         /* get the correct index in case of quorum sensing mechanism */
         resource_index = recruiter_state - 1;
         // compute recruitment value for current agent
-        cross_inhibition = (uint8_t)floor(resources_pops[resource_index] * k * tau);
+        cross_inhibition = (uint8_t)floor((float)resources_pops[resource_index] * k * tau);
       }
       /****************************************************/
       /* extraction                                       */
       /****************************************************/
-      /* check if the sum of all processes is below 1 (here 255 since normalize to uint_8) */
+      /* check if the sum of all processes is below 1 (here 63 since normalized with 6 bits) */
       if ((uint16_t)cross_inhibition > 63)
       {
         internal_error = true;
+        printf("Internal error cross-inhibition\n");
         return;
       }
       // a random number to extract next decision
-      uint8_t extraction = (uint8_t)(rand_soft() / (255 / 64)); // rand() / (RAND_MAX / N + 1)
+      uint8_t extraction = (uint8_t)(rand_soft() % 64); // rand() / (RAND_MAX / N + 1)
+      printf("kID:%d, extraction:%d\n", kilo_uid, extraction);
       // subtract cross-inhibition
       if (extraction < cross_inhibition)
       {
+        printf("kID:%d, cross-inhibition --> UNCOMMITTED\n", kilo_uid);
         current_decision_state = UNCOMMITTED;
         set_color(RGB(0, 0, 0));
-        return;
       }
     }
     /* erase memory of neighbour commitment*/
@@ -408,9 +416,12 @@ void take_decision()
       break;
     }
     }
-    // printf("deciding... %d\n", current_decision_state);
-    // printf("red res: %d\n", resources_pops[0]);
-    // printf("blu res: %d\n", resources_pops[1]);
+    printf("recruiter ID:%d, state:%d\n", communicated_by, recruiter_state);
+    printf("kID:%d deciding... %d\n", kilo_uid, current_decision_state);
+    printf("resources_pops[0]: %d\n", resources_pops[0]);
+    printf("resources_pops[1]: %d\n\n", resources_pops[1]);
+
+    send_own_state();
   }
 }
 
@@ -554,7 +565,7 @@ void loop()
   {
     random_walk();
   }
-  send_own_state();
+  // send_own_state();
   take_decision();
 }
 int main()

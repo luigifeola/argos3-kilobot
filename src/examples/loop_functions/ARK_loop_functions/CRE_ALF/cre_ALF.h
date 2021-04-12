@@ -127,6 +127,14 @@ private:
         int yCoord;
         int commit; //0 uncommitted, 1 committed NORTH, 2 committed SOUTH
     };
+
+    typedef enum // Enum for the robot states
+    {
+        UNCOMMITTED = 0,
+        COMMITTED_N = 1,
+        COMMITTED_S = 2,
+    } SRobotState;
+
     std::vector<TransmittingKilobot> multiTransmittingKilobot; // position and commit of flying robots
 
     struct decisionMessage //structure for decision-making flying robot message
@@ -172,6 +180,7 @@ private:
     /*Kilobots properties*/
     std::vector<CVector2> m_vecKilobotsPositions;
     std::vector<CRadians> m_vecKilobotsOrientations;
+    std::vector<SRobotState> m_vecKilobotStates_ALF;
 
     /* output LOG files */
     std::ofstream m_kiloOutput;

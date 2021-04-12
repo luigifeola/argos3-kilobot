@@ -8,7 +8,7 @@
         <system threads="0" />
         <experiment length="0"
         ticks_per_second="10"
-        random_seed="6" />
+        random_seed="60" />
     </framework>
     
     <!-- *************** -->
@@ -42,7 +42,7 @@
         <extra_parameters
             mode="CLIENT"
             ip_addr="127.0.0.1"
-            desired_North_areas="35"
+            desired_North_areas="10"
             desired_South_areas="35"
             communication_range="5">
         </extra_parameters>
@@ -57,7 +57,7 @@
         
         <variables
             kilo_filename="kiloLOG_client.tsv"
-            task_filename="completed_taskLOG_client.tsv"
+            task_filename="completed_taskLOG.tsv"
             dataacquisitionfrequency="20"  
             environmentplotupdatefrequency="10"
             timeforonemessage="0.05">
@@ -223,7 +223,7 @@
     <!-- ****************** -->
     <visualization>
         <qt-opengl>
-            <frame_grabbing directory="./client_images" base_name="client_" format="png" quality="100" headless_grabbing="false" headless_frame_size="1600x1200" headless_frame_rate="1" />         
+            <frame_grabbing directory="./ground_images" base_name="client_" format="png" quality="100" headless_grabbing="false" headless_frame_size="1600x1200" headless_frame_rate="1" />         
             <camera>
                 <placement idx="0" position="0.0,-0.00001,1" look_at="0,0,0" lens_focal_length="12" />
                 <!-- <placement idx="0" position="0,0,1" look_at="0,0,0" lens_focal_length="12" /> -->
