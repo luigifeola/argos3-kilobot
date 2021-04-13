@@ -17,7 +17,7 @@ fi
 
 res_dir=$wdir/"results"
 if [[ ! -e $res_dir ]]; then
-    mkdir $res_dir
+    cmake -E make_directory $res_dir
 else
     echo "Error: directory '$res_dir' already exists" 
     exit 1
@@ -45,7 +45,7 @@ for par1 in $levy; do
     for par2 in $crw; do
 	param_dir=$res_dir/$date_time"_robots#"$numrobots"_alpha#"$par1"_rho#"$par2"_sim_"$experiment_length
 	if [[ ! -e $param_dir ]]; then
-	    mkdir $param_dir
+	    cmake -E make_directory $param_dir
 	fi
 
         for it in $(seq 1 $RUNS); do

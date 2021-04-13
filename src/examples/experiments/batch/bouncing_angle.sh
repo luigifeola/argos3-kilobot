@@ -19,7 +19,7 @@ fi
 
 res_dir=$wdir/"results/random_angle_"$RUNS"_runs" 
 if [[ ! -e $res_dir ]]; then
-    mkdir $res_dir
+    cmake -E make_directory $res_dir
 else
     echo "Error: directory '$res_dir' already exists" 
     exit 1
@@ -55,7 +55,7 @@ for nrob in $numrobots; do
         for par2 in $crw; do
         param_dir=$res_dir/$date_time"_robots#"$nrob"_alpha#"$par1"_rho#"$par2"_"$experiment_length
         if [[ ! -e $param_dir ]]; then
-            mkdir $param_dir
+            cmake -E make_directory $param_dir
         fi
 
             for it in $(seq 21 $RUNS); do

@@ -17,9 +17,9 @@ if [ ! -e $base_config ]; then
     fi
 fi
 
-res_dir=$wdir/"results/bias_experiment_"$RUNS"_runs" 
+res_dir=$wdir/"results/new_alpha_missing/bias_experiment_"$RUNS"_runs" 
 if [[ ! -e $res_dir ]]; then
-    mkdir $res_dir
+    cmake -E make_directory $res_dir
 else
     echo "Error: directory '$res_dir' already exists" 
     exit 1
@@ -29,12 +29,12 @@ base_dir=`dirname $base_config`
 echo base_dir $base_dir
 echo "$CONFIGURATION_FILE" | egrep "^$SHARED_DIR" &> /dev/null || exit 1
 
-numrobots="10 20 50 100"
+numrobots="100"
 
 
 
 experiment_type="2"
-levy="1.2 1.6 2.0"
+levy="1.4 1.8"
 crw="0.0 0.3 0.6 0.9"
 bias_prob="0.1"
 numWalls="0"
@@ -52,7 +52,7 @@ for nrob in $numrobots; do
         for par2 in $crw; do
         param_dir=$res_dir/$date_time"_robots#"$nrob"_alpha#"$par1"_rho#"$par2"_"$experiment_length
         if [[ ! -e $param_dir ]]; then
-            mkdir $param_dir
+            cmake -E make_directory $param_dir
         fi
 
             for it in $(seq 1 $RUNS); do
