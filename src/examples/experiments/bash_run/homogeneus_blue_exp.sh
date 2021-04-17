@@ -46,7 +46,8 @@ echo "$CONFIGURATION_FILE" | egrep "^$SHARED_DIR" &> /dev/null || exit 1
 numrobots="16"
 reactivation_timer="60"
 hard_tasks="0"
-timeout="5 60 120"
+timeout="30 90"
+# timeout="5 60 120"
 mixed="false"
 
 ###################################
@@ -115,8 +116,9 @@ for par1 in $timeout; do
         echo server $configs
         echo client $configc
         # executec="$1/$configc"
-        xterm -title "server-$it" -e "argos3 -c $configs" &
-        xterm -title "client-$it" -e "argos3 -c $configc"
+        xterm -title "server-$it--timeout-$par1" -e "sleep 0.1; argos3 -c $configs; sleep 0.1" &
+        xterm -title "client-$it--timeout-$par1" -e "sleep 0.1; argos3 -c $configc; sleep 0.1"
+        sleep 1
         
         mv *.tsv $param_dir
     done
