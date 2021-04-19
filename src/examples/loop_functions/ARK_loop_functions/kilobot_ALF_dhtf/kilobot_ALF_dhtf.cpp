@@ -21,6 +21,8 @@ namespace
     const CVector2 left_direction(1.0, 0.0);
     const CVector2 right_direction(-1.0, 0.0);
     const int proximity_bits = 8;
+
+    //for logging
     int internal_counter = 0;
 }
 

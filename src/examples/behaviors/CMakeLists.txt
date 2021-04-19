@@ -125,6 +125,12 @@ if(ARGOS_BUILD_FOR_SIMULATOR)
   target_link_libraries(cre_ALF_ground argos3plugin_simulator_kilolib)
 
   #
+  # ARK loop function : wall avoidance library
+  #
+  add_executable(kilobot_ALF_wallAvoidance kilobot_ALF_wallAvoidance.c)  
+  target_link_libraries(kilobot_ALF_wallAvoidance argos3plugin_simulator_kilolib)
+
+  #
   # ARK loop function: crwlevy_with_positioning
   #
   add_executable(crwlevy_with_positioning crwlevy_with_positioning.c)  

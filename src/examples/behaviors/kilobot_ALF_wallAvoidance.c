@@ -1,0 +1,288 @@
+#include "kilolib.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <math.h>
+
+#define COLLISION_BITS 8
+#define SECTORS_IN_COLLISION 2
+#define ARGOS_SIMULATION
+
+typedef enum
+{ // Enum for different motion types
+    TURN_LEFT = 1,
+    TURN_RIGHT = 2,
+    STOP = 3,
+    FORWARD = 4,
+} motion_t;
+
+typedef enum
+{ // Enum for boolean flags
+    false = 0,
+    true = 1,
+} bool;
+
+typedef enum
+{ // Enum for the robot position wrt to areas
+    LEFT = 1,
+    RIGHT = 2,
+} Free_space;
+
+motion_t current_motion_type = STOP; // Current motion type
+
+uint32_t turning_ticks = 0;           // keep count of ticks of turning
+const uint8_t max_turning_ticks = 80; /* constant to allow a maximum rotation of 180 degrees with \omega=\pi/5 */
+unsigned int straight_ticks = 0;      // keep count of ticks of going straight
+const uint16_t max_straight_ticks = 320;
+uint32_t last_motion_ticks = 0;
+
+/***********WALL AVOIDANCE***********/
+// the kb is "equipped" with a proximity sensor
+
+const uint8_t sector_base = (pow(2, COLLISION_BITS / 2) - 1);
+uint8_t left_side = 0;
+uint8_t right_side = 0;
+uint8_t proximity_sensor = 0;
+Free_space free_space = LEFT;
+bool wall_avoidance_start = false;
+
+/*-------------------------------------------------------------------*/
+/* Function for setting the motor speed                              */
+/*-------------------------------------------------------------------*/
+void set_motion(motion_t new_motion_type)
+{
+    if (current_motion_type != new_motion_type)
+    {
+        switch (new_motion_type)
+        {
+        case FORWARD:
+            spinup_motors();
+            set_motors(kilo_straight_left, kilo_straight_right);
+            break;
+        case TURN_LEFT:
+            spinup_motors();
+            set_motors(kilo_turn_left, 0);
+            break;
+        case TURN_RIGHT:
+            spinup_motors();
+            set_motors(0, kilo_turn_right);
+            break;
+        case STOP:
+        default:
+            set_motors(0, 0);
+        }
+        current_motion_type = new_motion_type;
+    }
+}
+
+/*-------------------------------------------------------------------*/
+/* Parse ARK received messages                                       */
+/*-------------------------------------------------------------------*/
+void parse_smart_arena_message(uint8_t data[9], uint8_t kb_index)
+{
+    // index of first element in the 3 sub-blocks of data
+    uint8_t shift = kb_index * 3;
+
+    proximity_sensor = ((data[shift + 1] & 0b11) << 8) | (data[shift + 2]);
+
+    if (proximity_sensor != 0)
+    {
+        // get rotation toward the center (if far from center)
+        // avoid colliding with the wall
+        wall_avoidance_start = true;
+    }
+}
+
+/*-------------------------------------------------------------------*/
+/* Callback function for message reception                           */
+/*-------------------------------------------------------------------*/
+void rx_message(message_t *msg, distance_measurement_t *d)
+{
+
+    /* Unpack the message - extract ID, type and payload */
+    if (msg->type == 0)
+    {
+        int id1 = msg->data[0] << 2 | (msg->data[1] >> 6);
+        int id2 = msg->data[3] << 2 | (msg->data[4] >> 6);
+        int id3 = msg->data[6] << 2 | (msg->data[7] >> 6);
+
+        if (id1 == kilo_uid)
+        {
+            parse_smart_arena_message(msg->data, 0);
+        }
+        else if (id2 == kilo_uid)
+        {
+            parse_smart_arena_message(msg->data, 1);
+        }
+        else if (id3 == kilo_uid)
+        {
+            parse_smart_arena_message(msg->data, 2);
+        }
+    }
+
+#ifndef ARGOS_SIMULATION
+    /* start signal!*/
+    else if (msg->type == 1 && start != 2)
+    {
+        start = 1;
+    }
+
+    /* ARK ID identification */
+    else if (msg->type == 120)
+    {
+        int id = (msg->data[0] << 8) | msg->data[1];
+        if (id == kilo_uid)
+        {
+            set_color(RGB(0, 0, 3));
+        }
+        else
+        {
+            set_color(RGB(3, 0, 0));
+        }
+    }
+#endif
+}
+
+/*-------------------------------------------------------------------*/
+/* Init function                                                     */
+/*-------------------------------------------------------------------*/
+void setup()
+{
+    /* Initialise LED and motors */
+#ifdef ARGOS_SIMULATION
+    set_color(RGB(0, 0, 0));
+#else
+    set_color(RGB(0, 3, 0));
+#endif
+    set_motors(0, 0);
+
+    /* Initialise random seed */
+    uint8_t seed = rand_hard();
+    rand_seed(seed);
+    seed = rand_hard();
+    srand(seed);
+
+#ifdef ARGOS_SIMULATION
+    set_motion(FORWARD);
+#else
+    set_motion(STOP);
+#endif
+}
+
+/*-------------------------------------------------------------------*/
+/* count 1s after decimal to binary conversion                       */
+/*-------------------------------------------------------------------*/
+uint8_t countOnes(uint8_t n)
+{
+    uint8_t count = 0;
+    // array to store binary number
+    // uint8_t binaryNum[8];
+
+    // counter for binary array
+    int i = 0;
+    while (n > 0)
+    {
+
+        // storing remainder in binary array
+        // binaryNum[i] = n % 2;
+        if ((n % 2) == 1)
+            count++;
+        n = n / 2;
+        i++;
+    }
+
+    return count;
+}
+
+/*-------------------------------------------------------------------*/
+/* Function implementing wall avoidance procedure                    */
+/*-------------------------------------------------------------------*/
+void wall_avoidance_procedure(uint8_t sensor_readings)
+{
+    right_side = sensor_readings & sector_base;
+    left_side = (sensor_readings >> (COLLISION_BITS / 2)) & sector_base;
+
+    uint8_t count_ones = countOnes(sensor_readings);
+    if (count_ones > SECTORS_IN_COLLISION)
+    {
+        if (right_side < left_side)
+        {
+            // set_color(RGB(0,0,3));
+            set_motion(TURN_RIGHT);
+            free_space = RIGHT;
+        }
+        else if (right_side > left_side)
+        {
+            // set_color(RGB(3,0,0));
+            set_motion(TURN_LEFT);
+            free_space = LEFT;
+        }
+
+        else
+        {
+            // set_color(RGB(0,3,0));
+            // random rotation strategy
+            // if (rand_soft() % 2)
+            // {
+            //   set_motion(TURN_LEFT);
+            // }
+            // else
+            // {
+            //   set_motion(TURN_RIGHT);
+            // }
+            //rotate towards the last free space kept in memory
+            set_motion(free_space);
+        }
+    }
+    // else
+    // {
+    //   set_color(RGB(0,3,0));
+    // }
+}
+
+/*-------------------------------------------------------------------*/
+/* Main loop                                                         */
+/*-------------------------------------------------------------------*/
+void loop()
+{
+#ifndef ARGOS_SIMULATION
+    if (start == 1)
+    {
+        /* Initialise motion variables */
+        last_motion_ticks = rand() % max_straight_ticks;
+        set_motion(FORWARD);
+        start = 2;
+    }
+
+    if (!runtime_identification)
+    {
+        backup_kiloticks = kilo_ticks; // which we restore in after runtime_identification
+#endif
+        if (wall_avoidance_start)
+        {
+            wall_avoidance_procedure(proximity_sensor);
+            proximity_sensor = 0;
+            wall_avoidance_start = false;
+        }
+        else
+        {
+            set_motion(FORWARD);
+        }
+
+#ifndef ARGOS_SIMULATION
+    }
+#endif
+
+    // if( collision_avoidance_test == true && kilo_ticks > last_motion_ticks + turning_ticks )
+    // {
+    //   collision_avoidance_test = false;
+    //   set_color(RGB(0,3,0));
+    // }
+}
+
+int main()
+{
+    kilo_init();
+    kilo_message_rx = rx_message;
+    kilo_start(setup, loop);
+    return 0;
+}
