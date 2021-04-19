@@ -366,7 +366,8 @@ void finite_state_machine()
     {
         if (imposed_direction != 0)
         {
-            printf("\nGIRO: imposed dir=%d   ori=%d\n", imposed_direction, current_kb_angle);
+            /** Print received command and own angle*/
+            // printf("\nROTATING: imposed dir=%d   ori=%d\n", imposed_direction, current_kb_angle);
             last_motion_ticks = kilo_ticks;
             // turning_ticks = (uint32_t)((M_PI_2 / M_PI) * max_turning_ticks);
             // straight_ticks = 300;
@@ -390,7 +391,7 @@ void finite_state_machine()
                 {
                     turn_timer = (1.33 * (45 - current_kb_angle % 100));
                 }
-                printf("angle=%d ---> tmr set to %d\n\n", current_kb_angle, turn_timer);
+                // printf("angle=%d -> timer set to %d\n\n", current_kb_angle, turn_timer);
             }
             else if (imposed_direction == TURNING_SOUTH)
             {

@@ -141,17 +141,6 @@ void wall_avoidance_procedure(uint8_t sensor_readings)
 
     else
     {
-      // set_color(RGB(0,3,0));
-      // random rotation strategy
-      // if (rand_soft() % 2)
-      // {
-      //   set_motion(TURN_LEFT);
-      // }
-      // else
-      // {
-      //   set_motion(TURN_RIGHT);
-      // }
-      //rotate towards the last free space kept in memory
       set_motion(free_space);
     }
     if (kilo_ticks > last_motion_ticks + turning_ticks)
@@ -201,6 +190,7 @@ void parse_smart_arena_message(uint8_t data[9], uint8_t kb_index)
     wall_avoidance_start = true;
   }
 
+  /** Print behaviour for the kilobot 0 */
   // if (kilo_uid == 0)
   // {
   //   printf("N:%d \tS:%d \t WA:%d \n", sa_payload_north, sa_payload_south, proximity_sensor);
@@ -308,17 +298,17 @@ void take_decision()
     /* Start decision process */
     if (current_decision_state == UNCOMMITTED)
     {
-      printf("kID:%d, UNCOMMITTED\n", kilo_uid);
+      // printf("kID:%d, UNCOMMITTED\n", kilo_uid);
       uint8_t commitment = 0;
       /****************************************************/
       /* spontaneous commitment process through discovery */
       /****************************************************/
       uint8_t random_resource = rand_soft() % RESOURCES_SIZE;
-      printf("kID:%d, random resource:%d\n", kilo_uid, random_resource);
+      // printf("kID:%d, random resource:%d\n", kilo_uid, random_resource);
       // normalized between 0 and 63
-      printf("kID:%d, resources_pops[random_resource]:%d\n", kilo_uid, resources_pops[random_resource]);
+      // printf("kID:%d, resources_pops[random_resource]:%d\n", kilo_uid, resources_pops[random_resource]);
       commitment = (uint8_t)floor((float)resources_pops[random_resource] * h * tau);
-      printf("kID:%d, commitment:%d\n", kilo_uid, commitment);
+      // printf("kID:%d, commitment:%d\n", kilo_uid, commitment);
       /****************************************************/
       /* recruitment over a random agent            m_sData      */
       /****************************************************/
@@ -326,12 +316,12 @@ void take_decision()
       // if the recruiter is committed
       if (recruiter_state != UNCOMMITTED)
       {
-        printf("kID:%d, recruiter_state UNCOMMITTED\n", kilo_uid);
+        // printf("kID:%d, recruiter_state UNCOMMITTED\n", kilo_uid);
         /* get the correct index in case of quorum sensing mechanism */
         resource_index = recruiter_state - 1;
         // compute recruitment value for current agent
         recruitment = (uint8_t)floor((float)resources_pops[resource_index] * k * tau);
-        printf("kID:%d, recruitment:%d\n", kilo_uid, recruitment);
+        // printf("kID:%d, recruitment:%d\n", kilo_uid, recruitment);
       }
       /****************************************************/
       /* extraction                                       */
@@ -340,22 +330,22 @@ void take_decision()
       if ((uint16_t)commitment + (uint16_t)recruitment > 63)
       {
         internal_error = true;
-        printf("Internal error true\n");
+        printf("kID:%d, Internal error true\n", kilo_uid);
         return;
       }
       // a random number to extract next decision
       uint8_t extraction = (uint8_t)(rand_soft() % 64);
-      printf("kID:%d, extraction:%d\n", kilo_uid, extraction);
+      // printf("kID:%d, extraction:%d\n", kilo_uid, extraction);
       // if the extracted number is less than commitment, then commit
       if (extraction < commitment)
       {
         current_decision_state = (decision_t)(random_resource + 1); //RICONTROLLA
-        printf("kID:%d, extraction < commitment, current_decision_state:%d\n", kilo_uid, current_decision_state);
+        // printf("kID:%d, extraction < commitment, current_decision_state:%d\n", kilo_uid, current_decision_state);
       }
       else if (extraction < recruitment + commitment)
       {
         current_decision_state = (decision_t)recruiter_state;
-        printf("kID:%d, extraction < recruitment, current_decision_state:%d\n", kilo_uid, current_decision_state);
+        // printf("kID:%d, extraction < recruitment, current_decision_state:%d\n", kilo_uid, current_decision_state);
       }
     }
 
@@ -380,16 +370,16 @@ void take_decision()
       if ((uint16_t)cross_inhibition > 63)
       {
         internal_error = true;
-        printf("Internal error cross-inhibition\n");
+        printf("kID:%d, Internal error cross-inhibition true\n", kilo_uid);
         return;
       }
       // a random number to extract next decision
       uint8_t extraction = (uint8_t)(rand_soft() % 64); // rand() / (RAND_MAX / N + 1)
-      printf("kID:%d, extraction:%d\n", kilo_uid, extraction);
+      // printf("kID:%d, extraction:%d\n", kilo_uid, extraction);
       // subtract cross-inhibition
       if (extraction < cross_inhibition)
       {
-        printf("kID:%d, cross-inhibition --> UNCOMMITTED\n", kilo_uid);
+        // printf("kID:%d, cross-inhibition --> UNCOMMITTED\n", kilo_uid);
         current_decision_state = UNCOMMITTED;
         set_color(RGB(0, 0, 0));
       }
@@ -416,10 +406,10 @@ void take_decision()
       break;
     }
     }
-    printf("recruiter ID:%d, state:%d\n", communicated_by, recruiter_state);
-    printf("kID:%d deciding... %d\n", kilo_uid, current_decision_state);
-    printf("resources_pops[0]: %d\n", resources_pops[0]);
-    printf("resources_pops[1]: %d\n\n", resources_pops[1]);
+    // printf("recruiter ID:%d, state:%d\n", communicated_by, recruiter_state);
+    // printf("kID:%d deciding... %d\n", kilo_uid, current_decision_state);
+    // printf("resources_pops[0]: %d\n", resources_pops[0]);
+    // printf("resources_pops[1]: %d\n\n", resources_pops[1]);
 
     send_own_state();
   }

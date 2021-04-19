@@ -284,13 +284,14 @@ void CALFClientServer::UpdateKilobotStates()
                 outputBuffer.append("0");
             }
         }
-        // std::cout << "Sending " << outputBuffer << std::endl;
+        
     }
 
     /* Send the message to the other ALF*/
     if (mode == "SERVER")
     {
         send(clientSocket, outputBuffer.c_str(), outputBuffer.size() + 1, 0);
+        std::cout << "SERVER Sending: " << outputBuffer << std::endl;
     }
     if (mode == "CLIENT")
     {
@@ -444,7 +445,8 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
             if ((fDistance < (multiArea[i].Radius * 1.0)) && (multiArea[i].Completed == false))
             {
                 multiArea[i].Completed = true;
-                std::cout << "Time:" << m_fTimeInSeconds << " exploited area at:" << multiArea[i].Center << (multiArea[i].Color == argos::CColor::RED ? 0 : 1) << std::endl;
+                // print at the same time of the log of the experiment
+                // std::cout << "Time:" << m_fTimeInSeconds << " exploited area at:" << multiArea[i].Center << (multiArea[i].Color == argos::CColor::RED ? 0 : 1) << std::endl;
                 /*Log exploited area as: time - posX - posY - colour(0 for North, 1 for South) */
                 m_taskOutput
                     << std::noshowpos
@@ -529,7 +531,7 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
     m_tALFKilobotMessage tKilobotMessage, tEmptyMessage, tMessage;
     decisionMessage KilobotDecisionMsg, EmptyDecisionMsg, DecisionMsg;
     bool bMessageToSend = false;
-    UInt16 unKilobotID = GetKilobotId(c_kilobot_entity);
+    UInt8 unKilobotID = GetKilobotId(c_kilobot_entity);
 
     /********* WALL AVOIDANCE STUFF *************/
     UInt8 proximity_sensor_dec = 0; //8 bit proximity sensor as decimal
@@ -743,7 +745,8 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
             tKilobotMessage.m_sData = actual_orientation[unKilobotID]; //orientation of the robot
             if ((command[unKilobotID] != 0) && (GetKilobotLedColor(c_kilobot_entity) == argos::CColor::BLACK))
             {
-                std::cerr << "sending command: " << (int)command[unKilobotID] << std::endl;
+                // print commanded direction to ground robots
+                // std::cerr << "sending command: " << (int)command[unKilobotID] << std::endl;
                 bMessageToSend = true;
             }
             m_vecLastTimeMessaged[unKilobotID] = m_fTimeInSeconds;
@@ -876,6 +879,30 @@ CColor CALFClientServer::GetFloorColor(const CVector2 &vec_position_on_plane)
             }
         }
     }
+
+
+    // Top border for wall avoidance
+    if(vec_position_on_plane.GetY() < vDistance_threshold+0.005 && vec_position_on_plane.GetY()> vDistance_threshold-0.005){
+        cColor = CColor::ORANGE;
+    }
+    // Bottom border for wall avoidance
+    if(vec_position_on_plane.GetY() < -1.0*(vDistance_threshold-0.005) && vec_position_on_plane.GetY()> -1*(vDistance_threshold+0.005)){
+        cColor = CColor::ORANGE;
+    }
+    // Right border for wall avoidance
+    if(vec_position_on_plane.GetX() < vDistance_threshold+0.005 && vec_position_on_plane.GetX()> vDistance_threshold-0.005){
+        cColor = CColor::ORANGE;
+    }
+    // Left border for wall avoidance
+    if(vec_position_on_plane.GetX() < -1.0*(vDistance_threshold-0.005) && vec_position_on_plane.GetX()> -1*(vDistance_threshold+0.005)){
+        cColor = CColor::ORANGE;
+    }
+
+    // // y-axis
+    // if(vec_position_on_plane.GetX() < 0.01 && vec_position_on_plane.GetX()> -0.01 ){
+    //     cColor = CColor::BLUE;
+    // }
+
     return cColor;
 }
 
