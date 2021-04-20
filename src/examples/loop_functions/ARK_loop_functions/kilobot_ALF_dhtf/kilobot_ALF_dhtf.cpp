@@ -1085,7 +1085,7 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
 
 void CALFClientServer::PostStep()
 {
-    std::cout << "Time: " << m_fTimeInSeconds << std::endl;
+    // std::cout << "Time: " << m_fTimeInSeconds << std::endl;
     internal_counter += 1;
     if (internal_counter % m_unDataAcquisitionFrequency == 0 || internal_counter <= 1)
     {

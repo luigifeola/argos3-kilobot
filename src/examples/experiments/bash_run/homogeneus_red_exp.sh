@@ -46,7 +46,7 @@ echo "$CONFIGURATION_FILE" | egrep "^$SHARED_DIR" &> /dev/null || exit 1
 numrobots="48"
 reactivation_timer="60"
 hard_tasks="8"
-timeout="30 90"
+timeout="1 5 30 60 90 120"
 # timeout="5 60 120"
 mixed="false"
 

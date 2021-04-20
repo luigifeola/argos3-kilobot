@@ -43,7 +43,11 @@
             mode="CLIENT"
             ip_addr="127.0.0.1"
             augmented_knowledge="true"
-            timeout_const="1">
+            timeout_const="30"
+            timeoutBB="1"
+            timeoutBR="1"
+            timeoutRB="1"
+            timeoutRR="1">
         </extra_parameters>    
 
         <tracking

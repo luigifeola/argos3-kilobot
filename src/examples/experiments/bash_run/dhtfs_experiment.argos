@@ -38,7 +38,12 @@
     <loop_functions 
         library="build/examples/loop_functions/ARK_loop_functions/kilobot_ALF_dhtf/libkilobot_ALF_dhtf_loop_function"
         label="kilobot_ALF_dhtf_loop_function">
-    
+
+        <!--timeoutBB="1"
+            timeoutBR="2"
+            timeoutRB="3"
+            timeoutRR="5" 
+            WARNING: Remember to change TIMEOUT_CONST in kilo behaviour -->
         <extra_parameters
             mode="SERVER"
             ip_addr="0.0.0.0"
@@ -48,7 +53,11 @@
             hard_tasks="__HARDTASKS__"
             mixed="__MIXED__"
             reactivation_timer="40.0"
-            timeout_const="__TIMEOUT__">
+            timeout_const="__TIMEOUT__"
+            timeoutBB="1"
+            timeoutBR="1"
+            timeoutRB="1"
+            timeoutRR="1">
         </extra_parameters>
         <!-- Not used if mode set to CLIENT -->
 
