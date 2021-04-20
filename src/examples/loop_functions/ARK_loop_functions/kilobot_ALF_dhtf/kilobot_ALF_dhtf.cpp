@@ -47,6 +47,10 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
     GetNodeAttribute(tModeNode, "ip_addr", IP_ADDR);
     GetNodeAttribute(tModeNode, "augmented_knowledge", augmented_knowledge);
     GetNodeAttribute(tModeNode, "timeout_const", kTimerMultiplier);
+    GetNodeAttribute(tModeNode, "timeoutBB", waiting_times.BB);
+    GetNodeAttribute(tModeNode, "timeoutBR", waiting_times.BR);
+    GetNodeAttribute(tModeNode, "timeoutRB", waiting_times.RB);
+    GetNodeAttribute(tModeNode, "timeoutRR", waiting_times.RR);
 
     /* Randomly select the desired number of tasks between the available ones, set color and communicate them to the client */
     if (mode == "SERVER")
@@ -751,18 +755,18 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
                             {
                                 if (otherColor[i] == kRED)
                                 {
-                                    request[unKilobotID] = kTimerMultiplier * kRR;
-                                    // std::cout<<"red-red task 50s\n";
+                                    request[unKilobotID] = kTimerMultiplier * waiting_times.RR;
+                                    std::cout << "red-red task:" << waiting_times.RR << "\n";
                                 }
                                 if (otherColor[i] == kBLUE)
                                 {
-                                    request[unKilobotID] = kTimerMultiplier * kRB;
-                                    // std::cout<<"red-blue task 30s\n";
+                                    request[unKilobotID] = kTimerMultiplier * waiting_times.RB;
+                                    std::cout << "red-blue task:" << waiting_times.RB << "\n";
                                 }
                             }
                             else
                             {
-                                request[unKilobotID] = kTimerMultiplier * kRB;
+                                request[unKilobotID] = kTimerMultiplier * waiting_times.RB;
                                 // std::cout<<"unknown\n";
                             }
                         }
@@ -772,18 +776,18 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
                             {
                                 if (otherColor[i] == kRED)
                                 {
-                                    request[unKilobotID] = kTimerMultiplier * kBR;
-                                    // std::cout<<"blue-red task 20s\n";
+                                    request[unKilobotID] = kTimerMultiplier * waiting_times.BR;
+                                    std::cout << "blue-red task:" << waiting_times.BR << "\n";
                                 }
                                 if (otherColor[i] == kBLUE)
                                 {
-                                    request[unKilobotID] = kTimerMultiplier * kBB;
-                                    // std::cout<<"blue-blue task 10s\n";
+                                    request[unKilobotID] = kTimerMultiplier * waiting_times.BB;
+                                    std::cout << "blue-blue task:" << waiting_times.BB << "\n";
                                 }
                             }
                             else
                             {
-                                request[unKilobotID] = kTimerMultiplier * kBB;
+                                request[unKilobotID] = kTimerMultiplier * waiting_times.BB;
                                 // std::cout<<"unknown\n";
                             }
                         }

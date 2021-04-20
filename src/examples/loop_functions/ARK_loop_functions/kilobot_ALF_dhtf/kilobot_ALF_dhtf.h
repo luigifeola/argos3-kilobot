@@ -143,12 +143,12 @@ private:
         kRED = 1,
     } colour;
 
-    typedef enum
+    struct WaitingTimes
     {
-        kBB = 1,
-        kBR = 2,
-        kRB = 3,
-        kRR = 5,
+        int BB = 1;
+        int BR = 2;
+        int RB = 3;
+        int RR = 5;
     } waiting_times;
 
     struct FloorColorData //contains components of area color
