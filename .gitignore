@@ -3,3 +3,4 @@ results
 data_file.tsv
 data_file.txt
 *.tsv
+*_images

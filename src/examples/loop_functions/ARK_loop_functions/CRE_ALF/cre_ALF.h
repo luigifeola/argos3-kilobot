@@ -1,7 +1,5 @@
-#ifndef DHTF_ALF_H
-#define DHTF_ALF_H
-
-#define DEBUGGING
+#ifndef CRE_ALF_H
+#define CRE_ALF_H
 
 namespace argos
 {
@@ -71,9 +69,6 @@ public:
 
     virtual void PostStep();
 
-    /** Log area pos, type, state (completed or not) */
-    void AreaLOG();
-
     /** Log Kilobot pose and state */
     void KiloLOG();
 
@@ -93,7 +88,8 @@ public:
     /** Get experiment variables */
     void GetExperimentVariables(TConfigurationNode &t_tree);
 
-    /** Virtual environment visualization updating */
+    /* Gets the current state of the Kilobots */
+    void UpdateKilobotStates();
 
     /** Get the message to send to a Kilobot according to its position */
     void UpdateKilobotState(CKilobotEntity &c_kilobot_entity);
@@ -104,6 +100,7 @@ public:
     /** Used to plot the Virtual environment on the floor */
     virtual CColor GetFloorColor(const CVector2 &vec_position_on_plane);
 
+    /*** WALL_AVOIDANCE stuff */
     /** 2D vector rotation */
     CVector2 VectorRotation2D(Real angle, CVector2 vec);
 
@@ -117,74 +114,61 @@ private:
     /* virtual environment struct*/
     struct SVirtualArea //parameters of the circular areas
     {
-#ifdef DEBUGGING
-        Real creationTime = 0.0;
-        Real completitionTime = 0.0;
-#endif
-        int id;
         CVector2 Center;
         Real Radius;
         CColor Color;
-        int contained;
         bool Completed; //set to "true" after the task is completed
     };
     std::vector<SVirtualArea> multiArea;
 
-    typedef enum //states of the kilobots
+    struct TransmittingKilobot //parameters of the circular areas
     {
-        OUTSIDE_AREAS = 0,
-        INSIDE_AREA = 1,
-        LEAVING = 2,
-    } SRobotState;
-
-    typedef enum
-    {
-        kBLUE = 0,
-        kRED = 1,
-    } colour;
-
-    typedef enum
-    {
-        kBB = 1,
-        kBR = 2,
-        kRB = 3,
-        kRR = 5,
-    } waiting_times;
-
-    struct FloorColorData //contains components of area color
-    {
-        UInt8 R;
-        UInt8 G;
-        UInt8 B;
+        int xCoord;
+        int yCoord;
+        int commit; //0 uncommitted, 1 committed NORTH, 2 committed SOUTH
     };
 
-    std::string mode;                          //can be SERVER or CLIENT
-    std::string IP_ADDR;                       //ip address where to connect
-    bool augmented_knowledge;                  //TRUE: ARK knows the color of areas on the other arena; FALSE: ARK knows color of its own areas only; timeout constant are set consequently
-    UInt32 random_seed;                        //to reproduce same random tests
-    UInt8 desired_num_of_areas;                //number of exploitable areas for the experiment (max 16)
-    UInt8 hard_tasks;                          //the number of red areas (the ones that require more robots)
-    bool mixed = false;                        //if mixed, we will have only red-blue or blue-red areas
-    std::vector<int> otherColor;               //Color of the areas on the other ARK
-    bool IsNotZero(int i) { return (i != 0); } //to count how non 0 emelent there are in sending/receiving buffer
-    char inputBuffer[30];                      // array containing the message received from the socket e.g.
-    std::string initialise_buffer;             // buffer containing setup values (active and type of the task)
-    std::string outputBuffer;                  //array  containing the message to send
-    char storeBuffer[30];                      //array where to store input message to keep it available
-    int bytesReceived;                         //length of received string
-    int serverSocket;                          //socket variable
-    int clientSocket;                          //socket variable
-    UInt8 num_of_areas;                        //initial number of clustering areas i.e. 16, will be reduced to desired_num_of_areas
-    double kTimerMultiplier;                   //multiplicative constant for the timeout study
-    double kRespawnTimer;                      //when completed, timer starts and when it will expire the area is reactivated
-                                               // #ifndef DEBUG
-    std::vector<double> vCompletedTime;        //vector with completition time
-                                               // #endif
-    bool initialised;                          // true when client ACK the initial setup
+    typedef enum // Enum for the robot states
+    {
+        UNCOMMITTED = 0,
+        COMMITTED_N = 1,
+        COMMITTED_S = 2,
+    } SRobotState;
+
+    std::vector<TransmittingKilobot> multiTransmittingKilobot; // position and commit of flying robots
+
+    struct decisionMessage //structure for decision-making flying robot message
+    {
+        UInt8 ID;
+        UInt8 resource_North;
+        UInt8 resource_South;
+        UInt8 wall_avoidance_bits;
+    };
+
+    std::string mode;
+    std::string IP_ADDR; //ip address where to connect
+    UInt32 random_seed;
+    float vision_range; //range in with a flying robot can see resources
+    int desired_North_areas;
+    int desired_South_areas;
+    float communication_range; // range in with a flying robot can see a ground robot
+    char inputBuffer[2000];    // array containing the message received from the socket
+    std::string outputBuffer;  // array  containing the message to send
+    char storeBuffer[2000];    // array where to store input message to keep it available
+    int bytesReceived;         // length of received string
+    int serverSocket;
+    int clientSocket;
+    int num_of_areas = 0; //number of clustering areas
 
     /*vectors as long as the number of kilobots*/
-    std::vector<UInt8> request; //vector that determines waiting time: 1 for kilobots on blue areas and 3 for the ones on red areas (multiplied times 500 gives the number of cycles before timeout)
-    std::vector<SInt8> whereis; // says in which area the KB is: -1 if walking, (index of area) if inside an area
+    std::vector<int> actual_orientation; // vector containing orientation to command ground robot for pointing in the right region
+    std::vector<int> command;            // contains informations about actual semiplan direction where the robot are commanded to go (1=NORTH 2=SOUTH)
+    std::vector<int> activated_North_areas;
+    std::vector<int> activated_South_areas;
+    const int max_North_area_id = 49;
+    const int max_South_area_id = 99;
+
+    /*vectors as long as the number of areas*/
 
     std::vector<Real> m_vecLastTimeMessaged;
     Real m_fMinTimeBetweenTwoMsg;
@@ -200,12 +184,10 @@ private:
 
     /* output LOG files */
     std::ofstream m_kiloOutput;
-    std::ofstream m_areaOutput;
     std::ofstream m_taskOutput;
 
     /* output file name*/
     std::string m_strKiloOutputFileName;
-    std::string m_strAreaOutputFileName;
     std::string m_strTaskOutputFileName;
 
     /* data acquisition frequency in ticks */
