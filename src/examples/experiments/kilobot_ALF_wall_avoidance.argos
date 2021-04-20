@@ -49,8 +49,8 @@
         <variables
             dataacquisitionfrequency="20"  
             environmentplotupdatefrequency="10"
-            timeforonemessage="0.05">
-            proximity_bits="8"
+            timeforonemessage="0.05"
+            proximity_bits="8">
         </variables>
 
     
@@ -74,15 +74,11 @@
         </box>
 
 
-        <distribute>
-            <position method="uniform" min="-0.4,-0.4,0" max="0.4,0.4,0" />
-            <orientation method="uniform" min="0,0,0" max="360,0,0" />
-            <entity quantity="1" max_trials="100">
-                <kilobot id="kb">
-                    <controller config="listener"/> <dynamics2d friction="0.7" />
-                </kilobot>
-            </entity>
-        </distribute>  
+        <kilobot id="kb1">
+            <body position="0,0,0" orientation="90,0,0" />
+            <!-- <controller config="listener"/> <dynamics2d friction="0.7" /> -->
+            <controller config="listener"/> 
+        </kilobot>
 
         <floor id="floor"
         source="loop_functions"

@@ -4,6 +4,10 @@ WallavoidanceCALF::WallavoidanceCALF() : m_unDataAcquisitionFrequency(20)
 {
 }
 
+WallavoidanceCALF::~WallavoidanceCALF()
+{
+}
+
 void WallavoidanceCALF::Init(TConfigurationNode &t_node)
 {
     CALF::Init(t_node);
@@ -13,6 +17,11 @@ void WallavoidanceCALF::SetupInitialKilobotStates()
 {
     m_vecLastTimeMessaged.resize(m_tKilobotEntities.size());
     m_fMinTimeBetweenTwoMsg = Max<Real>(1.0, m_tKilobotEntities.size() * m_fTimeForAMessage / 3.0);
+
+    for (UInt16 it = 0; it < m_tKilobotEntities.size(); it++)
+    {
+        SetupInitialKilobotState(*m_tKilobotEntities[it]);
+    }
 }
 
 void WallavoidanceCALF::SetupInitialKilobotState(CKilobotEntity &c_kilobot_entity)
@@ -37,6 +46,7 @@ void WallavoidanceCALF::GetExperimentVariables(TConfigurationNode &t_tree)
     GetNodeAttributeOrDefault(tExperimentVariablesNode, "proximity_bits", proximity_bits, proximity_bits);
 }
 
+// #ifdef WALL_AVOIDANCE
 CVector2 WallavoidanceCALF::VectorRotation2D(Real angle, CVector2 vec)
 {
     Real kx = (cos(angle) * vec.GetX()) + (-1.0 * sin(angle) * vec.GetY());
@@ -67,27 +77,28 @@ std::vector<int> WallavoidanceCALF::Proximity_sensor(CVector2 obstacle_direction
 
     return proximity_values;
 }
+// #endif
 
 void WallavoidanceCALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
 {
-
-    /********* ARGoS message STUFF *************/
-    bool bMessageToSend = false;
     m_tALFKilobotMessage tKilobotMessage, tEmptyMessage, tMessage;
+    bool bMessageToSend = false;
+    UInt8 unKilobotID = GetKilobotId(c_kilobot_entity);
+    const CVector2 kiloPos = GetKilobotPosition(c_kilobot_entity);
+    const Real kiloOri = GetKilobotOrientation(c_kilobot_entity).GetValue();
 
     /********* WALL AVOIDANCE STUFF *************/
     UInt8 proximity_sensor_dec = 0; //8 bit proximity sensor as decimal
-    UInt16 unKilobotID = GetKilobotId(c_kilobot_entity);
-    CVector2 kiloPos = GetKilobotPosition(c_kilobot_entity);
-    Real kiloOri = GetKilobotOrientation(c_kilobot_entity).GetValue();
+    if (m_fTimeInSeconds - m_vecLastTimeMessaged[unKilobotID] < m_fMinTimeBetweenTwoMsg)
+    {
+        return;
+    }
 
-    // std::cerr<<unKilobotID<<'\t'<<kiloPos<<std::endl;
     if (fabs(kiloPos.GetX()) > vDistance_threshold ||
         fabs(kiloPos.GetY()) > vDistance_threshold)
+
     {
-        bMessageToSend = true;
-        std::vector<int>
-            proximity_vec;
+        std::vector<int> proximity_vec;
 
         if (kiloPos.GetX() > vDistance_threshold)
         {
@@ -135,41 +146,15 @@ void WallavoidanceCALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
         // To turn off the wall avoidance decomment this
         //proximity_sensor_dec = 0;
 
-        /** Print proximity values */
-        // std::cerr<<"kID:"<< unKilobotID <<" sensor ";
-        // for(int item : proximity_vec)
-        // {
-        //     std::cerr<< item <<'\t';
-        // }
-        // std::cerr<<std::endl;
+        m_vecLastTimeMessaged[unKilobotID] = m_fTimeInSeconds;
+        bMessageToSend = true;
 
-        // std::cout<<"******Prox dec: "<<proximity_sensor_dec<<std::endl;
-    }
-
-    if (m_fTimeInSeconds - m_vecLastTimeMessaged[unKilobotID] < m_fMinTimeBetweenTwoMsg)
-    {
-        return;
-    }
-    else
-    {
-        /* Compose the message for a kilobot */
-        tKilobotMessage.m_sID = unKilobotID; //ID of the receiver
-        tKilobotMessage.m_sType = 0;
-        tKilobotMessage.m_sData = 0;
-
-        if ((fabs(kiloPos.GetX()) > vDistance_threshold || fabs(kiloPos.GetY()) > vDistance_threshold))
-        {
-            tKilobotMessage.m_sData = proximity_sensor_dec;
-            bMessageToSend = true;
-            // std::cerr<<"sending COLLIDING\n";
-        }
+        tKilobotMessage.m_sID = unKilobotID;
+        tKilobotMessage.m_sData = proximity_sensor_dec;
     }
 
     if (bMessageToSend)
     {
-
-        m_vecLastTimeMessaged[unKilobotID] = m_fTimeInSeconds;
-
         for (int i = 0; i < 9; ++i)
         {
             m_tMessages[unKilobotID].data[i] = 0;
@@ -177,8 +162,10 @@ void WallavoidanceCALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
         tEmptyMessage.m_sID = 1023;
         tEmptyMessage.m_sType = 0;
         tEmptyMessage.m_sData = 0;
+
         for (int i = 0; i < 3; ++i)
         {
+            /* Packing the message */
             if (i == 0)
             {
                 tMessage = tKilobotMessage;
@@ -195,13 +182,45 @@ void WallavoidanceCALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
             m_tMessages[unKilobotID].data[2 + i * 3] = tMessage.m_sData;
             //std::cout<<" robot "<<tMessage.m_sID<<" "<<tMessage.m_sType<<std::endl;
         }
-        //std::cout<<"payload: "<<tKilobotMessage.m_sData<<std::endl;
         GetSimulator().GetMedium<CKilobotCommunicationMedium>("kilocomm").SendOHCMessageTo(c_kilobot_entity, &m_tMessages[unKilobotID]);
     }
     else
     {
         GetSimulator().GetMedium<CKilobotCommunicationMedium>("kilocomm").SendOHCMessageTo(c_kilobot_entity, NULL);
     }
+}
+
+CColor WallavoidanceCALF::GetFloorColor(const CVector2 &vec_position_on_plane)
+{
+    CColor cColor = CColor::WHITE;
+
+    // Top border for wall avoidance
+    if (vec_position_on_plane.GetY() < vDistance_threshold + 0.005 && vec_position_on_plane.GetY() > vDistance_threshold - 0.005)
+    {
+        cColor = CColor::ORANGE;
+    }
+    // Bottom border for wall avoidance
+    if (vec_position_on_plane.GetY() < -1.0 * (vDistance_threshold - 0.005) && vec_position_on_plane.GetY() > -1 * (vDistance_threshold + 0.005))
+    {
+        cColor = CColor::ORANGE;
+    }
+    // Right border for wall avoidance
+    if (vec_position_on_plane.GetX() < vDistance_threshold + 0.005 && vec_position_on_plane.GetX() > vDistance_threshold - 0.005)
+    {
+        cColor = CColor::ORANGE;
+    }
+    // Left border for wall avoidance
+    if (vec_position_on_plane.GetX() < -1.0 * (vDistance_threshold - 0.005) && vec_position_on_plane.GetX() > -1 * (vDistance_threshold + 0.005))
+    {
+        cColor = CColor::ORANGE;
+    }
+
+    // // y-axis
+    // if(vec_position_on_plane.GetX() < 0.01 && vec_position_on_plane.GetX()> -0.01 ){
+    //     cColor = CColor::BLUE;
+    // }
+
+    return cColor;
 }
 
 REGISTER_LOOP_FUNCTIONS(WallavoidanceCALF, "ALF_WallAvoidance_loop_function")

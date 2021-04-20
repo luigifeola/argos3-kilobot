@@ -57,13 +57,9 @@ class WallavoidanceCALF : public CALF
 public:
     WallavoidanceCALF();
 
-    virtual ~WallavoidanceCALF() {}
+    virtual ~WallavoidanceCALF();
 
     virtual void Init(TConfigurationNode &t_tree);
-
-    virtual void Reset();
-
-    virtual void Destroy();
 
     /** Get a Vector of all the Kilobots in the space */
     void GetKilobotsEntities();
@@ -79,9 +75,6 @@ public:
 
     /** Get experiment variables */
     void GetExperimentVariables(TConfigurationNode &t_tree);
-
-    /** Get the message to send to a Kilobot according to its position */
-    void UpdateKilobotState(CKilobotEntity &c_kilobot_entity);
 
     /** Get the message to send to a Kilobot according to its position */
     void UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity);

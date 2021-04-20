@@ -4,7 +4,7 @@
 #include <math.h>
 
 #define COLLISION_BITS 8
-#define SECTORS_IN_COLLISION 2
+#define SECTORS_IN_COLLISION 3
 #define ARGOS_SIMULATION
 
 typedef enum
@@ -29,9 +29,9 @@ typedef enum
 
 motion_t current_motion_type = STOP; // Current motion type
 
-uint32_t turning_ticks = 0;           // keep count of ticks of turning
-const uint8_t max_turning_ticks = 80; /* constant to allow a maximum rotation of 180 degrees with \omega=\pi/5 */
-unsigned int straight_ticks = 0;      // keep count of ticks of going straight
+uint32_t turning_ticks = 0;            // keep count of ticks of turning
+const uint8_t max_turning_ticks = 120; /* constant to allow a maximum rotation of 180 degrees with \omega=\pi/5 */
+unsigned int straight_ticks = 0;       // keep count of ticks of going straight
 const uint16_t max_straight_ticks = 320;
 uint32_t last_motion_ticks = 0;
 
@@ -233,10 +233,11 @@ void wall_avoidance_procedure(uint8_t sensor_readings)
             set_motion(free_space);
         }
     }
-    // else
-    // {
-    //   set_color(RGB(0,3,0));
-    // }
+    else
+    {
+        // set_color(RGB(0, 3, 0));
+        set_motion(FORWARD);
+    }
 }
 
 /*-------------------------------------------------------------------*/
