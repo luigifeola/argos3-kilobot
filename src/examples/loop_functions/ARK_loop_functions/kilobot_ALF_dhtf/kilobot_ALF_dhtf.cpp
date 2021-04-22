@@ -756,12 +756,12 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
                                 if (otherColor[i] == kRED)
                                 {
                                     request[unKilobotID] = kTimerMultiplier * waiting_times.RR;
-                                    std::cout << "red-red task:" << waiting_times.RR << "\n";
+                                    // std::cout << "red-red task:" << waiting_times.RR << "\n";
                                 }
                                 if (otherColor[i] == kBLUE)
                                 {
                                     request[unKilobotID] = kTimerMultiplier * waiting_times.RB;
-                                    std::cout << "red-blue task:" << waiting_times.RB << "\n";
+                                    // std::cout << "red-blue task:" << waiting_times.RB << "\n";
                                 }
                             }
                             else
@@ -777,12 +777,12 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
                                 if (otherColor[i] == kRED)
                                 {
                                     request[unKilobotID] = kTimerMultiplier * waiting_times.BR;
-                                    std::cout << "blue-red task:" << waiting_times.BR << "\n";
+                                    // std::cout << "blue-red task:" << waiting_times.BR << "\n";
                                 }
                                 if (otherColor[i] == kBLUE)
                                 {
                                     request[unKilobotID] = kTimerMultiplier * waiting_times.BB;
-                                    std::cout << "blue-blue task:" << waiting_times.BB << "\n";
+                                    // std::cout << "blue-blue task:" << waiting_times.BB << "\n";
                                 }
                             }
                             else
@@ -997,7 +997,7 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
             bMessageToSend = true;
             tKilobotMessage.m_sData = request[unKilobotID]; //requirement (timer) for the area where it is
 
-            // std::cerr<<"inside for "<< request[unKilobotID] << "\n";
+            std::cerr << "Timeout is " << request[unKilobotID] << "\n";
         }
 
         //exit msg when inside

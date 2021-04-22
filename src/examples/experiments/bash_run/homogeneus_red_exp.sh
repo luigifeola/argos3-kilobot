@@ -46,8 +46,8 @@ echo "$CONFIGURATION_FILE" | egrep "^$SHARED_DIR" &> /dev/null || exit 1
 numrobots="48"
 reactivation_timer="60"
 hard_tasks="8"
-timeout="1 5 30 60 90 120"
-# timeout="5 60 120"
+timeout="270 300"
+# timeout="5 30 60 90 120 180 240 300"
 mixed="false"
 
 ###################################
@@ -64,7 +64,7 @@ RUNS=100
 # echo full $execute
 
 for par1 in $timeout; do
-    param_dir=$res_dir/$date_time"_robots#"$numrobots"_timeout#"$par1"_"$experiment_length"seconds"
+    param_dir=$res_dir/$date_time"_robots#"$numrobots"_timeout#"$par1"_redAreas#"$hard_tasks"_"$experiment_length"seconds"
     if [[ ! -e $param_dir ]]; then
         cmake -E make_directory $param_dir
     fi
@@ -121,6 +121,6 @@ for par1 in $timeout; do
         sleep 1
         
         mv *.tsv $param_dir
+        rm *.argos  
     done
 done
-rm *.argos

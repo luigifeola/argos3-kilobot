@@ -85,7 +85,7 @@ int internal_timeout = 0; //Internal counter for task complention wait
 int turn_timer;           //Avoid the robot to get stuck in Leagving
 
 /* PARAMETER: change this value to determine timeout length */
-const int TIMEOUT_CONST = 1; /*10;*/
+const int TIMEOUT_CONST = 10; /*10;*/
 const uint32_t to_sec = 32;
 uint32_t last_waiting_ticks = 0;
 
@@ -162,6 +162,7 @@ void parse_smart_arena_message(uint8_t data[9], uint8_t kb_index)
     if (internal_timeout == 0)
     {
       internal_timeout = sa_payload * TIMEOUT_CONST;
+      printf("Internal timeout=%d", internal_timeout);
     }
     break;
 
