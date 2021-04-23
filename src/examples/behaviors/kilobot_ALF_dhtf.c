@@ -162,7 +162,7 @@ void parse_smart_arena_message(uint8_t data[9], uint8_t kb_index)
     if (internal_timeout == 0)
     {
       internal_timeout = sa_payload * TIMEOUT_CONST;
-      printf("Internal timeout=%d", internal_timeout);
+      // printf("Internal timeout=%d", internal_timeout);
     }
     break;
 

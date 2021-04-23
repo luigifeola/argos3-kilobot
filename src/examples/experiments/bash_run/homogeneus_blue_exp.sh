@@ -2,7 +2,7 @@
 
 ### How it works for me ###
 # in ARGoS folder run the following:
-# ./src/examples/experiments/bash_run/homogeneus_blue_exp.sh /src/examples/experiments/bash_run dhtfs_experiment.argos dhtfc_experiment.argos
+# ./src/examples/experiments/bash_run/homogeneous_blue_exp.sh /src/examples/experiments/bash_run dhtfs_experiment.argos dhtfc_experiment.argos
 
 if [ "$#" -ne 3 ]; then
     echo "Usage: simple_experiment.sh (from src folder) <base_config_dir> <base_config_file_name_server> <base_config_file_name_client>"
@@ -29,7 +29,7 @@ if [ ! -e $base_config_c ]; then
     fi
 fi
 
-res_dir=$wdir/"results/homogeneus_blue_exp"
+res_dir=$wdir/"results/homogeneous_blue_exp"
 if [[ ! -e $res_dir ]]; then
     cmake -E make_directory $res_dir
 # else
@@ -46,8 +46,7 @@ echo "$CONFIGURATION_FILE" | egrep "^$SHARED_DIR" &> /dev/null || exit 1
 numrobots="16"
 reactivation_timer="60"
 hard_tasks="0"
-timeout="270 300"
-# timeout="1 5 30 60 90 120"
+timeout="3 9 15"
 mixed="false"
 
 ###################################
@@ -64,12 +63,22 @@ RUNS=100
 # echo full $execute
 
 for par1 in $timeout; do
-    param_dir=$res_dir/$date_time"_robots#"$numrobots"_timeout#"$par1"_redAreas#"$hard_tasks"_"$experiment_length"seconds"
+    param_dir=$res_dir/"blue_"$date_time"_robots#"$numrobots"_timeout#"$par1"_redAreas#"$hard_tasks"_"$experiment_length"seconds"
+    
+    #########################################################
+    # #debug
+    # experiment_length="900"
+    # param_dir=$res_dir/"DEBUG_blue_"$date_time"_timeout#"$par1
+    # RUNS=1
+    #########################################################
+
     if [[ ! -e $param_dir ]]; then
         cmake -E make_directory $param_dir
     fi
 
     for it in $(seq 1 $RUNS); do
+        
+        seedc=$(($it + 200))
 
         #server config
         configs=`printf 'configs_nrob%d_timeout%03d_seed%03d.argos' $numrobots $par1 $it`
@@ -96,7 +105,7 @@ for par1 in $timeout; do
         # echo configc $configc
         cp $base_config_c $configc
         sed -i "s|__TIMEEXPERIMENT__|$experiment_length|g" $configc
-        sed -i "s|__SEED__|$it|g" $configc
+        sed -i "s|__SEED__|$seedc|g" $configc
         sed -i "s|__NUMROBOTS__|$numrobots|g" $configc
         sed -i "s|__HARDTASKS__|$hard_tasks|g" $configc
         sed -i "s|__TIMEOUT__|$par1|g" $configc
@@ -117,7 +126,7 @@ for par1 in $timeout; do
         # echo client $configc
         # executec="$1/$configc"
         xterm -title "server-$it--timeout-$par1" -e "sleep 0.1; argos3 -c $configs; sleep 0.1" &
-        xterm -title "client-$it--timeout-$par1" -e "sleep 0.1; argos3 -c $configc; sleep 0.1"
+        xterm -title "client-$seedc--timeout-$par1" -e "sleep 0.1; argos3 -c $configc; sleep 0.1"
         sleep 1
         
         mv *.tsv $param_dir

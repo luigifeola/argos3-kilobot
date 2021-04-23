@@ -813,6 +813,13 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
                 multiArea[whereis[unKilobotID]].contained = 0;
                 whereis[unKilobotID] = -1;
             }
+            else if (Distance(m_vecKilobotsPositions[unKilobotID], multiArea[whereis[unKilobotID]].Center) > multiArea[whereis[unKilobotID]].Radius)
+            {
+                m_vecKilobotStates_ALF[unKilobotID] = OUTSIDE_AREAS;
+                multiArea[whereis[unKilobotID]].contained -= 1;
+                whereis[unKilobotID] = -1;
+            }
+
             break;
         }
         case LEAVING:
