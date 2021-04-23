@@ -1004,7 +1004,7 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
             bMessageToSend = true;
             tKilobotMessage.m_sData = request[unKilobotID]; //requirement (timer) for the area where it is
 
-            std::cerr << "Timeout is " << request[unKilobotID] << "\n";
+            // std::cerr << "Timeout is " << request[unKilobotID] << "\n";
         }
 
         //exit msg when inside
