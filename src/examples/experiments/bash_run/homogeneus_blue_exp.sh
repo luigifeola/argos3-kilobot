@@ -43,10 +43,10 @@ base_dir=`dirname $base_config_s`
 # echo base_dir $base_dir
 echo "$CONFIGURATION_FILE" | egrep "^$SHARED_DIR" &> /dev/null || exit 1
 
-numrobots="16"
+numrobots="12"
 reactivation_timer="60"
 hard_tasks="0"
-timeout="3 9 15"
+timeout="3 9 15 30 60 90"
 mixed="false"
 
 ###################################

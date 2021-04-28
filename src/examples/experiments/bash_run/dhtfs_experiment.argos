@@ -5,7 +5,7 @@
     <!-- * General configuration * -->
     <!-- ************************* -->
     <framework>
-        <system threads="8" />
+        <system threads="6" />
         <experiment length="__TIMEEXPERIMENT__" 
         ticks_per_second="10"
         random_seed="__SEED__" />
@@ -167,7 +167,7 @@
     <!-- ****************** -->
     <!-- * Visualization  * -->
     <!-- ****************** -->
-    <!-- <visualization>
+    <visualization>
         <qt-opengl>
             <frame_grabbing directory="./server_images" base_name="server_" format="png" quality="100" headless_grabbing="false" headless_frame_size="1600x1200" headless_frame_rate="1" />
             <camera>
@@ -180,6 +180,6 @@
                 <placement idx="6" position="-0.0229259,-0.177184,0.0725521" look_at="0.0273839,0.812385,-0.0624333" lens_focal_length="20" />
             </camera>
         </qt-opengl>
-    </visualization> -->
+    </visualization>
     
 </argos-configuration>

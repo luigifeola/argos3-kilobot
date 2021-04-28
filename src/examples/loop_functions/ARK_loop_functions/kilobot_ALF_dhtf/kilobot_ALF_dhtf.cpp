@@ -766,7 +766,7 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
                             }
                             else
                             {
-                                request[unKilobotID] = kTimerMultiplier * waiting_times.RB;
+                                request[unKilobotID] = kTimerMultiplier * waiting_times.RR;
                                 // std::cout<<"unknown\n";
                             }
                         }
@@ -1033,26 +1033,6 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
 
     if (bMessageToSend)
     {
-
-        /** Print id and type of message sent to the kilobot */
-        // switch (tKilobotMessage.m_sType) {
-        //     case OUTSIDE_AREAS : {
-        //         std::cout<<"Outside ";
-        //     break;
-        //     }
-        //     case INSIDE_AREA : {
-        //         std::cout<<"Inside ";
-        //     break;
-        //     }
-        //     case LEAVING : {
-        //         std::cout<<"Leaving ";
-        //     break;
-        //     }
-        //     default:
-        //         std::cout<<"Error no state ";
-        //     break;
-        // }
-        // std::cout<<"to kID:"<<unKilobotID<<std::endl;
 
         m_vecLastTimeMessaged[unKilobotID] = m_fTimeInSeconds;
 

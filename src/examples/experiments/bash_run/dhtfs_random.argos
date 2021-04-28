@@ -6,7 +6,7 @@
     <!-- ************************* -->
     <framework>
         <system threads="6" />
-        <experiment length="__TIMEEXPERIMENT__"
+        <experiment length="__TIMEEXPERIMENT__" 
         ticks_per_second="10"
         random_seed="__SEED__" />
     </framework>
@@ -38,22 +38,28 @@
     <loop_functions 
         library="build/examples/loop_functions/ARK_loop_functions/kilobot_ALF_dhtf/libkilobot_ALF_dhtf_loop_function"
         label="kilobot_ALF_dhtf_loop_function">
-    
+
         <!--timeoutBB="1"
             timeoutBR="2"
             timeoutRB="3"
             timeoutRR="5" 
             WARNING: Remember to change TIMEOUT_CONST in kilo behaviour -->
         <extra_parameters
-            mode="CLIENT"
-            ip_addr="127.0.0.1"
+            mode="SERVER"
+            ip_addr="0.0.0.0"
             augmented_knowledge="true"
-            timeout_const="__TIMEOUT__"
-            timeoutBB="1"
+            random_seed="12" 
+            desired_num_of_areas="8"
+            hard_tasks="__HARDTASKS__"
+            mixed="false"
+            reactivation_timer="40.0"
+            timeout_const="1"
+            timeoutBB="__BB__"
             timeoutBR="1"
             timeoutRB="1"
-            timeoutRR="1">
-        </extra_parameters>    
+            timeoutRR="__RR__">
+        </extra_parameters>
+        <!-- Not used if mode set to CLIENT -->
 
         <tracking
             position="true"
@@ -161,9 +167,9 @@
     <!-- ****************** -->
     <!-- * Visualization  * -->
     <!-- ****************** -->
-    <visualization>
+    <!-- <visualization>
         <qt-opengl>
-            <frame_grabbing directory="./client_images" base_name="client_" format="png" quality="100" headless_grabbing="false" headless_frame_size="1600x1200" headless_frame_rate="1" />
+            <frame_grabbing directory="./server_images" base_name="server_" format="png" quality="100" headless_grabbing="false" headless_frame_size="1600x1200" headless_frame_rate="1" />
             <camera>
                 <placement idx="0" position="0.0,-0.00001,0.5" look_at="0,0,0" lens_focal_length="12"/>
                 <placement idx="1" position="0,0,1" look_at="0,0,0" lens_focal_length="12" />
@@ -174,6 +180,6 @@
                 <placement idx="6" position="-0.0229259,-0.177184,0.0725521" look_at="0.0273839,0.812385,-0.0624333" lens_focal_length="20" />
             </camera>
         </qt-opengl>
-    </visualization>
+     </visualization> -->
     
 </argos-configuration>
