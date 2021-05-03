@@ -46,7 +46,7 @@
             random_seed="12" 
             desired_num_of_areas="8"
             hard_tasks="4"
-            mixed="true"
+            mixed="false"
             reactivation_timer="40.0"
             timeout_const="30"
             timeoutBB="1"

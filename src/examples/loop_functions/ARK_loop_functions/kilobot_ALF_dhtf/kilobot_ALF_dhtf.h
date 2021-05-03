@@ -110,6 +110,9 @@ public:
     /** Simulate proximity sensor*/
     std::vector<int> Proximity_sensor(CVector2 obstacle_direction, Real kOrientation, int num_sectors);
 
+    /** Setup socket*/
+    void Initialise_socket();
+
 private:
     /************************************/
     /*  Virtual Environment variables   */
@@ -162,7 +165,7 @@ private:
     std::string IP_ADDR;                       //ip address where to connect
     bool augmented_knowledge;                  //TRUE: ARK knows the color of areas on the other arena; FALSE: ARK knows color of its own areas only; timeout constant are set consequently
     UInt32 random_seed;                        //to reproduce same random tests
-    UInt8 desired_num_of_areas;                //number of exploitable areas for the experiment (max 16)
+    UInt8 desired_num_of_areas;                //number of exploitable areas for the experiment (max 16-4=12 (removing the 4 corners))
     UInt8 hard_tasks;                          //the number of red areas (the ones that require more robots)
     bool mixed = false;                        //if mixed, we will have only red-blue or blue-red areas
     std::vector<int> otherColor;               //Color of the areas on the other ARK

@@ -29,7 +29,7 @@ if [ ! -e $base_config_c ]; then
     fi
 fi
 
-res_dir=$wdir/"results/homogeneous_red_exp"
+res_dir=$wdir/"results_brownian/homogeneous_red_exp"
 if [[ ! -e $res_dir ]]; then
     cmake -E make_directory $res_dir
 # else
@@ -46,7 +46,8 @@ echo "$CONFIGURATION_FILE" | egrep "^$SHARED_DIR" &> /dev/null || exit 1
 numrobots="36"
 reactivation_timer="60"
 hard_tasks="8"
-timeout="3 9 15 30"
+timeout="36"
+# timeout="1 2 3 6 12 18 24 30 36 42 48 54 60 90 180"
 mixed="false"
 
 ###################################
@@ -77,7 +78,8 @@ for par1 in $timeout; do
         cmake -E make_directory $param_dir
     fi
 
-    for it in $(seq 1 $RUNS); do
+    # for it in $(seq 1 $RUNS); do
+    for it in $(seq 56 $RUNS); do
         
         seedc=$(($it + 200))
 

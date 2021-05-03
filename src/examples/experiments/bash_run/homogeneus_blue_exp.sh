@@ -29,7 +29,7 @@ if [ ! -e $base_config_c ]; then
     fi
 fi
 
-res_dir=$wdir/"results/homogeneous_blue_exp"
+res_dir=$wdir/"results_brownian/homogeneous_blue_exp"
 if [[ ! -e $res_dir ]]; then
     cmake -E make_directory $res_dir
 # else
@@ -46,7 +46,8 @@ echo "$CONFIGURATION_FILE" | egrep "^$SHARED_DIR" &> /dev/null || exit 1
 numrobots="12"
 reactivation_timer="60"
 hard_tasks="0"
-timeout="3 9 15 30 60 90"
+timeout="1 2 3 6"
+# timeout="1 2 3 6 12 18 24 30 36 42 48 54 60 90 180"
 mixed="false"
 
 ###################################

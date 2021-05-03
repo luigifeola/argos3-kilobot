@@ -54,8 +54,8 @@ motion_t backup_motion = STOP;
 
 /***********WALK PARAMETERS***********/
 const float std_motion_steps = 20 * 16; // variance of the gaussian used to compute forward motion
-const float levy_exponent = 1.4;        // 2 is brownian like motion (alpha)
-const float crw_exponent = 0.9;         // higher more straight (rho)
+const float levy_exponent = 2.0;        // 2 is brownian like motion (alpha)
+const float crw_exponent = 0.0;         // higher more straight (rho)
 uint32_t turning_ticks = 0;             // keep count of ticks of turning
 const uint8_t max_turning_ticks = 80;   /* constant to allow a maximum rotation of 180 degrees with \omega=\pi/5 */
 unsigned int straight_ticks = 0;        // keep count of ticks of going straight

@@ -1,8 +1,5 @@
 #include "kilobot_ALF_dhtf.h"
 
-/** Used for mixed experiment */
-inline int xor_func(int i) { return i ^ 1; }
-
 namespace
 {
     const int port = 7001;
@@ -22,6 +19,13 @@ namespace
     const CVector2 right_direction(-1.0, 0.0);
     const int proximity_bits = 8;
     int internal_counter = 0;
+
+    // 4 regions division, RR, RB, BR, BB
+    const bool kFourRegions = true;
+    const std::vector<int> up_left({1, 4, 5});
+    const std::vector<int> up_right({2, 6, 7});
+    const std::vector<int> bottom_left({8, 9, 13});
+    const std::vector<int> bottom_right({10, 11, 14});
 }
 
 CALFClientServer::CALFClientServer() : m_unDataAcquisitionFrequency(20)
@@ -78,7 +82,8 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
         std::fill(vCompletedTime.begin(), vCompletedTime.end(), 0.0);
 #endif
         num_of_areas = desired_num_of_areas;
-        /* Active IDs */
+
+        /* Active areas ID */
         while (activated_areas.size() < desired_num_of_areas)
         {
             if (desired_num_of_areas - 1 > max_area_id)
@@ -127,7 +132,6 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
             }
             std::sort(hard_tasks_client_vec.begin(), hard_tasks_client_vec.end());
         }
-
         std::cout << "***********Active areas*****************\n";
         for (int ac_ar : activated_areas)
         {
@@ -239,12 +243,20 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
         // }
     }
 
+    Initialise_socket();
+}
+
+/**
+ * SOCKET INITIALISATION
+ */
+void CALFClientServer::Initialise_socket()
+{
     /* Initializations */
     bytesReceived = -1;
     memset(storeBuffer, 0, 30); //set to 0 the 30 elements in storeBuffer
     initialised = false;
 
-    /* Socket initialization, opening communication port */
+    /* Opening communication port */
     serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     std::string ipAddress = IP_ADDR;
     sockaddr_in hint;

@@ -29,7 +29,7 @@ if [ ! -e $base_config_c ]; then
     fi
 fi
 
-res_dir=$wdir/"results/random_mixed_exp"
+res_dir=$wdir/"results/random_mixed_new_rw_exp"
 if [[ ! -e $res_dir ]]; then
     cmake -E make_directory $res_dir
 # else
@@ -46,7 +46,8 @@ echo "$CONFIGURATION_FILE" | egrep "^$SHARED_DIR" &> /dev/null || exit 1
 numrobots="24"
 reactivation_timer="60"
 hard_tasks="4"
-timeout="6 12 18 24 30 36 42 48 54 60 90 180"
+# timeout="1 2 3 6 12 18 24 30 36 42 48 54 60 90 180"
+timeout="30"
 mixed="false"
 
 ###################################
@@ -63,13 +64,13 @@ RUNS=100
 # echo full $execute
 
 for par1 in $timeout; do
-    param_dir=$res_dir/"random_mixed_"$date_time"_robots#"$numrobots"_timeout#"$par1"_redAreas#"$hard_tasks"_"$experiment_length"seconds"
+    param_dir=$res_dir/"random_mixed_new_rw_"$date_time"_robots#"$numrobots"_timeout#"$par1"_redAreas#"$hard_tasks"_"$experiment_length"seconds"
     
     
     #########################################################
     # #debug
     # experiment_length="900"
-    # param_dir=$res_dir/"DEBUG_random_mixed_"$date_time"_timeout#"$par1
+    # param_dir=$res_dir/"DEBUG_random_mixed_new_rw_"$date_time"_timeout#"$par1
     # RUNS=1
     #########################################################
     
