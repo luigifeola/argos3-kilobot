@@ -12,6 +12,9 @@ namespace
     const int kSoftTask = 2;
     const int kHardTask = 6;
 
+    // avoid to choose corner areas
+    const std::vector<int> vForbidden({0, 3, 12, 15});
+
     // wall avoidance stuff
     const CVector2 up_direction(0.0, -1.0);
     const CVector2 down_direction(0.0, 1.0);
@@ -21,9 +24,10 @@ namespace
     int internal_counter = 0;
 
     // 4 regions division, RR, RB, BR, BB
-    const bool kFourRegions = true;
-    const std::vector<int> up_left({1, 4, 5});
-    const std::vector<int> up_right({2, 6, 7});
+    const int kNumOfRegions = 4;
+    const int kAreaPerRegion = 2;
+    const std::vector<int> top_left({1, 4, 5});
+    const std::vector<int> top_right({2, 6, 7});
     const std::vector<int> bottom_left({8, 9, 13});
     const std::vector<int> bottom_right({10, 11, 14});
 }
@@ -63,75 +67,15 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
         //GetNodeAttribute(tModeNode, "random_seed", random_seed);
         GetNodeAttribute(tModeNode, "desired_num_of_areas", desired_num_of_areas);
         GetNodeAttribute(tModeNode, "hard_tasks", hard_tasks);
-        GetNodeAttribute(tModeNode, "mixed", mixed);
+        GetNodeAttributeOrDefault(tModeNode, "mixed", mixed, false);
+        GetNodeAttributeOrDefault(tModeNode, "fourRegions", fourRegions, false);
         GetNodeAttribute(tModeNode, "reactivation_timer", kRespawnTimer);
 
-        /* Select areas */
-        srand(random_seed);
+        if (fourRegions)
+            Initialise_environment_4_regions(); //4 regions client-server: RR,RB,BR,BB
+        else
+            Initialise_environment();
 
-        /* GENERATE RANDOM IDs AND RANDOM HARD TASK for server and client*/
-        std::default_random_engine re;
-        re.seed(random_seed);
-        std::vector<int> activated_areas;
-        const std::vector<int> vForbidden({0, 3, 12, 15});
-        std::vector<int> hard_tasks_vec;
-        std::vector<int> hard_tasks_client_vec;
-        otherColor.resize(desired_num_of_areas);
-#ifndef DEBUGGING
-        vCompletedTime.resize(desired_num_of_areas);
-        std::fill(vCompletedTime.begin(), vCompletedTime.end(), 0.0);
-#endif
-        num_of_areas = desired_num_of_areas;
-
-        /* Active areas ID */
-        while (activated_areas.size() < desired_num_of_areas)
-        {
-            if (desired_num_of_areas - 1 > max_area_id)
-            {
-                std::cerr << "Requested more areas then the available ones, WARNING!";
-            }
-
-            std::uniform_int_distribution<int> distr(0, max_area_id);
-            int random_number;
-            do
-            {
-                random_number = distr(re);
-            } while ((std::find(activated_areas.begin(), activated_areas.end(), random_number) != activated_areas.end()) ||
-                     (std::find(vForbidden.begin(), vForbidden.end(), random_number) != vForbidden.end()));
-            activated_areas.push_back(random_number);
-        }
-        std::sort(activated_areas.begin(), activated_areas.end());
-
-        /* Hard task for the server */
-        while (hard_tasks_vec.size() < hard_tasks)
-        {
-            std::uniform_int_distribution<int> distr(0, max_area_id);
-            int random_number;
-            do
-            {
-                random_number = distr(re);
-            } while (std::find(activated_areas.begin(), activated_areas.end(), random_number) == activated_areas.end() ||
-                     std::find(hard_tasks_vec.begin(), hard_tasks_vec.end(), random_number) != hard_tasks_vec.end());
-            hard_tasks_vec.push_back(random_number);
-        }
-        std::sort(hard_tasks_vec.begin(), hard_tasks_vec.end());
-
-        /* Hard task for the client */
-        if (mixed == false)
-        {
-            while (hard_tasks_client_vec.size() < hard_tasks)
-            {
-                std::uniform_int_distribution<int> distr(0, max_area_id);
-                int random_number;
-                do
-                {
-                    random_number = distr(re);
-                } while (std::find(activated_areas.begin(), activated_areas.end(), random_number) == activated_areas.end() ||
-                         std::find(hard_tasks_client_vec.begin(), hard_tasks_client_vec.end(), random_number) != hard_tasks_client_vec.end());
-                hard_tasks_client_vec.push_back(random_number);
-            }
-            std::sort(hard_tasks_client_vec.begin(), hard_tasks_client_vec.end());
-        }
         std::cout << "***********Active areas*****************\n";
         for (int ac_ar : activated_areas)
         {
@@ -159,8 +103,7 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
             std::cout << "Hard task client is dual of server\n";
         /* 0-1 vector indicatind if the active area is hard or soft type */
         // preparint initialise ("I") server message
-        std::vector<int>
-            server_task_type(activated_areas.size(), 0);
+        std::vector<int> server_task_type(activated_areas.size(), 0);
         std::vector<int> client_task_type(activated_areas.size(), 0);
 
         initialise_buffer = "I";
@@ -244,6 +187,143 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
     }
 
     Initialise_socket();
+}
+
+/**
+ * ENVIRONMENT INITIALISATION
+ */
+void CALFClientServer::Initialise_environment_4_regions()
+{
+    /* Select areas */
+    srand(random_seed);
+
+    /* GENERATE RANDOM IDs AND RANDOM HARD TASK for server and client*/
+    std::default_random_engine re;
+    re.seed(random_seed);
+    otherColor.resize(desired_num_of_areas);
+    num_of_areas = desired_num_of_areas;
+
+    /* Active areas ID */
+    std::vector<int> vRegionIDs(3);
+    for (int i = 0; i < kNumOfRegions; i++)
+    {
+        switch (i)
+        {
+        case 0:
+            vRegionIDs.assign(top_left.begin(), top_left.end());
+            break;
+        case 1:
+            vRegionIDs.assign(top_right.begin(), top_right.end());
+            break;
+        case 2:
+            vRegionIDs.assign(bottom_left.begin(), bottom_left.end());
+            break;
+        case 3:
+            vRegionIDs.assign(bottom_right.begin(), bottom_right.end());
+            break;
+
+        default:
+            std::cerr << "ERROR, OPTION NOT AVAILABLE\n";
+            break;
+        }
+
+        std::cout << "vRegionIDs\n";
+        for (const auto e : vRegionIDs)
+        {
+            std::cout << e << '\t';
+        }
+        std::cout << std::endl;
+
+        /* Active area IDs in 4 different regions */
+        while (activated_areas.size() < kAreaPerRegion + i * kAreaPerRegion)
+        {
+            std::uniform_int_distribution<int> distr(0, vRegionIDs.size() - 1);
+            int random_number;
+            do
+            {
+                random_number = distr(re);
+            } while ((std::find(activated_areas.begin(), activated_areas.end(), vRegionIDs[random_number]) != activated_areas.end()));
+            activated_areas.push_back(vRegionIDs[random_number]);
+
+            if (i == 0 || i == 1)
+            {
+                hard_tasks_vec.push_back(vRegionIDs[random_number]);
+            }
+
+            if (i == 0 || i == 2)
+            {
+                hard_tasks_client_vec.push_back(vRegionIDs[random_number]);
+            }
+        }
+    }
+    std::sort(activated_areas.begin(), activated_areas.end());
+    std::sort(hard_tasks_vec.begin(), hard_tasks_vec.end());
+    std::sort(hard_tasks_client_vec.begin(), hard_tasks_client_vec.end());
+}
+
+/**
+ * ENVIRONMENT INITIALISATION
+ */
+void CALFClientServer::Initialise_environment()
+{
+    /* Select areas */
+    srand(random_seed);
+
+    /* GENERATE RANDOM IDs AND RANDOM HARD TASK for server and client*/
+    std::default_random_engine re;
+    re.seed(random_seed);
+    otherColor.resize(desired_num_of_areas);
+    num_of_areas = desired_num_of_areas;
+
+    /* Active areas ID */
+    while (activated_areas.size() < desired_num_of_areas)
+    {
+        if (desired_num_of_areas - 1 > max_area_id)
+        {
+            std::cerr << "Requested more areas then the available ones, WARNING!";
+        }
+
+        std::uniform_int_distribution<int> distr(0, max_area_id);
+        int random_number;
+        do
+        {
+            random_number = distr(re);
+        } while ((std::find(activated_areas.begin(), activated_areas.end(), random_number) != activated_areas.end()) ||
+                 (std::find(vForbidden.begin(), vForbidden.end(), random_number) != vForbidden.end()));
+        activated_areas.push_back(random_number);
+    }
+    std::sort(activated_areas.begin(), activated_areas.end());
+
+    /* Hard task for the server */
+    while (hard_tasks_vec.size() < hard_tasks)
+    {
+        std::uniform_int_distribution<int> distr(0, max_area_id);
+        int random_number;
+        do
+        {
+            random_number = distr(re);
+        } while (std::find(activated_areas.begin(), activated_areas.end(), random_number) == activated_areas.end() ||
+                 std::find(hard_tasks_vec.begin(), hard_tasks_vec.end(), random_number) != hard_tasks_vec.end());
+        hard_tasks_vec.push_back(random_number);
+    }
+    std::sort(hard_tasks_vec.begin(), hard_tasks_vec.end());
+
+    /* Hard task for the client */
+    if (mixed == false)
+    {
+        while (hard_tasks_client_vec.size() < hard_tasks)
+        {
+            std::uniform_int_distribution<int> distr(0, max_area_id);
+            int random_number;
+            do
+            {
+                random_number = distr(re);
+            } while (std::find(activated_areas.begin(), activated_areas.end(), random_number) == activated_areas.end() ||
+                     std::find(hard_tasks_client_vec.begin(), hard_tasks_client_vec.end(), random_number) != hard_tasks_client_vec.end());
+            hard_tasks_client_vec.push_back(random_number);
+        }
+        std::sort(hard_tasks_client_vec.begin(), hard_tasks_client_vec.end());
+    }
 }
 
 /**
@@ -380,7 +460,7 @@ void CALFClientServer::SetupVirtualEnvironments(TConfigurationNode &t_tree)
         GetNodeAttribute(t_VirtualClusteringHubNode, "position", multiArea[i].Center);
         GetNodeAttribute(t_VirtualClusteringHubNode, "radius", multiArea[i].Radius);
     }
-    /* Blue set as default color, then some of the areas turn red */
+    /* White set as default color*/
     for (int ai = 0; ai < num_of_areas; ai++)
     {
         multiArea[ai].id = ai;
@@ -456,7 +536,7 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
             std::string client_task(storebuffer.begin() + 2 * num_of_areas, storebuffer.end());
             std::cout << server_task << std::endl;
             std::cout << client_task << std::endl;
-            std::cout << "num of areas: " << num_of_areas << std::endl;
+            std::cout << "CLIENT - num of areas: " << num_of_areas << std::endl;
 
             std::vector<int> active_areas;
             for (int i = 0; i < num_of_areas; i++)
@@ -465,11 +545,12 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
                 // std::cout << "storebuffer[i] "<< storebuffer[i] << std::endl;
             }
 
-            std::cout << "Active areas: \n";
+            std::cout << "CLIENT - Active areas: \n";
             for (int id : active_areas)
             {
-                std::cout << id << std::endl;
+                std::cout << id << '\t';
             }
+            std::cout << std::endl;
 
             for (int i = 0; i < multiArea.size(); i++)
             {
@@ -488,12 +569,6 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
                     multiArea[i].Color = argos::CColor::RED;
                 else
                     multiArea[i].Color = argos::CColor::BLUE;
-            }
-
-            std::cout << "Multi areas: \n";
-            for (int id : active_areas)
-            {
-                std::cout << id << std::endl;
             }
 
             // std::cout<<"Recv_str "<<storeBuffer<<std::endl;

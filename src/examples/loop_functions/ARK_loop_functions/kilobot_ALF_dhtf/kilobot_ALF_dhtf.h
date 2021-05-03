@@ -93,7 +93,11 @@ public:
     /** Get experiment variables */
     void GetExperimentVariables(TConfigurationNode &t_tree);
 
-    /** Virtual environment visualization updating */
+    /** Init environment*/
+    void Initialise_environment();
+
+    /** Init environment with 4 regions: RR,RB,BR,BB*/
+    void Initialise_environment_4_regions();
 
     /** Get the message to send to a Kilobot according to its position */
     void UpdateKilobotState(CKilobotEntity &c_kilobot_entity);
@@ -167,7 +171,11 @@ private:
     UInt32 random_seed;                        //to reproduce same random tests
     UInt8 desired_num_of_areas;                //number of exploitable areas for the experiment (max 16-4=12 (removing the 4 corners))
     UInt8 hard_tasks;                          //the number of red areas (the ones that require more robots)
-    bool mixed = false;                        //if mixed, we will have only red-blue or blue-red areas
+    std::vector<int> activated_areas;          //IDs of active areas
+    std::vector<int> hard_tasks_vec;           //IDs of hard tasks for the server
+    std::vector<int> hard_tasks_client_vec;    //IDs of hard tasks for the client
+    bool mixed;                                //if mixed, we will have only red-blue or blue-red areas
+    bool fourRegions;                          //if true, the combination of client and server arenas give rise to 4 regions: RR,RB,BR,BB
     std::vector<int> otherColor;               //Color of the areas on the other ARK
     bool IsNotZero(int i) { return (i != 0); } //to count how non 0 emelent there are in sending/receiving buffer
     char inputBuffer[30];                      // array containing the message received from the socket e.g.
