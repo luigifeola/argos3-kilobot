@@ -1,5 +1,6 @@
 build
 results
+results_brownian
 data_file.tsv
 data_file.txt
 *.tsv
