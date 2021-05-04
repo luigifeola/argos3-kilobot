@@ -23,6 +23,13 @@ typedef enum
 } bool;
 
 typedef enum
+{ // Enum for boolean flags
+  CONSTANT = 0,
+  PERSISTENT = 1,
+  BROWNIAN = 2,
+} adaptive_walk;
+
+typedef enum
 { // Enum for the robot states
   RANDOM_WALKING = 0,
   WAITING = 1,
@@ -53,9 +60,10 @@ uint16_t backup_state = RANDOM_WALKING;
 motion_t backup_motion = STOP;
 
 /***********WALK PARAMETERS***********/
+adaptive_walk current_walk = CONSTANT;  //start with a meaningless value
 const float std_motion_steps = 20 * 16; // variance of the gaussian used to compute forward motion
-const float levy_exponent = 2.0;        // 2 is brownian like motion (alpha)
-const float crw_exponent = 0.0;         // higher more straight (rho)
+float levy_exponent = 2.0;              // 2 is brownian like motion (alpha)
+float crw_exponent = 0.0;               // higher more straight (rho)
 uint32_t turning_ticks = 0;             // keep count of ticks of turning
 const uint8_t max_turning_ticks = 80;   /* constant to allow a maximum rotation of 180 degrees with \omega=\pi/5 */
 unsigned int straight_ticks = 0;        // keep count of ticks of going straight
@@ -161,8 +169,10 @@ void parse_smart_arena_message(uint8_t data[9], uint8_t kb_index)
     location = sa_type;
     if (internal_timeout == 0)
     {
-      internal_timeout = sa_payload * TIMEOUT_CONST;
-      // printf("Internal timeout=%d", internal_timeout);
+      internal_timeout = (sa_payload & 0XFF) * TIMEOUT_CONST;
+      current_walk = (sa_payload >> 8) & 0x03;
+      // printf("Internal timeout=%d\n", internal_timeout);
+      // printf("kID=%d, adaptive walk=%d\n", kilo_uid, (int)current_walk);
     }
     break;
 
@@ -285,6 +295,19 @@ void rx_message(message_t *msg, distance_measurement_t *d)
 
 void random_walk()
 {
+  switch (current_walk)
+  {
+  case PERSISTENT:
+    crw_exponent = 0.9;
+    levy_exponent = 1.4;
+    break;
+  case BROWNIAN:
+    crw_exponent = 0.0;
+    levy_exponent = 2.0;
+    break;
+  default:
+    break;
+  }
   switch (current_motion_type)
   {
   case TURN_LEFT:
@@ -547,9 +570,9 @@ void loop()
     }
     else
     {
-      // set_color(RGB(0,3,0));
       random_walk();
       finite_state_machine();
+      // printf("kID=%d, crw=%f\tlevy=%f\n", kilo_uid, crw_exponent, levy_exponent);
     }
 
 #ifndef ARGOS_SIMULATION

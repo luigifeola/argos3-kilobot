@@ -27,6 +27,7 @@ namespace argos
 #include <random>
 #include <algorithm>
 #include <vector>
+#include <bitset>
 
 #include <argos3/core/simulator/loop_functions.h>
 #include <argos3/plugins/robots/kilobot/simulator/ALF.h>
@@ -175,6 +176,7 @@ private:
     std::vector<int> hard_tasks_vec;           //IDs of hard tasks for the server
     std::vector<int> hard_tasks_client_vec;    //IDs of hard tasks for the client
     bool mixed;                                //if mixed, we will have only red-blue or blue-red areas
+    bool adaptive_walk;                        //if true, trying to complete more RED tasks as possible (completed RED task -> brownian motion, BLUE task -> persistent motion)
     bool fourRegions;                          //if true, the combination of client and server arenas give rise to 4 regions: RR,RB,BR,BB
     std::vector<int> otherColor;               //Color of the areas on the other ARK
     bool IsNotZero(int i) { return (i != 0); } //to count how non 0 emelent there are in sending/receiving buffer

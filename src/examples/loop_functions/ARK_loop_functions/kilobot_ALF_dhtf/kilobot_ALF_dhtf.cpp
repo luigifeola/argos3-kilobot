@@ -68,6 +68,8 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
         GetNodeAttribute(tModeNode, "desired_num_of_areas", desired_num_of_areas);
         GetNodeAttribute(tModeNode, "hard_tasks", hard_tasks);
         GetNodeAttributeOrDefault(tModeNode, "mixed", mixed, false);
+        GetNodeAttributeOrDefault(tModeNode, "adaptive", adaptive_walk, false);
+
         GetNodeAttributeOrDefault(tModeNode, "fourRegions", fourRegions, false);
         GetNodeAttribute(tModeNode, "reactivation_timer", kRespawnTimer);
 
@@ -1089,9 +1091,13 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
             ((int)m_vecKilobotStates_ALF[unKilobotID] == INSIDE_AREA))
         {
             bMessageToSend = true;
-            tKilobotMessage.m_sData = request[unKilobotID]; //requirement (timer) for the area where it is
-
+            tKilobotMessage.m_sData = (request[unKilobotID] & 0xFF); //requirement (timer) for the area where it is
+            if (multiArea[whereis[unKilobotID]].Color == CColor::BLUE && adaptive_walk)
+                tKilobotMessage.m_sData = tKilobotMessage.m_sData | (1 << 8);
+            if (multiArea[whereis[unKilobotID]].Color == CColor::RED && adaptive_walk)
+                tKilobotMessage.m_sData = tKilobotMessage.m_sData | (2 << 8);
             // std::cerr << "Timeout is " << request[unKilobotID] << "\n";
+            // std::cout << "m_sData = " << std::bitset<10>(tKilobotMessage.m_sData) << std::endl;
         }
 
         //exit msg when inside

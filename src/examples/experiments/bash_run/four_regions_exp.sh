@@ -29,7 +29,7 @@ if [ ! -e $base_config_c ]; then
     fi
 fi
 
-res_dir=$wdir/"results_brownian/four_regions"
+res_dir=$wdir/"results_adaptive/four_regions"
 if [[ ! -e $res_dir ]]; then
     cmake -E make_directory $res_dir
 # else
@@ -48,6 +48,7 @@ reactivation_timer="60"
 hard_tasks="4"
 timeout="1 2 3 6 12 18 24 30 36 42 48 54 60 90 180"
 fourRegions="true"
+adaptive="true"
 
 ###################################
 # experiment_length is in seconds #
@@ -70,7 +71,8 @@ for par1 in $timeout; do
     # #debug
     # experiment_length="900"
     # param_dir=$res_dir/"DEBUG_four_regions_"$date_time"_timeout#"$par1
-    # RUNS=1
+    # numrobots="5"
+    # RUNS=3
     #########################################################
     
     if [[ ! -e $param_dir ]]; then
@@ -90,6 +92,7 @@ for par1 in $timeout; do
         sed -i "s|__NUMROBOTS__|$numrobots|g" $configs
         sed -i "s|__HARDTASKS__|$hard_tasks|g" $configs
         sed -i "s|__FOURREGIONS__|$fourRegions|g" $configs
+        sed -i "s|__ADAPTIVE__|$adaptive|g" $configs
         sed -i "s|__TIMEOUT__|$par1|g" $configs
         
         output_file="seed#${it}_completed_taskLOG_server.tsv"
@@ -109,6 +112,7 @@ for par1 in $timeout; do
         sed -i "s|__SEED__|$seedc|g" $configc
         sed -i "s|__NUMROBOTS__|$numrobots|g" $configc
         sed -i "s|__HARDTASKS__|$hard_tasks|g" $configc
+        sed -i "s|__ADAPTIVE__|$adaptive|g" $configc
         sed -i "s|__TIMEOUT__|$par1|g" $configc
         
         output_file="seed#${it}_completed_taskLOG_client.tsv"

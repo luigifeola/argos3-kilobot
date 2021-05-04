@@ -8,7 +8,7 @@
         <system threads="6" />
         <experiment length="1000"
         ticks_per_second="10"
-        random_seed="89" />
+        random_seed="50" />
     </framework>
     
     <!-- *************** -->
@@ -43,7 +43,8 @@
             mode="CLIENT"
             ip_addr="127.0.0.1"
             augmented_knowledge="true"
-            timeout_const="30"
+            adaptive="false"
+            timeout_const="3"
             timeoutBB="1"
             timeoutBR="1"
             timeoutRB="1"
