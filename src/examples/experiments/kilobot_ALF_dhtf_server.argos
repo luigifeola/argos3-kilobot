@@ -46,7 +46,7 @@
             desired_num_of_areas="8"
             hard_tasks="4"
             mixed="false"
-            adaptive="false"
+            adaptive="true"
             reactivation_timer="40.0"
             timeout_const="3"
             timeoutBB="1"

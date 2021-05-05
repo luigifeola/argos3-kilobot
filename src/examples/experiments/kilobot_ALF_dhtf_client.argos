@@ -43,7 +43,7 @@
             mode="CLIENT"
             ip_addr="127.0.0.1"
             augmented_knowledge="true"
-            adaptive="false"
+            adaptive="true"
             timeout_const="3"
             timeoutBB="1"
             timeoutBR="1"

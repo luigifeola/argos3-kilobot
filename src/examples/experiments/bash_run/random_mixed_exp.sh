@@ -29,7 +29,7 @@ if [ ! -e $base_config_c ]; then
     fi
 fi
 
-res_dir=$wdir/"results/random_mixed_new_rw_exp"
+res_dir=$wdir/"results_adaptive/random_mixed"
 if [[ ! -e $res_dir ]]; then
     cmake -E make_directory $res_dir
 # else
@@ -47,8 +47,10 @@ numrobots="24"
 reactivation_timer="60"
 hard_tasks="4"
 # timeout="1 2 3 6 12 18 24 30 36 42 48 54 60 90 180"
-timeout="30"
+timeout="3"
 mixed="false"
+fourRegions="false"
+adaptive="true"
 
 ###################################
 # experiment_length is in seconds #
@@ -64,14 +66,15 @@ RUNS=100
 # echo full $execute
 
 for par1 in $timeout; do
-    param_dir=$res_dir/"random_mixed_new_rw_"$date_time"_robots#"$numrobots"_timeout#"$par1"_redAreas#"$hard_tasks"_"$experiment_length"seconds"
+    param_dir=$res_dir/"random_mixed_"$date_time"_robots#"$numrobots"_timeout#"$par1"_redAreas#"$hard_tasks"_"$experiment_length"seconds"
     
     
     #########################################################
     # #debug
-    # experiment_length="900"
-    # param_dir=$res_dir/"DEBUG_random_mixed_new_rw_"$date_time"_timeout#"$par1
-    # RUNS=1
+    experiment_length="900"
+    numrobots="4"
+    param_dir=$res_dir/"DEBUG_random_mixed_"$date_time"_timeout#"$par1
+    RUNS=3
     #########################################################
     
     if [[ ! -e $param_dir ]]; then
@@ -91,6 +94,8 @@ for par1 in $timeout; do
         sed -i "s|__NUMROBOTS__|$numrobots|g" $configs
         sed -i "s|__HARDTASKS__|$hard_tasks|g" $configs
         sed -i "s|__MIXED__|$mixed|g" $configs
+        sed -i "s|__FOURREGIONS__|$fourRegions|g" $configs
+        sed -i "s|__ADAPTIVE__|$adaptive|g" $configs
         sed -i "s|__TIMEOUT__|$par1|g" $configs
         
         output_file="seed#${it}_completed_taskLOG_server.tsv"
@@ -110,6 +115,7 @@ for par1 in $timeout; do
         sed -i "s|__SEED__|$seedc|g" $configc
         sed -i "s|__NUMROBOTS__|$numrobots|g" $configc
         sed -i "s|__HARDTASKS__|$hard_tasks|g" $configc
+        sed -i "s|__ADAPTIVE__|$adaptive|g" $configc
         sed -i "s|__TIMEOUT__|$par1|g" $configc
         
         output_file="seed#${it}_completed_taskLOG_client.tsv"
