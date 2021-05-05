@@ -572,7 +572,7 @@ void loop()
     {
       random_walk();
       finite_state_machine();
-      printf("kID=%d, crw=%f\tlevy=%f\n", kilo_uid, crw_exponent, levy_exponent);
+      // printf("kID=%d, crw=%f\tlevy=%f\n", kilo_uid, crw_exponent, levy_exponent);
     }
 
 #ifndef ARGOS_SIMULATION

@@ -71,10 +71,10 @@ for par1 in $timeout; do
     
     #########################################################
     # #debug
-    experiment_length="900"
-    numrobots="4"
-    param_dir=$res_dir/"DEBUG_random_mixed_"$date_time"_timeout#"$par1
-    RUNS=3
+    # experiment_length="900"
+    # numrobots="4"
+    # param_dir=$res_dir/"DEBUG_random_mixed_"$date_time"_timeout#"$par1
+    # RUNS=3
     #########################################################
     
     if [[ ! -e $param_dir ]]; then

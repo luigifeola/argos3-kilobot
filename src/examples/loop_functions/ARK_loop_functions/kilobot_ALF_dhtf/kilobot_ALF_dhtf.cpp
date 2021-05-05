@@ -59,7 +59,10 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
     GetNodeAttribute(tModeNode, "timeoutBR", waiting_times.BR);
     GetNodeAttribute(tModeNode, "timeoutRB", waiting_times.RB);
     GetNodeAttribute(tModeNode, "timeoutRR", waiting_times.RR);
+    GetNodeAttributeOrDefault(tModeNode, "adaptive", adaptive_walk, false);
 
+    if (adaptive_walk)
+        std::cout << "Adaptive Walk\n";
     /* Randomly select the desired number of tasks between the available ones, set color and communicate them to the client */
     if (mode == "SERVER")
     {
@@ -68,7 +71,6 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
         GetNodeAttribute(tModeNode, "desired_num_of_areas", desired_num_of_areas);
         GetNodeAttribute(tModeNode, "hard_tasks", hard_tasks);
         GetNodeAttributeOrDefault(tModeNode, "mixed", mixed, false);
-        GetNodeAttributeOrDefault(tModeNode, "adaptive", adaptive_walk, false);
 
         GetNodeAttributeOrDefault(tModeNode, "fourRegions", fourRegions, false);
         GetNodeAttribute(tModeNode, "reactivation_timer", kRespawnTimer);
@@ -229,12 +231,12 @@ void CALFClientServer::Initialise_environment_4_regions()
             break;
         }
 
-        std::cout << "vRegionIDs\n";
-        for (const auto e : vRegionIDs)
-        {
-            std::cout << e << '\t';
-        }
-        std::cout << std::endl;
+        // std::cout << "vRegionIDs\n";
+        // for (const auto e : vRegionIDs)
+        // {
+        //     std::cout << e << '\t';
+        // }
+        // std::cout << std::endl;
 
         /* Active area IDs in 4 different regions */
         while (activated_areas.size() < kAreaPerRegion + i * kAreaPerRegion)
