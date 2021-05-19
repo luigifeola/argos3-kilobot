@@ -46,7 +46,7 @@ echo "$CONFIGURATION_FILE" | egrep "^$SHARED_DIR" &> /dev/null || exit 1
 numrobots="24"
 reactivation_timer="60"
 hard_tasks="4"
-timeout="60 90 180"
+timeout="6"
 # timeout="1 2 3 6 12 18 24 30 36 42 48 54 60 90 180"
 fourRegions="true"
 adaptive="true"
@@ -54,9 +54,9 @@ adaptive="true"
 ###################################
 # experiment_length is in seconds #
 ###################################
-experiment_length="1800"
+experiment_length="900"
 date_time=`date "+%Y-%m-%d"`
-RUNS=100
+RUNS=3
 
 # echo 1 $1
 # configs=`printf 'configs_nrob%d_timeout%03d_seed%03d.argos' $numrobots $timeout $hard_tasks`
@@ -131,10 +131,16 @@ for par1 in $timeout; do
         # echo server $configs
         # echo client $configc
         # executec="$1/$configc"
-        xterm -title "server-$it--timeout-$par1" -e "sleep 0.1; argos3 -c $configs; sleep 0.1" &
-        xterm -title "client-$seedc--timeout-$par1" -e "sleep 0.1; argos3 -c $configc; sleep 0.1"
-        sleep 1
         
+        xterm -title "client-$seedc--timeout-$par1" -e "argos3 -c $configc; echo end" &
+        P1=$!
+        echo P1 $P1
+        xterm -title "server-$it--timeout-$par1" -e "argos3 -c $configs; echo end" &
+        P2=$! 
+        echo P2 $P2 
+        wait $P1 $P2
+        
+
         mv *.tsv $param_dir
         rm *.argos
     done
