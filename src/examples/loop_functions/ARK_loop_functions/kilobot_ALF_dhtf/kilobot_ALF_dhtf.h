@@ -15,6 +15,8 @@ namespace argos
 #include <sys/types.h>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <string.h>
@@ -169,6 +171,7 @@ private:
     std::string mode;                          //can be SERVER or CLIENT
     std::string IP_ADDR;                       //ip address where to connect
     bool augmented_knowledge;                  //TRUE: ARK knows the color of areas on the other arena; FALSE: ARK knows color of its own areas only; timeout constant are set consequently
+    bool stand_alone_mode;                     //TRUE: runs only the server, generating fake client messages
     UInt32 random_seed;                        //to reproduce same random tests
     UInt8 desired_num_of_areas;                //number of exploitable areas for the experiment (max 16-4=12 (removing the 4 corners))
     UInt8 hard_tasks;                          //the number of red areas (the ones that require more robots)

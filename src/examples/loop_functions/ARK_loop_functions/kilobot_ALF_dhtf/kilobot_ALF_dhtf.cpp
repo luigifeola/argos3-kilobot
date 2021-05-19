@@ -30,6 +30,9 @@ namespace
     const std::vector<int> top_right({2, 6, 7});
     const std::vector<int> bottom_left({8, 9, 13});
     const std::vector<int> bottom_right({10, 11, 14});
+
+    //fake client message
+    const std::string fake_client_message = "T11111111";
 }
 
 CALFClientServer::CALFClientServer() : m_unDataAcquisitionFrequency(20)
@@ -54,6 +57,7 @@ void CALFClientServer::Init(TConfigurationNode &t_node)
     GetNodeAttribute(tModeNode, "mode", mode);
     GetNodeAttribute(tModeNode, "ip_addr", IP_ADDR);
     GetNodeAttribute(tModeNode, "augmented_knowledge", augmented_knowledge);
+    GetNodeAttributeOrDefault(tModeNode, "stand_alone", stand_alone_mode, false);
     GetNodeAttribute(tModeNode, "timeout_const", kTimerMultiplier);
     GetNodeAttribute(tModeNode, "timeoutBB", waiting_times.BB);
     GetNodeAttribute(tModeNode, "timeoutBR", waiting_times.BR);
@@ -342,6 +346,13 @@ void CALFClientServer::Initialise_socket()
 
     /* Opening communication port */
     serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+
+    /** WARNING: PUT IF STANDALONE*/
+    if (stand_alone_mode)
+    {
+        serverSocket = socket(PF_INET, SOCK_STREAM, 0);
+        fcntl(serverSocket, F_SETFL, O_NONBLOCK);
+    }
     std::string ipAddress = IP_ADDR;
     sockaddr_in hint;
     hint.sin_family = AF_INET;
@@ -503,26 +514,30 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
         bytesReceived = recv(serverSocket, inputBuffer, 30, MSG_DONTWAIT);
     }
 
-    if ((bytesReceived != -1) || (bytesReceived != 0))
+    if (stand_alone_mode == false)
     {
-        /* Save the received string in a vector, for having data available until next message comes */
-        for (int i = 0; i < bytesReceived; i++)
+        if ((bytesReceived != -1) || (bytesReceived != 0))
         {
-            storeBuffer[i] = inputBuffer[i];
+            /* Save the received string in a vector, for having data available until next message comes */
+            for (int i = 0; i < bytesReceived; i++)
+            {
+                storeBuffer[i] = inputBuffer[i];
+            }
+            // Print received message
+            std::cout << storeBuffer << std::endl;
+            std::string my_string(inputBuffer);
+            // if (!my_string.empty())
+            //     std::cout << "Received:" << my_string << std::endl;
         }
-        // Print received message
-        // std::cout<<storeBuffer<<std::endl;
-        std::string my_string(inputBuffer);
-        // if (!my_string.empty())
-        //     std::cout << "Received:" << my_string << std::endl;
     }
-    // else
-    // {
-    //     std::cout << "not receiving" << std::endl;
-    // }
+    else
+    {
+        // storeBuffer = fake_client_message;
+        strcpy(storeBuffer, fake_client_message.c_str());
+    }
 
     // Print received message
-    // std::cerr<<"Recv_str "<<storeBuffer<<std::endl;
+    // std::cerr << "Recv_str " << storeBuffer << std::endl;
 
     /* --------- CLIENT --------- */
     if (mode == "CLIENT")
@@ -633,17 +648,11 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
         for (int i = 0; i < num_of_areas; i++)
         {
             if ((multiArea[i].Completed == true) &&
-#ifndef DEBUGGING
-                (m_fTimeInSeconds - vCompletedTime[i] >= kRespawnTimer))
-#else
                 (m_fTimeInSeconds - multiArea[i].completitionTime >= kRespawnTimer))
-#endif
             {
                 multiArea[i].Completed = false;
                 multiArea[i].contained = 0;
-#ifdef DEBUGGING
                 multiArea[i].creationTime = m_fTimeInSeconds;
-#endif
             }
         }
         /* Task completeness check */
@@ -658,17 +667,11 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
                         if ((multiArea[j].Color == argos::CColor::RED) && (multiArea[j].contained >= kHardTask))
                         {
                             multiArea[j].Completed = true;
-#ifndef DEBUGGING
-                            vCompletedTime[j] = m_fTimeInSeconds;
-#endif
                             // std::cout << m_fTimeInSeconds << "\tred-red task completed" << std::endl;
                         }
                         if ((multiArea[j].Color == argos::CColor::BLUE) && (multiArea[j].contained >= kSoftTask))
                         {
                             multiArea[j].Completed = true;
-#ifndef DEBUGGING
-                            vCompletedTime[j] = m_fTimeInSeconds;
-#endif
                             // std::cout << m_fTimeInSeconds << "\tblue-red task completed" << std::endl;
                         }
                     }
@@ -677,21 +680,14 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
                         if ((multiArea[j].Color == argos::CColor::RED) && (multiArea[j].contained >= kHardTask))
                         {
                             multiArea[j].Completed = true;
-#ifndef DEBUGGING
-                            vCompletedTime[j] = m_fTimeInSeconds;
-#endif
                             // std::cout << m_fTimeInSeconds << "\tred-blue task completed" << std::endl;
                         }
                         if ((multiArea[j].Color == argos::CColor::BLUE) && (multiArea[j].contained >= kSoftTask))
                         {
                             multiArea[j].Completed = true;
-#ifndef DEBUGGING
-                            vCompletedTime[j] = m_fTimeInSeconds;
-#endif
                             // std::cout << m_fTimeInSeconds << "\tblue-blue task completed" << std::endl;
                         }
                     }
-#ifdef DEBUGGING
                     if (multiArea[j].Completed == true)
                     {
                         multiArea[j].completitionTime = m_fTimeInSeconds;
@@ -711,7 +707,6 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
                             << multiArea[j].contained
                             << std::endl;
                     }
-#endif
                 }
             }
         }
@@ -773,7 +768,7 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
                     }
                 }
             }
-            else if (storeBuffer[0] == 82)
+            else if (storeBuffer[0] == 82 || stand_alone_mode)
             {
                 std::cout << "ACK init by client*********\n";
                 initialised = true;
@@ -1058,7 +1053,8 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
             }
         }
 
-        proximity_sensor_dec = std::accumulate(proximity_vec.begin(), proximity_vec.end(), 0, [](int x, int y) { return (x << 1) + y; });
+        proximity_sensor_dec = std::accumulate(proximity_vec.begin(), proximity_vec.end(), 0, [](int x, int y)
+                                               { return (x << 1) + y; });
         // To turn off the wall avoidance decomment this
         //proximity_sensor_dec = 0;
 
@@ -1126,7 +1122,7 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
         // bMessageToSend=true;      //use this line to send msgs always
     }
 
-    if (bMessageToSend)
+    if (bMessageToSend /*&& mode == "CLIENT"*/)
     {
 
         m_vecLastTimeMessaged[unKilobotID] = m_fTimeInSeconds;

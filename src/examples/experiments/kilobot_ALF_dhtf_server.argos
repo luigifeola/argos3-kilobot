@@ -42,6 +42,7 @@
         <extra_parameters
             mode="SERVER"
             ip_addr="0.0.0.0"
+            stand_alone="true"
             augmented_knowledge="true"
             desired_num_of_areas="8"
             hard_tasks="4"
@@ -131,7 +132,7 @@
         <distribute>
             <position method="uniform" min="-0.4,-0.4,0" max="0.4,0.4,0" />
             <orientation method="uniform" min="0,0,0" max="360,0,0" />
-            <entity quantity="5" max_trials="100">
+            <entity quantity="32" max_trials="100">
                 <kilobot id="kb">
                     <controller config="listener"/> <dynamics2d friction="0.7" />
                 </kilobot>
@@ -162,7 +163,7 @@
     <!-- ****************** -->
     <!-- * Visualization  * -->
     <!-- ****************** -->
-    <visualization>
+    <!-- <visualization>
         <qt-opengl>
             <frame_grabbing directory="./server_images" base_name="server_" format="png" quality="100" headless_grabbing="false" headless_frame_size="1600x1200" headless_frame_rate="1" />
             <camera>
@@ -175,6 +176,6 @@
                 <placement idx="6" position="-0.0229259,-0.177184,0.0725521" look_at="0.0273839,0.812385,-0.0624333" lens_focal_length="20" />
             </camera>
         </qt-opengl>
-    </visualization>
+    </visualization> -->
     
 </argos-configuration>
