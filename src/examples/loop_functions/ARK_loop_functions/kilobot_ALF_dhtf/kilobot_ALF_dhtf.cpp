@@ -425,6 +425,7 @@ void CALFClientServer::SetupInitialKilobotStates()
 {
     m_vecKilobotStates_ALF.resize(m_tKilobotEntities.size());
     m_vecKilobotsPositions.resize(m_tKilobotEntities.size());
+    m_vecKilobotsColours.resize(m_tKilobotEntities.size());
     m_vecKilobotsOrientations.resize(m_tKilobotEntities.size());
     m_vecLastTimeMessaged.resize(m_tKilobotEntities.size());
     m_fMinTimeBetweenTwoMsg = Max<Real>(1.0, m_tKilobotEntities.size() * m_fTimeForAMessage / 3.0);
@@ -447,6 +448,7 @@ void CALFClientServer::SetupInitialKilobotState(CKilobotEntity &c_kilobot_entity
     m_vecLastTimeMessaged[unKilobotID] = -1000;
 
     m_vecKilobotsPositions[unKilobotID] = GetKilobotPosition(c_kilobot_entity);
+    m_vecKilobotsColours[unKilobotID] = argos::CColor::BLACK;
     m_vecKilobotsOrientations[unKilobotID] = GetKilobotOrientation(c_kilobot_entity);
 }
 
@@ -501,6 +503,7 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
     UInt16 unKilobotID = GetKilobotId(c_kilobot_entity);
     m_vecKilobotsPositions[unKilobotID] = GetKilobotPosition(c_kilobot_entity);
     m_vecKilobotsOrientations[unKilobotID] = GetKilobotOrientation(c_kilobot_entity);
+    m_vecKilobotsColours[unKilobotID] = GetKilobotLedColor(c_kilobot_entity);
 
     /* Listen for the other ALF communication */
     memset(inputBuffer, 0, 30);
@@ -524,7 +527,7 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
                 storeBuffer[i] = inputBuffer[i];
             }
             // Print received message
-            std::cout << storeBuffer << std::endl;
+            // std::cout << storeBuffer << std::endl;
             std::string my_string(inputBuffer);
             // if (!my_string.empty())
             //     std::cout << "Received:" << my_string << std::endl;
@@ -831,7 +834,7 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
                 { //*1 is a threshold, to include the boarder increase it
                     m_vecKilobotStates_ALF[unKilobotID] = INSIDE_AREA;
                     /* Check LED color to understand if the robot is leaving or it is waiting for the task */
-                    if (GetKilobotLedColor(c_kilobot_entity) != argos::CColor::RED)
+                    if (m_vecKilobotsColours[unKilobotID] != argos::CColor::RED)
                     {
                         // std::cout<< "inside area = "<< multiArea[i].id << std::endl;
                         /* Check the area color to understand the requirements of the task */
@@ -887,7 +890,7 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
         case INSIDE_AREA:
         {
             /* Check if the kilobot timer for colaboratos is expired */
-            if (GetKilobotLedColor(c_kilobot_entity) == argos::CColor::RED)
+            if (m_vecKilobotsColours[unKilobotID] == argos::CColor::RED)
             {
                 m_vecKilobotStates_ALF[unKilobotID] = LEAVING;
                 multiArea[whereis[unKilobotID]].contained -= 1;
@@ -1084,8 +1087,8 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
         tKilobotMessage.m_sData = 0;
 
         //entry msg when random walking
-        if ((GetKilobotLedColor(c_kilobot_entity) != CColor::BLUE) &&
-            (GetKilobotLedColor(c_kilobot_entity) != CColor::RED) &&
+        if ((m_vecKilobotsColours[unKilobotID] != CColor::BLUE) &&
+            (m_vecKilobotsColours[unKilobotID] != CColor::RED) &&
             ((int)m_vecKilobotStates_ALF[unKilobotID] == INSIDE_AREA))
         {
             bMessageToSend = true;
@@ -1099,14 +1102,14 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
         }
 
         //exit msg when inside
-        if ((GetKilobotLedColor(c_kilobot_entity) == CColor::RED) &&
+        if ((m_vecKilobotsColours[unKilobotID] == CColor::RED) &&
             ((int)m_vecKilobotStates_ALF[unKilobotID] == OUTSIDE_AREAS))
         {
             bMessageToSend = true;
             // std::cerr<<"sending outside from inside\n";
         }
 
-        if ((GetKilobotLedColor(c_kilobot_entity) == CColor::BLUE) && ((int)m_vecKilobotStates_ALF[unKilobotID] == OUTSIDE_AREAS))
+        if ((m_vecKilobotsColours[unKilobotID] == CColor::BLUE) && ((int)m_vecKilobotStates_ALF[unKilobotID] == OUTSIDE_AREAS))
         { //exit msg when task completed
             bMessageToSend = true;
             // std::cerr<<"sending outside from leaving\n";
@@ -1160,7 +1163,10 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
         GetSimulator().GetMedium<CKilobotCommunicationMedium>("kilocomm").SendOHCMessageTo(c_kilobot_entity, NULL);
     }
 }
-
+void CALFClientServer::PostExperiment()
+{
+    std::cout << "END\n";
+}
 void CALFClientServer::PostStep()
 {
     // std::cout << "Time: " << m_fTimeInSeconds << std::endl;
@@ -1243,6 +1249,12 @@ CColor CALFClientServer::GetFloorColor(const CVector2 &vec_position_on_plane)
                 cColor = multiArea[i].Color;
             }
         }
+
+        // Real fKiloVision = Distance(vec_position_on_plane, m_vecKilobotsPositions[15]);
+        // if (fKiloVision < 0.05)
+        // {
+        //     cColor = CColor(0, 0, 125, 0);
+        // }
     }
     return cColor;
 }

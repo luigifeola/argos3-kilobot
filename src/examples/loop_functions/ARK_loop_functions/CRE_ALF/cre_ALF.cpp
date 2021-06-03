@@ -2,6 +2,7 @@
 
 namespace
 {
+    const std::string connection = "ARGOS";
     const int kPort = 7001;
 
     // environment setup
@@ -11,7 +12,7 @@ namespace
     const double kKiloDiameter = 0.034;
     double vDistance_threshold = vArena_size / 2.0 - 2.0 * kKiloDiameter;
     const double kM_TO_CM = 100.0;
-    const double kCLIENT_SERVER_SCALE = 4.0;
+    const double kCLIENT_SERVER_SCALE = connection == "ARK" ? 2.0 : 4.0; //how much the size of the server arena is scaled wrt the client arena
 
     // wall avoidance stuff
     const CVector2 up_direction(0.0, -1.0);
@@ -241,7 +242,7 @@ void CALFClientServer::SetupVirtualEnvironments(TConfigurationNode &t_tree)
         multiArea[ai].Completed = true;
         if (multiArea[ai].Center.GetY() < 0)
         {
-            multiArea[ai].Color = argos::CColor::GREEN;
+            multiArea[ai].Color = argos::CColor::BLUE;
         }
         else
         {
@@ -284,14 +285,13 @@ void CALFClientServer::UpdateKilobotStates()
                 outputBuffer.append("0");
             }
         }
-        
     }
 
     /* Send the message to the other ALF*/
     if (mode == "SERVER")
     {
         send(clientSocket, outputBuffer.c_str(), outputBuffer.size() + 1, 0);
-        std::cout << "SERVER Sending: " << outputBuffer << std::endl;
+        // std::cout << "SERVER Sending: " << outputBuffer << std::endl;
     }
     if (mode == "CLIENT")
     {
@@ -335,7 +335,7 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
     /* --------- SERVER --------- */
     if (mode == "SERVER")
     {
-        /* Align to server arena */
+        /* Align to client arena */
         for (int a = 0; a < num_of_areas; a++)
         {
             if (storeBuffer[a] - 48 == 0)
@@ -360,9 +360,8 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
         //bb is the ycord
         //c is the commit of the flying robot
         //std::cout<<(int)(m_vecKilobotsOrientations[unKilobotID].GetValue()*10)<<std::endl;
-
         command[unKilobotID] = 0;
-        for (int i = 0, j = 0; i < flying_robot_num; i++, j += 5) // 20 è il numero di robot server (flying)
+        for (int i = 0, j = 0; i < flying_robot_num; i++, j += 5)
         // TODO : invece di j è semplicemente i che va incrementato di 5
         {
             //acquire data of flying robots
@@ -377,26 +376,57 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
             }
             else
             {
-                // TODO : remove 25 and use variables M_TO_CM=100 and SCALING=4 --> M_TO_CM / SCALING = 25
+                //Aligne received server position to client world frame
+
+                //ARGOS-ARGOS
                 // check if a ground robot is under the cone of transmission of a flying robot
-                float xdisp = multiTransmittingKilobot[i].xCoord - ((kM_TO_CM / kCLIENT_SERVER_SCALE) * (m_vecKilobotsPositions[unKilobotID].GetX() + vArena_size / 2.0)); //25* perchè moltiplico per 100 per considerare solo 2 decimali, poi divido per 4 per allineare le arene (una quadrupla dell'altra)
+                // Real xdisp = (multiTransmittingKilobot[i].xCoord / kM_TO_CM) * kCLIENT_SERVER_SCALE - vArena_size / 2.0;
+                // Real ydisp = (multiTransmittingKilobot[i].yCoord / kM_TO_CM) * kCLIENT_SERVER_SCALE - vArena_size / 2.0;
+
+                // float displacement = sqrt((xdisp * xdisp) + (ydisp * ydisp));
+                // if (displacement < communication_range)
+                // {
+                //     //check if the flying robot is in the semiplane opposit to its commitment
+                //     if (multiTransmittingKilobot[i].yCoord <= (kM_TO_CM / kCLIENT_SERVER_SCALE))
+                //     {
+                //         if (multiTransmittingKilobot[i].commit == 1)
+                //         {
+                //             command[unKilobotID] = 1; //robot at south, committed for north
+                //         }
+                //     }
+                //     else
+                //     {
+                //         if (multiTransmittingKilobot[i].commit == 2)
+                //         {
+                //             command[unKilobotID] = 2; //robot at north, committed for south
+                //         }
+                //     }
+                // }
+
+                //ARK-ARGOS
+                Real x_s = (multiTransmittingKilobot[i].xCoord / kM_TO_CM) * kCLIENT_SERVER_SCALE - vArena_size / 2.0;
+                Real y_s = (multiTransmittingKilobot[i].yCoord / kM_TO_CM) * kCLIENT_SERVER_SCALE - vArena_size / 2.0;
+
+                // check if a ground robot is under the cone of transmission of a flying robot
+                float xdisp = x_s - m_vecKilobotsPositions[unKilobotID].GetX();
                 //+1 per la traslazione, in modo da non avere il centro nel centro dell'arena ma nell'angolino (1 perchè l'arena è larga 2) | 1 = arena_size/2.0
                 // il 25 è *100 per prendere i decimali della posizione /4 perchè un'arena è il quadruplo dell'altra
-                float ydisp = multiTransmittingKilobot[i].yCoord - ((kM_TO_CM / kCLIENT_SERVER_SCALE) * (m_vecKilobotsPositions[unKilobotID].GetY() + vArena_size / 2.0)); //+1 perchè coordinate traslate nell'origne prima di essere trasmesse, devo traslare anche queste
-                float displacement = sqrt((xdisp * xdisp) + (ydisp * ydisp));
+                float ydisp = y_s - m_vecKilobotsPositions[unKilobotID].GetY();
+                float displacement = sqrt(pow(xdisp, 2) + pow(ydisp, 2));
                 if (displacement < communication_range)
                 {
                     //check if the flying robot is in the semiplane opposit to its commitment
-                    if (multiTransmittingKilobot[i].yCoord <= (kM_TO_CM / kCLIENT_SERVER_SCALE))
+                    if (y_s <= 0)
+                    // if (m_vecKilobotsPositions[unKilobotID].GetY() <= 0)
                     {
-                        if (multiTransmittingKilobot[i].commit == 1)
+                        if (multiTransmittingKilobot[i].commit == (int)COMMITTED_N)
                         {
                             command[unKilobotID] = 1; //robot at south, committed for north
                         }
                     }
                     else
                     {
-                        if (multiTransmittingKilobot[i].commit == 2)
+                        if (multiTransmittingKilobot[i].commit == (int)COMMITTED_S)
                         {
                             command[unKilobotID] = 2; //robot at north, committed for south
                         }
@@ -404,6 +434,16 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
                 }
             }
         }
+
+        // Real x_s = (multiTransmittingKilobot[0].xCoord / kM_TO_CM) * kCLIENT_SERVER_SCALE - vArena_size / 2.0;
+        // Real y_s = (multiTransmittingKilobot[0].yCoord / kM_TO_CM) * kCLIENT_SERVER_SCALE - vArena_size / 2.0;
+
+        // if (multiTransmittingKilobot.size() > 0)
+        // {
+        //     // std::cout << "multiTransmittingKilobot.size" << multiTransmittingKilobot.size() << std::endl;
+        //     std::cout << "multiTransmittingKilobot[0].x:" << multiTransmittingKilobot[0].xCoord << " multiTransmittingKilobot[0].y:" << multiTransmittingKilobot[0].yCoord << std::endl;
+        //     // std::cout << "Robot0 posx:" << x_s << " posy:" << y_s << std::endl;
+        // }
     }
 
     /* --------- SERVER --------- */
@@ -424,7 +464,7 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
             m_vecKilobotStates_ALF[unKilobotID] = COMMITTED_N;
             outputBuffer.append(std::to_string(1)); //kilobot committed for NORTH
         }
-        if (GetKilobotLedColor(c_kilobot_entity) == argos::CColor::GREEN)
+        if (GetKilobotLedColor(c_kilobot_entity) == argos::CColor::BLUE)
         {
             m_vecKilobotStates_ALF[unKilobotID] = COMMITTED_S;
             outputBuffer.append(std::to_string(2)); //kilobot committed for SOUTH
@@ -445,20 +485,7 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
             if ((fDistance < (multiArea[i].Radius * 1.0)) && (multiArea[i].Completed == false))
             {
                 multiArea[i].Completed = true;
-                // print at the same time of the log of the experiment
-                // std::cout << "Time:" << m_fTimeInSeconds << " exploited area at:" << multiArea[i].Center << (multiArea[i].Color == argos::CColor::RED ? 0 : 1) << std::endl;
-                /*Log exploited area as: time - posX - posY - colour(0 for North, 1 for South) */
-                m_taskOutput
-                    << std::noshowpos
-                    << std::setw(8) << std::setprecision(4) << std::setfill('0')
-                    << m_fTimeInSeconds << '\t'
-                    << std::internal << std::showpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
-                    << multiArea[i].Center.GetX() << '\t'
-                    << std::internal << std::showpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
-                    << multiArea[i].Center.GetY() << '\t'
-                    << std::noshowpos << std::setw(1) << std::setprecision(0)
-                    << (multiArea[i].Color == argos::CColor::RED ? 0 : 1) << '\t'
-                    << std::endl;
+
                 /* Reactivate tasks to keep their number constant */
                 std::default_random_engine re;
                 re.seed(random_seed);
@@ -475,7 +502,7 @@ void CALFClientServer::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
                     activated_North_areas.erase(std::find(activated_North_areas.begin(), activated_North_areas.end(), i));
                     std::sort(activated_North_areas.begin(), activated_North_areas.end());
                 }
-                else if (multiArea[i].Color == argos::CColor::GREEN)
+                else if (multiArea[i].Color == argos::CColor::BLUE)
                 {
                     std::uniform_int_distribution<int> distr(max_North_area_id + 1, max_South_area_id);
                     int random_number;
@@ -563,7 +590,7 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
                             r_on++;
                         }
                     }
-                    else if (multiArea[i].Color == argos::CColor::GREEN)
+                    else if (multiArea[i].Color == argos::CColor::BLUE)
                     {
                         if (multiArea[i].Completed == true)
                         {
@@ -626,7 +653,8 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
                     }
                 }
 
-                proximity_sensor_dec = std::accumulate(proximity_vec.begin(), proximity_vec.end(), 0, [](int x, int y) { return (x << 1) + y; });
+                proximity_sensor_dec = std::accumulate(proximity_vec.begin(), proximity_vec.end(), 0, [](int x, int y)
+                                                       { return (x << 1) + y; });
                 // To turn off the wall avoidance decomment this
                 //proximity_sensor_dec = 0;
             }
@@ -717,7 +745,8 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
                 }
             }
 
-            proximity_sensor_dec = std::accumulate(proximity_vec.begin(), proximity_vec.end(), 0, [](int x, int y) { return (x << 1) + y; });
+            proximity_sensor_dec = std::accumulate(proximity_vec.begin(), proximity_vec.end(), 0, [](int x, int y)
+                                                   { return (x << 1) + y; });
             // To turn off the wall avoidance decomment this
             //proximity_sensor_dec = 0;
 
@@ -817,6 +846,11 @@ void CALFClientServer::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
     }
 }
 
+void CALFClientServer::PostExperiment()
+{
+    std::cout << "END\n";
+}
+
 void CALFClientServer::PostStep()
 {
     // std::cout << "Time: " << m_fTimeInSeconds << std::endl;
@@ -824,7 +858,34 @@ void CALFClientServer::PostStep()
     if (internal_counter % m_unDataAcquisitionFrequency == 0 || internal_counter <= 1)
     {
         KiloLOG();
+        if (mode == "CLIENT")
+        {
+            AreaLOG();
+        }
     }
+}
+
+void CALFClientServer::AreaLOG()
+{
+    // std::cerr << "Logging arePosition\n";
+    m_taskOutput
+        << std::noshowpos << std::setw(4) << std::setprecision(0) << std::setfill('0')
+        << m_fTimeInSeconds << '\t';
+    for (size_t areaID = 0; areaID < multiArea.size(); areaID++)
+    {
+        m_taskOutput
+            << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
+            << areaID << '\t'
+            << std::internal << std::showpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
+            << multiArea[areaID].Center.GetX() << '\t'
+            << std::internal << std::showpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
+            << multiArea[areaID].Center.GetY() << '\t'
+            << std::noshowpos << std::setw(1) << std::setprecision(0)
+            << (multiArea[areaID].Color == argos::CColor::RED ? 1 : 0) << '\t'
+            << (multiArea[areaID].Completed == true ? 1 : 0);
+        // << multiArea[areaID].
+    }
+    m_taskOutput << std::endl;
 }
 
 void CALFClientServer::KiloLOG()
@@ -861,12 +922,6 @@ CColor CALFClientServer::GetFloorColor(const CVector2 &vec_position_on_plane)
 {
     CColor cColor = CColor::WHITE;
 
-    Real fKiloVision = Distance(vec_position_on_plane, m_vecKilobotsPositions[0]);
-    if (fKiloVision < vision_range)
-    {
-        cColor = CColor(0, 0, 125, 0);
-    }
-
     /* Draw areas until they are needed, once that task is completed the corresponding area disappears */
     for (int i = 0; i < multiArea.size(); i++)
     {
@@ -880,27 +935,78 @@ CColor CALFClientServer::GetFloorColor(const CVector2 &vec_position_on_plane)
         }
     }
 
-
+    /**Boarder for wall avoidance*/
     // Top border for wall avoidance
-    if(vec_position_on_plane.GetY() < vDistance_threshold+0.005 && vec_position_on_plane.GetY()> vDistance_threshold-0.005){
-        cColor = CColor::ORANGE;
-    }
-    // Bottom border for wall avoidance
-    if(vec_position_on_plane.GetY() < -1.0*(vDistance_threshold-0.005) && vec_position_on_plane.GetY()> -1*(vDistance_threshold+0.005)){
-        cColor = CColor::ORANGE;
-    }
-    // Right border for wall avoidance
-    if(vec_position_on_plane.GetX() < vDistance_threshold+0.005 && vec_position_on_plane.GetX()> vDistance_threshold-0.005){
-        cColor = CColor::ORANGE;
-    }
-    // Left border for wall avoidance
-    if(vec_position_on_plane.GetX() < -1.0*(vDistance_threshold-0.005) && vec_position_on_plane.GetX()> -1*(vDistance_threshold+0.005)){
-        cColor = CColor::ORANGE;
-    }
+    // if (vec_position_on_plane.GetY() < vDistance_threshold + 0.005 && vec_position_on_plane.GetY() > vDistance_threshold - 0.005)
+    // {
+    //     cColor = CColor::ORANGE;
+    // }
+    // // Bottom border for wall avoidance
+    // if (vec_position_on_plane.GetY() < -1.0 * (vDistance_threshold - 0.005) && vec_position_on_plane.GetY() > -1 * (vDistance_threshold + 0.005))
+    // {
+    //     cColor = CColor::ORANGE;
+    // }
+    // // Right border for wall avoidance
+    // if (vec_position_on_plane.GetX() < vDistance_threshold + 0.005 && vec_position_on_plane.GetX() > vDistance_threshold - 0.005)
+    // {
+    //     cColor = CColor::ORANGE;
+    // }
+    // // Left border for wall avoidance
+    // if (vec_position_on_plane.GetX() < -1.0 * (vDistance_threshold - 0.005) && vec_position_on_plane.GetX() > -1 * (vDistance_threshold + 0.005))
+    // {
+    //     cColor = CColor::ORANGE;
+    // }
 
-    // // y-axis
+    /** y - axis*/
     // if(vec_position_on_plane.GetX() < 0.01 && vec_position_on_plane.GetX()> -0.01 ){
     //     cColor = CColor::BLUE;
+    // }
+
+    // /**Server kID0 communication range*/
+    // if (mode == "CLIENT" && multiTransmittingKilobot.size() > 0)
+    // {
+    //     Real xdisp = (multiTransmittingKilobot[0].xCoord / kM_TO_CM) * kCLIENT_SERVER_SCALE - vArena_size / 2.0 /*- ((kM_TO_CM / kCLIENT_SERVER_SCALE) * (m_vecKilobotsPositions[unKilobotID].GetX() + vArena_size / 2.0))*/;
+    //     Real ydisp = (multiTransmittingKilobot[0].yCoord / kM_TO_CM) * kCLIENT_SERVER_SCALE - vArena_size / 2.0 /*- ((kM_TO_CM / kCLIENT_SERVER_SCALE) * (m_vecKilobotsPositions[unKilobotID].GetY() + vArena_size / 2.0))*/;
+
+    //     CVector2 kilo_0_server = CVector2(xdisp, ydisp);
+    //     // CVector2 kilo_0_server = CVector2(-0.01, -0.01);
+
+    //     Real fKiloVision = Distance(vec_position_on_plane, kilo_0_server);
+    //     if (fKiloVision < communication_range && fKiloVision > communication_range - 0.02)
+    //     {
+    //         cColor = CColor(0, 0, 125, 0);
+    //     }
+    // }
+
+    /**Center and 4 corners*/
+    // Real fDistance00 = Distance(vec_position_on_plane, CVector2());
+    // if (fDistance00 < 0.04)
+    // {
+    //     cColor = CColor::BLACK;
+    // }
+
+    // fDistance00 = Distance(vec_position_on_plane, CVector2(1 - 0.02, 1 - 0.02));
+    // if (fDistance00 < 0.04)
+    // {
+    //     cColor = CColor::BLACK;
+    // }
+
+    // fDistance00 = Distance(vec_position_on_plane, CVector2(-1 + 0.02, -1 + 0.02));
+    // if (fDistance00 < 0.04)
+    // {
+    //     cColor = CColor::BLACK;
+    // }
+
+    // fDistance00 = Distance(vec_position_on_plane, CVector2(-1 + 0.02, 1 - 0.02));
+    // if (fDistance00 < 0.04)
+    // {
+    //     cColor = CColor::BLACK;
+    // }
+
+    // fDistance00 = Distance(vec_position_on_plane, CVector2(1 - 0.02, -1 + 0.02));
+    // if (fDistance00 < 0.04)
+    // {
+    //     cColor = CColor::BLACK;
     // }
 
     return cColor;

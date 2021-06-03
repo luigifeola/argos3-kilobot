@@ -72,7 +72,7 @@
             kilo_filename="__ROBPOSOUTPUT__"
             area_filename="__AREAPOSOUTPUT__"
             task_filename="__OUTPUT__"
-            dataacquisitionfrequency="20"  
+            dataacquisitionfrequency="10"  
             environmentplotupdatefrequency="10"
             timeforonemessage="0.05">
         </variables>
@@ -168,7 +168,7 @@
     <!-- * Visualization  * -->
     <!-- ****************** -->
     <!-- <visualization>
-        <qt-opengl>
+        <qt-opengl autoplay=true>
             <frame_grabbing directory="./server_images" base_name="server_" format="png" quality="100" headless_grabbing="false" headless_frame_size="1600x1200" headless_frame_rate="1" />
             <camera>
                 <placement idx="0" position="0.0,-0.00001,0.5" look_at="0,0,0" lens_focal_length="12"/>

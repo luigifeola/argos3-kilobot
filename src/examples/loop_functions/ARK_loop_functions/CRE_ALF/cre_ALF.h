@@ -69,8 +69,13 @@ public:
 
     virtual void PostStep();
 
+    virtual void PostExperiment();
+
     /** Log Kilobot pose and state */
     void KiloLOG();
+
+    /** Log area pos, type, state (completed or not) */
+    void AreaLOG();
 
     virtual void Destroy();
 
@@ -135,7 +140,7 @@ private:
         COMMITTED_S = 2,
     } SRobotState;
 
-    std::vector<TransmittingKilobot> multiTransmittingKilobot; // position and commit of flying robots
+    std::vector<TransmittingKilobot> multiTransmittingKilobot; // position and commit of flying robots (received from server side)
 
     struct decisionMessage //structure for decision-making flying robot message
     {

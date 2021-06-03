@@ -79,8 +79,8 @@ message_t messageS;
 
 /*Decision making*/
 const float tau = 1;                     //accelerare o rallentare il sistema
-const float h = 0.5;                     //0.1111111; self
-const float k = 0.5;                     //0.8888889; recruitment
+const float h = 0.2;                     //0.1111111; self
+const float k = 0.8;                     //0.8888889; recruitment
 const uint16_t max_decision_ticks = 320; //10 secondi
 uint32_t last_decision_ticks = 0;
 
@@ -397,7 +397,7 @@ void take_decision()
     }
     case (COMMITTED_S):
     {
-      set_color(RGB(0, 3, 0));
+      set_color(RGB(0, 0, 3));
       break;
     }
     case (UNCOMMITTED):

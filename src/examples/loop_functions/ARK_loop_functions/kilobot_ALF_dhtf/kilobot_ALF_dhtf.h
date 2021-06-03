@@ -74,6 +74,8 @@ public:
 
     virtual void PostStep();
 
+    virtual void PostExperiment();
+
     /** Log area pos, type, state (completed or not) */
     void AreaLOG();
 
@@ -211,6 +213,7 @@ private:
 
     /*Kilobots properties*/
     std::vector<CVector2> m_vecKilobotsPositions;
+    std::vector<argos::CColor> m_vecKilobotsColours;
     std::vector<CRadians> m_vecKilobotsOrientations;
     std::vector<SRobotState> m_vecKilobotStates_ALF;
 

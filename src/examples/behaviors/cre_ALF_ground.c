@@ -395,7 +395,7 @@ void finite_state_machine()
             }
             else if (imposed_direction == TURNING_SOUTH)
             {
-                set_color(RGB(0, 3, 0));
+                set_color(RGB(0, 0, 3));
                 current_state = TURNING_SOUTH;
                 if (current_kb_angle <= 15)
                 {
