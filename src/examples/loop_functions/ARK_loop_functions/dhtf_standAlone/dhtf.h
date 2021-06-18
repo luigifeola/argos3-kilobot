@@ -163,6 +163,8 @@ private:
     int hard_tasks;                   //the number of hard task (the one which requires more robots to be completed)
     std::vector<int> activated_areas; //IDs of active areas among all possible tasks
     std::vector<int> hard_tasks_vec;  //IDs of active hard tasks
+    int vSoftRequiredKilobots;        // # robots to complete soft tasks
+    int vHardRequiredKilobots;        // # robots to complete hard tasks
     bool adaptive_walk;               //if true, trying to complete more RED tasks as possible (completed RED task -> brownian motion, BLUE task -> persistent motion)
     double kTimerMultiplier;          //multiplicative constant for the timeout study
     double kRespawnTimer;             //once completed, an area will appear again after kRespawnTimer seconds
@@ -186,11 +188,13 @@ private:
     std::ofstream m_kiloOutput;
     std::ofstream m_areaOutput;
     std::ofstream m_taskOutput;
+    std::ofstream m_elpsTimeoutOutput;
 
     /* output file name*/
     std::string m_strKiloOutputFileName;
     std::string m_strAreaOutputFileName;
     std::string m_strTaskOutputFileName;
+    std::string m_strElpsTimeoutOutputFileName;
 
     /* data acquisition frequency in ticks */
     UInt16 m_unDataAcquisitionFrequency;

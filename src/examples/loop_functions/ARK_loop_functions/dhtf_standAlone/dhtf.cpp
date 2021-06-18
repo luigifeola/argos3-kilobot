@@ -3,12 +3,13 @@
 namespace
 {
     // environment setup
-    const double kArena_size = 1.0;
+    // const double kScaling = 1.0 / 4.0;      //for no scaling set kScaling=0.5
     const double kKiloDiameter = 0.033;
-    const double kDistance_threshold = kArena_size / 2.0 - 2.0 * kKiloDiameter;
+    double vArena_size = 1.0;
+    double vDistance_threshold = vArena_size / 2.0 - 2.0 * kKiloDiameter;
     const int max_area_id = 15;
-    const int kSoftRequiredKilobots = 2;
-    const int kHardRequiredKilobots = 6;
+    // const int kSoftRequiredKilobots = 2;
+    // const int kHardRequiredKilobots = 6;
 
     // avoid to choose corner areas
     const std::vector<int> vForbidden({0, 3, 12, 15});
@@ -34,6 +35,8 @@ void dhtfCALF::Reset()
     m_areaOutput.open(m_strAreaOutputFileName, std::ios_base::trunc | std::ios_base::out);
     m_taskOutput.close();
     m_taskOutput.open(m_strTaskOutputFileName, std::ios_base::trunc | std::ios_base::out);
+    m_elpsTimeoutOutput.close();
+    m_elpsTimeoutOutput.open(m_strElpsTimeoutOutputFileName, std::ios_base::trunc | std::ios_base::out);
 }
 
 void dhtfCALF::Destroy()
@@ -41,6 +44,7 @@ void dhtfCALF::Destroy()
     m_kiloOutput.close();
     m_areaOutput.close();
     m_taskOutput.close();
+    m_elpsTimeoutOutput.close();
 }
 
 void dhtfCALF::Init(TConfigurationNode &t_node)
@@ -53,6 +57,7 @@ void dhtfCALF::Init(TConfigurationNode &t_node)
     m_kiloOutput.open(m_strKiloOutputFileName, std::ios_base::trunc | std::ios_base::out);
     m_areaOutput.open(m_strAreaOutputFileName, std::ios_base::trunc | std::ios_base::out);
     m_taskOutput.open(m_strTaskOutputFileName, std::ios_base::trunc | std::ios_base::out);
+    m_elpsTimeoutOutput.open(m_strElpsTimeoutOutputFileName, std::ios_base::trunc | std::ios_base::out);
 
     /* Read parameters from .argos*/
     TConfigurationNode &tModeNode = GetNode(t_node, "extra_parameters");
@@ -65,7 +70,10 @@ void dhtfCALF::Init(TConfigurationNode &t_node)
     random_seed = GetSimulator().GetRandomSeed();
     //GetNodeAttribute(tModeNode, "random_seed", random_seed);
     GetNodeAttribute(tModeNode, "desired_num_of_areas", desired_num_of_areas);
+    GetNodeAttribute(tModeNode, "reactivation_timer", kRespawnTimer);
     GetNodeAttribute(tModeNode, "hard_tasks", hard_tasks);
+    GetNodeAttribute(tModeNode, "soft_requirement", vSoftRequiredKilobots);
+    GetNodeAttribute(tModeNode, "hard_requirement", vHardRequiredKilobots);
 
     InitializeVirtualEnvironment();
 }
@@ -103,7 +111,12 @@ void dhtfCALF::SetupInitialKilobotState(CKilobotEntity &c_kilobot_entity)
 
 void dhtfCALF::SetupVirtualEnvironments(TConfigurationNode &t_tree)
 {
-    std::cout << "SetupVirtualEnvironments\n";
+    /* Read arena parameters */
+    vArena_size = argos::CSimulator::GetInstance().GetSpace().GetArenaSize().GetX();
+    vDistance_threshold = vArena_size / 2.0 - 2.0 * kKiloDiameter;
+    // std::cout << "Arena size: " << vArena_size << "\n";
+
+    // std::cout << "SetupVirtualEnvironments\n";
     TConfigurationNode &tVirtualEnvironmentsNode = GetNode(t_tree, "environments");
     TConfigurationNodeIterator itAct;
 
@@ -114,7 +127,7 @@ void dhtfCALF::SetupVirtualEnvironments(TConfigurationNode &t_tree)
         num_of_areas += 1;
     }
 
-    std::cout << "Num of areas:" << num_of_areas << std::endl;
+    // std::cout << "Num of areas:" << num_of_areas << std::endl;
     /* Build the structure with areas data */
     multiArea.resize(num_of_areas);
 
@@ -139,6 +152,7 @@ void dhtfCALF::SetupVirtualEnvironments(TConfigurationNode &t_tree)
 
 void dhtfCALF::InitializeVirtualEnvironment()
 {
+
     /************************/
     /* Select desired areas */
     /************************/
@@ -183,6 +197,42 @@ void dhtfCALF::InitializeVirtualEnvironment()
     }
     std::sort(hard_tasks_vec.begin(), hard_tasks_vec.end());
 
+    /** Dynamic initialisation */
+    // multiArea.clear();
+
+    // double white_space = kScaling * 4.0 * kKiloDiameter;
+    // double radius = (((2.0 * kScaling - white_space) / 4.0) - white_space) / 2.0;
+    // std::cout << "radius " << radius << std::endl;
+    // for (int areaID = 0; areaID < 16; ++areaID)
+    // {
+    //     if (std::find(activated_areas.begin(), activated_areas.end(), areaID) != activated_areas.end())
+    //     {
+    //         CVector2 areaPos((1.0 + 2.0 * (areaID % 4)) * radius + (1.0 + (areaID % 4)) * white_space, (1.0 + floor(areaID / 4) * 2.0) * radius + (1.0 + floor(areaID / 4)) * white_space);
+    //         areaPos -= CVector2(kArena_size / 2.0, kArena_size / 2.0);
+    //         SVirtualArea vArea;
+    //         vArea.id = areaID;
+    //         vArea.position = areaPos;
+    //         vArea.completed = false;
+    //         vArea.radius = radius;
+    //         vArea.contained = 0;     // how many kilobots are partecipating at the task
+    //         vArea.completed = false; //"true" if the task is completed
+    //         vArea.creationTime = 0.0;
+    //         vArea.completitionTime = 0.0;
+    //         if (std::find(hard_tasks_vec.begin(), hard_tasks_vec.end(), areaID) != hard_tasks_vec.end())
+    //         {
+    //             vArea.color = argos::CColor::RED;
+    //         }
+
+    //         else
+    //         {
+    //             vArea.color = argos::CColor::BLUE;
+    //         }
+
+    //         multiArea.push_back(vArea);
+    //     }
+    // }
+
+    /** Static initialisation */
     //Remove the extra multiArea loaded from .argos file
     for (int i = 0; i < multiArea.size(); i++)
     {
@@ -218,6 +268,7 @@ void dhtfCALF::GetExperimentVariables(TConfigurationNode &t_tree)
     GetNodeAttribute(tExperimentVariablesNode, "kilo_filename", m_strKiloOutputFileName);
     GetNodeAttribute(tExperimentVariablesNode, "area_filename", m_strAreaOutputFileName);
     GetNodeAttribute(tExperimentVariablesNode, "task_filename", m_strTaskOutputFileName);
+    GetNodeAttribute(tExperimentVariablesNode, "timeout_filename", m_strElpsTimeoutOutputFileName);
     GetNodeAttributeOrDefault(tExperimentVariablesNode, "dataacquisitionfrequency", m_unDataAcquisitionFrequency, m_unDataAcquisitionFrequency);
     GetNodeAttributeOrDefault(tExperimentVariablesNode, "m_unEnvironmentPlotUpdateFrequency", m_unEnvironmentPlotUpdateFrequency, m_unEnvironmentPlotUpdateFrequency);
     GetNodeAttributeOrDefault(tExperimentVariablesNode, "timeforonemessage", m_fTimeForAMessage, m_fTimeForAMessage);
@@ -267,7 +318,7 @@ void dhtfCALF::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
     {
         /** WARNING: hard and soft tasks have the same time requirement */
         /* Check if the kilobot is entered in a task area */
-        for (int i = 0; i < desired_num_of_areas; i++)
+        for (int i = 0; i < multiArea.size(); i++)
         {
             Real fDistance = Distance(m_vecKilobotsPositions[unKilobotID], multiArea[i].position);
             if ((fDistance < (multiArea[i].radius * 1.0)) && (multiArea[i].completed == false)) //*1.0 is a threshold, to include the boarder increase it
@@ -286,6 +337,7 @@ void dhtfCALF::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
 
                 m_vecKilobotsPositionTask[unKilobotID] = i;
                 multiArea[i].contained += 1;
+                // std::cerr << "kID:" << unKilobotID << " entered in " << multiArea[i].id << " which contains:" << multiArea[i].contained << " robots\n";
             }
         }
         break;
@@ -297,6 +349,28 @@ void dhtfCALF::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
         {
             m_vecKilobotStates_ALF[unKilobotID] = LEAVING;
             multiArea[m_vecKilobotsPositionTask[unKilobotID]].contained -= 1;
+
+            m_elpsTimeoutOutput
+                << std::noshowpos
+                << std::setw(8) << std::setprecision(4) << std::setfill('0')
+                << m_fTimeInSeconds << '\t'
+                << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
+                << unKilobotID << '\t'
+                << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
+                << multiArea[m_vecKilobotsPositionTask[unKilobotID]].id << '\t'
+                << std::noshowpos << std::setw(1) << std::setprecision(0)
+                << (multiArea[m_vecKilobotsPositionTask[unKilobotID]].color == argos::CColor::RED ? 1 : 0)
+                << std::endl;
+
+            // std::cout
+            //     << std::noshowpos
+            //     << std::setw(8) << std::setprecision(4) << std::setfill('0')
+            //     << "time: " << m_fTimeInSeconds << '\t'
+            //     << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
+            //     << "areaID: " << multiArea[m_vecKilobotsPositionTask[unKilobotID]].id << '\t'
+            //     << std::noshowpos << std::setw(1) << std::setprecision(0)
+            //     << "color: " << (multiArea[m_vecKilobotsPositionTask[unKilobotID]].color == argos::CColor::RED ? "red" : "blue")
+            //     << std::endl;
         }
         /* Else check if the task has been completed */
         else if (multiArea[m_vecKilobotsPositionTask[unKilobotID]].completed == true)
@@ -358,23 +432,23 @@ void dhtfCALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
     /********************************************/
     UInt8 proximity_sensor_dec = 0; //8 bit proximity sensor as decimal
     // std::cerr<<unKilobotID<<'\t'<<m_vecKilobotsPositions[unKilobotID]<<std::endl;
-    if (fabs(m_vecKilobotsPositions[unKilobotID].GetX()) > kDistance_threshold ||
-        fabs(m_vecKilobotsPositions[unKilobotID].GetY()) > kDistance_threshold)
+    if (fabs(m_vecKilobotsPositions[unKilobotID].GetX()) > vDistance_threshold ||
+        fabs(m_vecKilobotsPositions[unKilobotID].GetY()) > vDistance_threshold)
     {
         std::vector<int> proximity_vec;
 
-        if (m_vecKilobotsPositions[unKilobotID].GetX() > kDistance_threshold)
+        if (m_vecKilobotsPositions[unKilobotID].GetX() > vDistance_threshold)
         {
             // std::cerr<<"RIGHT\n";
             proximity_vec = Proximity_sensor(right_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
         }
-        else if (m_vecKilobotsPositions[unKilobotID].GetX() < -1.0 * kDistance_threshold)
+        else if (m_vecKilobotsPositions[unKilobotID].GetX() < -1.0 * vDistance_threshold)
         {
             // std::cerr<<"LEFT\n";
             proximity_vec = Proximity_sensor(left_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
         }
 
-        if (m_vecKilobotsPositions[unKilobotID].GetY() > kDistance_threshold)
+        if (m_vecKilobotsPositions[unKilobotID].GetY() > vDistance_threshold)
         {
             // std::cerr<<"UP\n";
             if (proximity_vec.empty())
@@ -389,7 +463,7 @@ void dhtfCALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
                 proximity_vec = elementwiseOr;
             }
         }
-        else if (m_vecKilobotsPositions[unKilobotID].GetY() < -1.0 * kDistance_threshold)
+        else if (m_vecKilobotsPositions[unKilobotID].GetY() < -1.0 * vDistance_threshold)
         {
             // std::cerr<<"DOWN\n";
             if (proximity_vec.empty())
@@ -425,11 +499,16 @@ void dhtfCALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
     /********* ENVIRONMENT UPDATE ***************/
     /********************************************/
     /* Reactivation area check */
-    for (int i = 0; i < desired_num_of_areas; i++)
+    for (int i = 0; i < multiArea.size(); i++)
     {
         if ((multiArea[i].completed == true) &&
             (m_fTimeInSeconds - multiArea[i].completitionTime >= kRespawnTimer))
         {
+            std::cout << "m_fTimeInSeconds " << m_fTimeInSeconds
+                      << " multiArea[i].completitionTime " << multiArea[i].completitionTime
+                      << " kRespawnTimer " << kRespawnTimer
+                      << std::endl;
+            std::cout << "Respawn area " << multiArea[i].id << std::endl;
             multiArea[i].completed = false;
             multiArea[i].contained = 0;
             multiArea[i].creationTime = m_fTimeInSeconds;
@@ -437,19 +516,20 @@ void dhtfCALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
     }
 
     /* Task completeness check */
-    for (int j = 0; j < desired_num_of_areas; j++)
+    for (int j = 0; j < multiArea.size(); j++)
     {
+        // std::cout << "Area " << multiArea[j].id << "contains " << multiArea[j].contained << "robots" << std::endl;
         if (multiArea[j].completed == false)
         {
-            if ((multiArea[j].color == argos::CColor::RED) && (multiArea[j].contained >= kHardRequiredKilobots))
+            if ((multiArea[j].color == argos::CColor::RED) && (multiArea[j].contained >= vHardRequiredKilobots))
             {
                 multiArea[j].completed = true;
-                // std::cout << m_fTimeInSeconds << "\tred-red task completed" << std::endl;
+                std::cout << m_fTimeInSeconds << "\tareaID " << multiArea[j].id << "\tRED task completed" << std::endl;
             }
-            if ((multiArea[j].color == argos::CColor::BLUE) && (multiArea[j].contained >= kSoftRequiredKilobots))
+            if ((multiArea[j].color == argos::CColor::BLUE) && (multiArea[j].contained >= vSoftRequiredKilobots))
             {
                 multiArea[j].completed = true;
-                // std::cout << m_fTimeInSeconds << "\tblue-red task completed" << std::endl;
+                std::cout << m_fTimeInSeconds << "\tareaID " << multiArea[j].id << "\tBLUE task completed" << std::endl;
             }
 
             if (multiArea[j].completed == true)
@@ -517,7 +597,7 @@ void dhtfCALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
             // std::cerr<<"sending outside from leaving\n";
         }
 
-        if ((fabs(m_vecKilobotsPositions[unKilobotID].GetX()) > kDistance_threshold || fabs(m_vecKilobotsPositions[unKilobotID].GetY()) > kDistance_threshold) &&
+        if ((fabs(m_vecKilobotsPositions[unKilobotID].GetX()) > vDistance_threshold || fabs(m_vecKilobotsPositions[unKilobotID].GetY()) > vDistance_threshold) &&
             ((int)m_vecKilobotStates_ALF[unKilobotID] != INSIDE_AREA))
         {
             tKilobotMessage.m_sData = proximity_sensor_dec;
@@ -598,7 +678,7 @@ void dhtfCALF::AreaLOG()
             << (multiArea[areaID].color == argos::CColor::RED ? 1 : 0) << '\t'
             << (multiArea[areaID].completed == true ? 1 : 0) << '\t'
             << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
-            << multiArea[areaID].contained << '\t';
+            << multiArea[areaID].contained;
         // << multiArea[areaID].
     }
     m_areaOutput << std::endl;
@@ -609,7 +689,7 @@ void dhtfCALF::KiloLOG()
 
     m_kiloOutput
         << std::noshowpos << std::setw(4) << std::setprecision(0) << std::setfill('0')
-        << m_fTimeInSeconds << '\t';
+        << m_fTimeInSeconds;
     for (size_t kID = 0; kID < m_vecKilobotsPositions.size(); kID++)
     {
         m_kiloOutput
@@ -621,6 +701,7 @@ void dhtfCALF::KiloLOG()
             // << m_vecKilobotStates_ALF[kID];
 
             // << std::noshowpos
+            << '\t'
             << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
             << kID << '\t'
             << std::noshowpos << std::setw(1) << std::setprecision(0)
@@ -632,7 +713,7 @@ void dhtfCALF::KiloLOG()
             << std::internal << std::showpos << std::setw(6) << std::setprecision(4) << std::setfill('0') << std::fixed
             << m_vecKilobotsOrientations[kID].GetValue() << '\t'
             << std::noshowpos << std::setw(1) << std::setprecision(0)
-            << m_vecKilobotStates_ALF[kID] << '\t';
+            << m_vecKilobotStates_ALF[kID];
     }
     m_kiloOutput << std::endl;
 }
