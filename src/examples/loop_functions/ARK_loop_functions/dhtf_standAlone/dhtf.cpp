@@ -2,29 +2,28 @@
 
 namespace
 {
+
+    const double kEpsilon = 0.0001;
+
     // environment setup
     // const double kScaling = 1.0 / 4.0;      //for no scaling set kScaling=0.5
     const double kKiloDiameter = 0.033;
-    double vArena_size = 1.0;
-    double vDistance_threshold = vArena_size / 2.0 - 2.0 * kKiloDiameter;
-    const int max_area_id = 15;
-    // const int kSoftRequiredKilobots = 2;
-    // const int kHardRequiredKilobots = 6;
+    double vArena_size = 0.5;
+    double vDistance_threshold = vArena_size / 2.0 - 0.04;
 
     // avoid to choose corner areas
     const std::vector<int> vForbidden({0, 3, 12, 15});
 
     // wall avoidance stuff
-    const CVector2 up_direction(0.0, -1.0);
-    const CVector2 down_direction(0.0, 1.0);
     const CVector2 left_direction(1.0, 0.0);
-    const CVector2 right_direction(-1.0, 0.0);
     const int proximity_bits = 8;
+
     int internal_counter = 0;
 }
 
 dhtfCALF::dhtfCALF() : m_unDataAcquisitionFrequency(10)
 {
+    c_rng = CRandom::CreateRNG("argos");
 }
 
 void dhtfCALF::Reset()
@@ -69,13 +68,9 @@ void dhtfCALF::Init(TConfigurationNode &t_node)
 
     random_seed = GetSimulator().GetRandomSeed();
     //GetNodeAttribute(tModeNode, "random_seed", random_seed);
-    GetNodeAttribute(tModeNode, "desired_num_of_areas", desired_num_of_areas);
     GetNodeAttribute(tModeNode, "reactivation_timer", kRespawnTimer);
-    GetNodeAttribute(tModeNode, "hard_tasks", hard_tasks);
     GetNodeAttribute(tModeNode, "soft_requirement", vSoftRequiredKilobots);
     GetNodeAttribute(tModeNode, "hard_requirement", vHardRequiredKilobots);
-
-    InitializeVirtualEnvironment();
 }
 
 void dhtfCALF::SetupInitialKilobotStates()
@@ -104,6 +99,31 @@ void dhtfCALF::SetupInitialKilobotState(CKilobotEntity &c_kilobot_entity)
     m_vecKilobotStates_ALF[unKilobotID] = OUTSIDE_AREAS;
     m_vecLastTimeMessaged[unKilobotID] = -1000;
 
+    /* Get a non-colliding random position within the circular arena */
+    bool distant_enough = false;
+    Real rand_angle;
+    Real rand_x, rand_y;
+
+    UInt16 maxTries = 999;
+    UInt16 tries = 0;
+
+    /* Get a random position and orientation for the kilobot initialized into a square but positioned in the circular arena */
+    CQuaternion random_rotation;
+    CRadians rand_rot_angle(c_rng->Uniform(CRange<Real>(-CRadians::PI.GetValue(), CRadians::PI.GetValue())));
+    random_rotation.FromEulerAngles(rand_rot_angle, CRadians::ZERO, CRadians::ZERO);
+    Real radius = m_ArenaStructure.Radius - m_ArenaStructure.Wall_width / 2 - kKiloDiameter / 2 - kEpsilon;
+    do
+    {
+        rand_x = c_rng->Uniform(CRange<Real>(-radius, radius));
+        rand_y = c_rng->Uniform(CRange<Real>(-radius, radius));
+        distant_enough = MoveEntity(c_kilobot_entity.GetEmbodiedEntity(), CVector3(rand_x, rand_y, 0), random_rotation, false);
+
+        if (tries == maxTries - 1)
+        {
+            std::cerr << "ERROR: too many tries and not an available spot for the area" << std::endl;
+        }
+    } while (!distant_enough || (rand_x * rand_x) + (rand_y * rand_y) > radius * radius);
+
     m_vecKilobotsPositions[unKilobotID] = GetKilobotPosition(c_kilobot_entity);
     m_vecKilobotsColours[unKilobotID] = argos::CColor::BLACK;
     m_vecKilobotsOrientations[unKilobotID] = GetKilobotOrientation(c_kilobot_entity);
@@ -111,157 +131,137 @@ void dhtfCALF::SetupInitialKilobotState(CKilobotEntity &c_kilobot_entity)
 
 void dhtfCALF::SetupVirtualEnvironments(TConfigurationNode &t_tree)
 {
+    Real rand_x, rand_y;
+    UInt16 maxTries = 999;
+    UInt16 tries = 0;
+
     /* Read arena parameters */
     vArena_size = argos::CSimulator::GetInstance().GetSpace().GetArenaSize().GetX();
-    vDistance_threshold = vArena_size / 2.0 - 2.0 * kKiloDiameter;
-    // std::cout << "Arena size: " << vArena_size << "\n";
+    vDistance_threshold = vArena_size / 2.0 - 0.04;
+    std::cout << "Arena size: " << vArena_size << "\n";
 
-    // std::cout << "SetupVirtualEnvironments\n";
     TConfigurationNode &tVirtualEnvironmentsNode = GetNode(t_tree, "environments");
-    TConfigurationNodeIterator itAct;
+    /* Get the node defining the walls parametres*/
+    TConfigurationNode &t_VirtualWallsNode = GetNode(tVirtualEnvironmentsNode, "CircularWall");
+    GetNodeAttribute(t_VirtualWallsNode, "radius", m_ArenaStructure.Radius);
+    GetNodeAttribute(t_VirtualWallsNode, "width", m_ArenaStructure.Wall_width);
+    GetNodeAttribute(t_VirtualWallsNode, "height", m_ArenaStructure.Wall_height);
+    GetNodeAttribute(t_VirtualWallsNode, "walls", m_ArenaStructure.Wall_numbers);
 
-    /* Compute number of areas on the field*/
-    int num_of_areas = 0;
-    for (itAct = itAct.begin(&tVirtualEnvironmentsNode); itAct != itAct.end(); ++itAct)
+    /* Get the node defining the task parameters*/
+    TConfigurationNode &t_VirtualTaskNode = GetNode(tVirtualEnvironmentsNode, "VirtualTask");
+    GetNodeAttribute(t_VirtualTaskNode, "desired_num_of_areas", desired_num_of_areas);
+    GetNodeAttribute(t_VirtualTaskNode, "hard_tasks", hard_tasks);
+
+    std::ostringstream entity_id;
+    CRadians wall_angle = CRadians::TWO_PI / m_ArenaStructure.Wall_numbers;
+    CVector3 wall_size(m_ArenaStructure.Wall_width, 2.0 * m_ArenaStructure.Radius * Tan(CRadians::PI / m_ArenaStructure.Wall_numbers), m_ArenaStructure.Wall_height);
+
+    /* Wall positioning */
+    for (UInt32 i = 0; i < m_ArenaStructure.Wall_numbers; i++)
     {
-        num_of_areas += 1;
+        entity_id.str("");
+        entity_id << "wall_" << i;
+
+        CRadians wall_rotation = wall_angle * i;
+        // CVector3 wall_position((m_ArenaStructure.Radius) * Cos(wall_rotation), (m_ArenaStructure.Radius) * Sin(wall_rotation), 0);
+        CVector3 wall_position(m_ArenaStructure.Radius * Cos(wall_rotation), m_ArenaStructure.Radius * Sin(wall_rotation), 0);
+        CQuaternion wall_orientation;
+        wall_orientation.FromEulerAngles(wall_rotation, CRadians::ZERO, CRadians::ZERO);
+
+        CBoxEntity *wall = new CBoxEntity(entity_id.str(), wall_position, wall_orientation, false, wall_size);
+        AddEntity(*wall);
     }
 
-    // std::cout << "Num of areas:" << num_of_areas << std::endl;
-    /* Build the structure with areas data */
-    multiArea.resize(num_of_areas);
+    /* Task positioning */
+    std::cout << "desired_num_of_areas: " << desired_num_of_areas << "\n";
+    multiArea.clear();
 
-    int i = 0;
-    for (itAct = itAct.begin(&tVirtualEnvironmentsNode); itAct != itAct.end(); ++itAct, i++)
+    SVirtualArea single_task;
+    for (int i = 0; i < desired_num_of_areas / 2; i++)
     {
-        std::string s = std::to_string(i);
-        std::string var = std::string("Area") + std::string(s);
-        TConfigurationNode &t_VirtualClusteringHubNode = GetNode(tVirtualEnvironmentsNode, var);
-        GetNodeAttribute(t_VirtualClusteringHubNode, "position", multiArea[i].position);
-        GetNodeAttribute(t_VirtualClusteringHubNode, "radius", multiArea[i].radius);
-    }
-    /* White set as default color*/
-    for (int ai = 0; ai < num_of_areas; ai++)
-    {
-        multiArea[ai].id = ai;
-        multiArea[ai].color = argos::CColor::WHITE;
-        multiArea[ai].contained = 0;
-        multiArea[ai].completed = false;
-    }
-}
-
-void dhtfCALF::InitializeVirtualEnvironment()
-{
-
-    /************************/
-    /* Select desired areas */
-    /************************/
-    srand(random_seed);
-
-    /* GENERATE RANDOM IDs AND RANDOM HARD TASK */
-    std::default_random_engine re;
-    re.seed(random_seed);
-
-    std::cout << "Desired num of areas:" << desired_num_of_areas << std::endl;
-
-    /* Generate active areas ID */
-    while (activated_areas.size() < desired_num_of_areas)
-    {
-        if (desired_num_of_areas - 1 > max_area_id)
-        {
-            std::cerr << "Requested more areas then the available ones, WARNING!";
-        }
-
-        std::uniform_int_distribution<int> distr(0, max_area_id);
-        int random_number;
         do
         {
-            random_number = distr(re);
-        } while ((std::find(activated_areas.begin(), activated_areas.end(), random_number) != activated_areas.end()) ||
-                 (std::find(vForbidden.begin(), vForbidden.end(), random_number) != vForbidden.end()));
-        activated_areas.push_back(random_number);
-    }
-    std::sort(activated_areas.begin(), activated_areas.end());
+            /** WARNING: remove constant and put variables */
+            rand_x = c_rng->Uniform(CRange<Real>(0.07, 0.465));
+            // rand_y = c_rng->Uniform(CRange<Real>(-0.475, 0.475));
+            rand_y = c_rng->Uniform(CRange<Real>(-1.0 * (0.95 / 2.0 - 0.1), +1.0 * (0.95 / 2.0 - 0.1)));
 
-    /* Generate hard task for the server */
+            if (tries == maxTries - 1)
+            {
+                std::cerr << "ERROR: too many tries and not an available spot for the area" << std::endl;
+            }
+            tries += 1;
+        } while (((rand_x * rand_x) + (rand_y * rand_y) > (m_ArenaStructure.Radius - 0.1) * (m_ArenaStructure.Radius - 0.1)) || !DistantEnoughTasks(CVector2(rand_x, rand_y)));
+
+        single_task.id = i;
+        single_task.position = CVector2(rand_x, rand_y);
+        single_task.color = argos::CColor::RED;
+        single_task.completed = false;
+        single_task.contained = 0;
+        single_task.creationTime = 0.0;
+        single_task.radius = 0.06;
+
+        multiArea.push_back(single_task);
+
+        single_task.id = i + desired_num_of_areas / 2;
+        single_task.position = CVector2(-rand_x, -rand_y);
+        single_task.color = argos::CColor::BLUE;
+        single_task.completed = false;
+        single_task.contained = 0;
+        single_task.creationTime = 0.0;
+        single_task.radius = 0.06;
+
+        multiArea.push_back(single_task);
+    }
+
+    hard_tasks_vec.clear();
     while (hard_tasks_vec.size() < hard_tasks)
     {
-        std::uniform_int_distribution<int> distr(0, max_area_id);
-        int random_number;
+        UInt8 hardID;
         do
         {
-            random_number = distr(re);
-        } while (std::find(activated_areas.begin(), activated_areas.end(), random_number) == activated_areas.end() ||
-                 std::find(hard_tasks_vec.begin(), hard_tasks_vec.end(), random_number) != hard_tasks_vec.end());
-        hard_tasks_vec.push_back(random_number);
+            hardID = c_rng->Uniform(CRange<UInt32>(0, desired_num_of_areas));
+        } while (std::find(hard_tasks_vec.begin(), hard_tasks_vec.end(), hardID) != hard_tasks_vec.end());
+
+        hard_tasks_vec.push_back(hardID);
     }
-    std::sort(hard_tasks_vec.begin(), hard_tasks_vec.end());
 
-    /** Dynamic initialisation */
-    // multiArea.clear();
+    std::cout << "Hard task ids: ";
+    for (auto elem : hard_tasks_vec)
+    {
+        std::cout << elem << ", ";
+    }
+    std::cout << "\n";
 
-    // double white_space = kScaling * 4.0 * kKiloDiameter;
-    // double radius = (((2.0 * kScaling - white_space) / 4.0) - white_space) / 2.0;
-    // std::cout << "radius " << radius << std::endl;
-    // for (int areaID = 0; areaID < 16; ++areaID)
-    // {
-    //     if (std::find(activated_areas.begin(), activated_areas.end(), areaID) != activated_areas.end())
-    //     {
-    //         CVector2 areaPos((1.0 + 2.0 * (areaID % 4)) * radius + (1.0 + (areaID % 4)) * white_space, (1.0 + floor(areaID / 4) * 2.0) * radius + (1.0 + floor(areaID / 4)) * white_space);
-    //         areaPos -= CVector2(kArena_size / 2.0, kArena_size / 2.0);
-    //         SVirtualArea vArea;
-    //         vArea.id = areaID;
-    //         vArea.position = areaPos;
-    //         vArea.completed = false;
-    //         vArea.radius = radius;
-    //         vArea.contained = 0;     // how many kilobots are partecipating at the task
-    //         vArea.completed = false; //"true" if the task is completed
-    //         vArea.creationTime = 0.0;
-    //         vArea.completitionTime = 0.0;
-    //         if (std::find(hard_tasks_vec.begin(), hard_tasks_vec.end(), areaID) != hard_tasks_vec.end())
-    //         {
-    //             vArea.color = argos::CColor::RED;
-    //         }
-
-    //         else
-    //         {
-    //             vArea.color = argos::CColor::BLUE;
-    //         }
-
-    //         multiArea.push_back(vArea);
-    //     }
-    // }
-
-    /** Static initialisation */
-    //Remove the extra multiArea loaded from .argos file
     for (int i = 0; i < multiArea.size(); i++)
     {
-        // fill server own colors
-        if (std::find(activated_areas.begin(), activated_areas.end(), multiArea[i].id) == activated_areas.end())
+        if (std::find(hard_tasks_vec.begin(), hard_tasks_vec.end(), multiArea.at(i).id) != hard_tasks_vec.end())
         {
-            multiArea.erase(multiArea.begin() + i);
-            i -= 1;
+            multiArea.at(i).color = argos::CColor::RED;
         }
         else
         {
-            if (std::find(hard_tasks_vec.begin(), hard_tasks_vec.end(), multiArea[i].id) != hard_tasks_vec.end())
-            {
-                multiArea[i].color = argos::CColor::RED;
-            }
-            else
-            {
-                multiArea[i].color = argos::CColor::BLUE;
-            }
+            multiArea.at(i).color = argos::CColor::BLUE;
+        }
+    }
+}
+
+bool dhtfCALF::DistantEnoughTasks(CVector2 some_position)
+{
+    // std::cout << "DistantEnoughTasks\n";
+    for (size_t i = 0; i < multiArea.size(); i++)
+    {
+        Real fDistance = Distance(multiArea[i].position, some_position);
+        if (fDistance < (2.0 * multiArea[i].radius + 0.02))
+        {
+            return false;
         }
     }
 
-    for (auto a : multiArea)
-    {
-        std::cout << "id:" << a.id
-                  << ", color:" << (a.color == argos::CColor::BLUE ? "blue" : "red")
-                  << ", position:(" << a.position.GetX() << "," << a.position.GetY() << ")\n";
-    }
+    return true;
 }
+
 void dhtfCALF::GetExperimentVariables(TConfigurationNode &t_tree)
 {
     TConfigurationNode &tExperimentVariablesNode = GetNode(t_tree, "variables");
@@ -289,10 +289,10 @@ std::vector<int> dhtfCALF::Proximity_sensor(CVector2 obstacle_direction, Real kO
 
     for (int i = 0; i < num_sectors; i++)
     {
-        CVector2 sector_dir_a = VectorRotation2D((kOrientation + M_PI_2 - i * sector), left_direction);
-        CVector2 sector_dir_b = VectorRotation2D((kOrientation + M_PI_2 - (i + 1) * sector), left_direction);
+        CVector2 sector_dir_start = VectorRotation2D((kOrientation + M_PI_2 - i * sector), left_direction);
+        CVector2 sector_dir_end = VectorRotation2D((kOrientation + M_PI_2 - (i + 1) * sector), left_direction);
 
-        if (obstacle_direction.DotProduct(sector_dir_a) >= 0.0 || obstacle_direction.DotProduct(sector_dir_b) >= 0.0)
+        if (obstacle_direction.DotProduct(sector_dir_start) >= 0.0 || obstacle_direction.DotProduct(sector_dir_end) >= 0.0)
         {
             proximity_values.push_back(0);
         }
@@ -432,52 +432,18 @@ void dhtfCALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
     /********************************************/
     UInt8 proximity_sensor_dec = 0; //8 bit proximity sensor as decimal
     // std::cerr<<unKilobotID<<'\t'<<m_vecKilobotsPositions[unKilobotID]<<std::endl;
-    if (fabs(m_vecKilobotsPositions[unKilobotID].GetX()) > vDistance_threshold ||
-        fabs(m_vecKilobotsPositions[unKilobotID].GetY()) > vDistance_threshold)
+    // if (fabs(m_vecKilobotsPositions[unKilobotID].GetX()) > vDistance_threshold ||
+    //     fabs(m_vecKilobotsPositions[unKilobotID].GetY()) > vDistance_threshold)
+    Real fDistance = Distance(m_vecKilobotsPositions[unKilobotID], m_ArenaStructure.Center);
+    if (fDistance > vDistance_threshold)
     {
         std::vector<int> proximity_vec;
+        CRadians collision_angle = ATan2(m_vecKilobotsPositions[unKilobotID].GetY(), m_vecKilobotsPositions[unKilobotID].GetX());
+        CVector2 collision_direction = CVector2(vDistance_threshold * Cos(collision_angle + CRadians(M_PI)), vDistance_threshold * Sin(collision_angle + CRadians(M_PI))).Normalize();
 
-        if (m_vecKilobotsPositions[unKilobotID].GetX() > vDistance_threshold)
-        {
-            // std::cerr<<"RIGHT\n";
-            proximity_vec = Proximity_sensor(right_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
-        }
-        else if (m_vecKilobotsPositions[unKilobotID].GetX() < -1.0 * vDistance_threshold)
-        {
-            // std::cerr<<"LEFT\n";
-            proximity_vec = Proximity_sensor(left_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
-        }
-
-        if (m_vecKilobotsPositions[unKilobotID].GetY() > vDistance_threshold)
-        {
-            // std::cerr<<"UP\n";
-            if (proximity_vec.empty())
-                proximity_vec = Proximity_sensor(up_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
-            else
-            {
-                std::vector<int> prox = Proximity_sensor(up_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
-                std::vector<int> elementwiseOr;
-                elementwiseOr.reserve(prox.size());
-                std::transform(proximity_vec.begin(), proximity_vec.end(), prox.begin(), std::back_inserter(elementwiseOr), std::logical_or<>());
-
-                proximity_vec = elementwiseOr;
-            }
-        }
-        else if (m_vecKilobotsPositions[unKilobotID].GetY() < -1.0 * vDistance_threshold)
-        {
-            // std::cerr<<"DOWN\n";
-            if (proximity_vec.empty())
-                proximity_vec = Proximity_sensor(down_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
-            else
-            {
-                std::vector<int> prox = Proximity_sensor(up_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
-                std::vector<int> elementwiseOr;
-                elementwiseOr.reserve(prox.size());
-                std::transform(proximity_vec.begin(), proximity_vec.end(), prox.begin(), std::back_inserter(elementwiseOr), std::logical_or<>());
-
-                proximity_vec = elementwiseOr;
-            }
-        }
+        std::cout << "collision angle: " << collision_angle << std::endl;
+        std::cout << "collision direction: " << collision_direction << std::endl;
+        proximity_vec = Proximity_sensor(collision_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
 
         proximity_sensor_dec = std::accumulate(proximity_vec.begin(), proximity_vec.end(), 0, [](int x, int y)
                                                { return (x << 1) + y; });
@@ -485,12 +451,12 @@ void dhtfCALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
         //proximity_sensor_dec = 0;
 
         /** Print proximity values */
-        // std::cerr<<"kID:"<< unKilobotID <<" sensor ";
-        // for(int item : proximity_vec)
-        // {
-        //     std::cerr<< item <<'\t';
-        // }
-        // std::cerr<<std::endl;
+        std::cerr << "kID:" << unKilobotID << " sensor ";
+        for (int item : proximity_vec)
+        {
+            std::cerr << item << '\t';
+        }
+        std::cerr << std::endl;
 
         // std::cout<<"******Prox dec: "<<proximity_sensor_dec<<std::endl;
     }
@@ -597,8 +563,8 @@ void dhtfCALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
             // std::cerr<<"sending outside from leaving\n";
         }
 
-        if ((fabs(m_vecKilobotsPositions[unKilobotID].GetX()) > vDistance_threshold || fabs(m_vecKilobotsPositions[unKilobotID].GetY()) > vDistance_threshold) &&
-            ((int)m_vecKilobotStates_ALF[unKilobotID] != INSIDE_AREA))
+        Real fDistance = Distance(m_vecKilobotsPositions[unKilobotID], m_ArenaStructure.Center);
+        if (fDistance > vDistance_threshold && ((int)m_vecKilobotStates_ALF[unKilobotID] != INSIDE_AREA))
         {
             tKilobotMessage.m_sData = proximity_sensor_dec;
             bMessageToSend = true;
@@ -721,6 +687,12 @@ void dhtfCALF::KiloLOG()
 CColor dhtfCALF::GetFloorColor(const CVector2 &vec_position_on_plane)
 {
     CColor cColor = CColor::WHITE;
+
+    if (SquareDistance(vec_position_on_plane, CVector2(0.0, 0.0)) < pow(vDistance_threshold + 0.005, 2) &&
+        SquareDistance(vec_position_on_plane, CVector2(0.0, 0.0)) > pow(vDistance_threshold - 0.005, 2))
+    {
+        cColor = CColor::ORANGE;
+    }
     /* Draw areas until they are needed, once that task is completed the corresponding area disappears */
     for (int i = 0; i < multiArea.size(); i++)
     {
@@ -739,6 +711,7 @@ CColor dhtfCALF::GetFloorColor(const CVector2 &vec_position_on_plane)
         //     cColor = CColor(0, 0, 125, 0);
         // }
     }
+
     return cColor;
 }
 REGISTER_LOOP_FUNCTIONS(dhtfCALF, "ALF_dhtf_loop_function")

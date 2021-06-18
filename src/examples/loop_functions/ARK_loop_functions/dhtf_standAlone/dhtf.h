@@ -19,6 +19,7 @@ namespace argos
 
 #include <math.h>
 #include <iostream>
+#include <time.h>
 // #include <sys/types.h>
 // #include <unistd.h>
 // #include <sys/socket.h>
@@ -58,11 +59,14 @@ namespace argos
 #include <argos3/plugins/robots/kilobot/simulator/kilobot_communication_entity.h>
 #include <argos3/plugins/robots/kilobot/simulator/kilobot_communication_medium.h>
 #include <argos3/plugins/robots/kilobot/simulator/kilobot_communication_default_actuator.h>
+#include <argos3/plugins/simulator/entities/box_entity.h>
 
 //kilobot messaging
 #include <argos3/plugins/robots/kilobot/control_interface/kilolib.h>
 #include <argos3/plugins/robots/kilobot/control_interface/message_crc.h>
 #include <argos3/plugins/robots/kilobot/control_interface/message.h>
+
+#include <array>
 
 using namespace argos;
 
@@ -87,11 +91,8 @@ public:
     /** Log area pos, type, state (completed or not) */
     void AreaLOG();
 
-    // /** Log Kilobot pose and state */
+    /** Log Kilobot pose and state */
     void KiloLOG();
-
-    /** Setup the soft and the hard task around the arena */
-    void InitializeVirtualEnvironment();
 
     /** Get a Vector of all the Kilobots in the space */
     void
@@ -105,6 +106,9 @@ public:
 
     /** Setup virtual environment */
     void SetupVirtualEnvironments(TConfigurationNode &t_tree);
+
+    /** Check if tasks are distant enough */
+    bool DistantEnoughTasks(CVector2 some_position);
 
     /** Get experiment variables */
     void GetExperimentVariables(TConfigurationNode &t_tree);
@@ -144,6 +148,17 @@ private:
 
     std::vector<SVirtualArea> multiArea;
 
+    struct SVirtualWalls
+    {
+        CVector2 Center;
+        Real Radius;       // radius for the circular arena
+        Real Wall_width;   // wall width
+        Real Wall_height;  // wall height
+        Real Wall_numbers; // number of walls
+    };
+
+    SVirtualWalls m_ArenaStructure;
+
     typedef enum //kilobot state
     {
         OUTSIDE_AREAS = 0, //looking for a task
@@ -159,19 +174,21 @@ private:
     };
 
     UInt32 random_seed;
-    int desired_num_of_areas;         //number of task on the field (max 16-4=12 (removing the 4 corners))
-    int hard_tasks;                   //the number of hard task (the one which requires more robots to be completed)
-    std::vector<int> activated_areas; //IDs of active areas among all possible tasks
-    std::vector<int> hard_tasks_vec;  //IDs of active hard tasks
-    int vSoftRequiredKilobots;        // # robots to complete soft tasks
-    int vHardRequiredKilobots;        // # robots to complete hard tasks
-    bool adaptive_walk;               //if true, trying to complete more RED tasks as possible (completed RED task -> brownian motion, BLUE task -> persistent motion)
-    double kTimerMultiplier;          //multiplicative constant for the timeout study
-    double kRespawnTimer;             //once completed, an area will appear again after kRespawnTimer seconds
+    int desired_num_of_areas;        //number of task on the field (max 16-4=12 (removing the 4 corners))
+    int hard_tasks;                  //the number of hard task (the one which requires more robots to be completed)
+    std::vector<int> hard_tasks_vec; //IDs of active hard tasks
+    int vSoftRequiredKilobots;       // # robots to complete soft tasks
+    int vHardRequiredKilobots;       // # robots to complete hard tasks
+    bool adaptive_walk;              //if true, trying to complete more RED tasks as possible (completed RED task -> brownian motion, BLUE task -> persistent motion)
+    double kTimerMultiplier;         //multiplicative constant for the timeout study
+    double kRespawnTimer;            //once completed, an area will appear again after kRespawnTimer seconds
 
     /************************************/
     /*       Experiment variables       */
     /************************************/
+
+    /* random number generator */
+    CRandom::CRNG *c_rng;
 
     std::vector<Real> m_vecLastTimeMessaged;
     Real m_fMinTimeBetweenTwoMsg;

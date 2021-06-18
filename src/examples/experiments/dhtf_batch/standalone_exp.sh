@@ -29,7 +29,7 @@ if [ ! -e $base_config_c ]; then
     fi
 fi
 
-res_dir=$wdir/"results_dhtf/standalone"
+res_dir=$wdir/"results_dhtf/standalone_circular"
 if [[ ! -e $res_dir ]]; then
     cmake -E make_directory $res_dir
 # else
@@ -43,9 +43,12 @@ base_dir=`dirname $base_config_s`
 # echo base_dir $base_dir
 echo "$CONFIGURATION_FILE" | egrep "^$SHARED_DIR" &> /dev/null || exit 1
 
-numrobots="32"
+numrobots="48"
 reactivation_timer="60"
-hard_tasks="4"
+desired_num_of_areas="16"
+hard_tasks="8"
+soft_requirement="50"
+hard_requirement="50"
 # timeout="2 24 30 42 48 54 60 90"
 timeout="1 2 3 6 12 18 24 30 36 42 48 54 60 90 180"
 
@@ -84,9 +87,12 @@ for par1 in $timeout; do
         sed -i "s|__TIMEEXPERIMENT__|$experiment_length|g" $configs
         sed -i "s|__SEED__|$it|g" $configs
         sed -i "s|__NUMROBOTS__|$numrobots|g" $configs
+        sed -i "s|__DESIREDTASKS__|$desired_num_of_areas|g" $configs
         sed -i "s|__HARDTASKS__|$hard_tasks|g" $configs
         sed -i "s|__TIMEOUT__|$par1|g" $configs
         sed -i "s|__REACTIVATIONTIMER__|$reactivation_timer|g" $configs
+        sed -i "s|__SOFTREQUIREMENT__|$soft_requirement|g" $configs
+        sed -i "s|__HARDREQUIREMENT__|$hard_requirement|g" $configs
         
         timeout_file="seed#${it}_elapsed_timeoutLOG.tsv"
         sed -i "s|__TIMEOUTOUTPUT__|$timeout_file|g" $configs
