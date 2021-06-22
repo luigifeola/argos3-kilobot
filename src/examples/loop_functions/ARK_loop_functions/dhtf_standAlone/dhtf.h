@@ -67,6 +67,7 @@ namespace argos
 #include <argos3/plugins/robots/kilobot/control_interface/message.h>
 
 #include <array>
+#include "area.h"
 
 using namespace argos;
 
@@ -84,15 +85,15 @@ public:
 
     virtual void Destroy();
 
-    virtual void PostStep();
+    // virtual void PostStep();
 
-    virtual void PostExperiment();
+    // virtual void PostExperiment();
 
-    /** Log area pos, type, state (completed or not) */
-    void AreaLOG();
+    // /** Log area pos, type, state (completed or not) */
+    // void AreaLOG();
 
-    /** Log Kilobot pose and state */
-    void KiloLOG();
+    // /** Log Kilobot pose and state */
+    // void KiloLOG();
 
     /** Get a Vector of all the Kilobots in the space */
     void
@@ -133,20 +134,7 @@ private:
     /*  Virtual Environment variables   */
     /************************************/
 
-    /* virtual circular task*/
-    struct SVirtualArea
-    {
-        int id;
-        CVector2 position;
-        Real radius;
-        CColor color;   // type of task, blue:simple red:hard
-        int contained;  // how many kilobots are partecipating at the task
-        bool completed; //"true" if the task is completed
-        Real creationTime = 0.0;
-        Real completitionTime = 0.0;
-    };
-
-    std::vector<SVirtualArea> multiArea;
+    std::vector<Area *> multiArea;
 
     struct SVirtualWalls
     {

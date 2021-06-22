@@ -4,6 +4,7 @@ add_library(ALF_dhtf_loop_function
   MODULE 
   dhtf.h
   dhtf.cpp
+  area.h
 )
 
 target_link_libraries(ALF_dhtf_loop_function
