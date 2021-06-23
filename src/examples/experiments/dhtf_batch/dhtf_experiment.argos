@@ -40,11 +40,7 @@
         label="ALF_dhtf_loop_function">
 
         <extra_parameters
-            adaptive="false"
-            reactivation_timer="__REACTIVATIONTIMER__"
-            soft_requirement="__SOFTREQUIREMENT__"
-            hard_requirement="__HARDREQUIREMENT__"
-            timeout_const="__TIMEOUT__">
+            adaptive="false">
         </extra_parameters>
 
         <tracking
@@ -67,7 +63,13 @@
         <environments>
             <CircularWall radius="0.5" width="0.01" height="0.01" walls="100">
             </CircularWall>
-            <VirtualTask desired_num_of_areas="__DESIREDTASKS__" hard_tasks="__HARDTASKS__">
+            <VirtualTask 
+                desired_num_of_areas="__DESIREDTASKS__" 
+                hard_tasks="__HARDTASKS__"
+                reactivation_timer="__REACTIVATIONTIMER__"
+                soft_requirement="__SOFTREQUIREMENT__"
+                hard_requirement="__HARDREQUIREMENT__"
+                timeout_const="__TIMEOUT__">
             </VirtualTask>
         </environments>
 

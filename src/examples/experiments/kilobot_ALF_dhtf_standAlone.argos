@@ -40,11 +40,7 @@
         label="ALF_dhtf_loop_function">
     
         <extra_parameters
-            adaptive="false"
-            reactivation_timer="60.0"
-            soft_requirement="50"
-            hard_requirement="50"
-            timeout_const="1">
+            adaptive="false">
         </extra_parameters>
 
         <tracking
@@ -67,7 +63,13 @@
         <environments>
             <CircularWall radius="0.5" width="0.01" height="0.01" walls="100">
             </CircularWall>
-            <VirtualTask desired_num_of_areas="16" hard_tasks="8">
+            <VirtualTask 
+                desired_num_of_areas="16" 
+                hard_tasks="16"
+                reactivation_timer="60.0"
+                soft_requirement="2"
+                hard_requirement="4"
+                timeout_const="2">
             </VirtualTask>
         </environments>
 
@@ -95,7 +97,7 @@
         <distribute>
             <position method="uniform" min="-0.4,-0.4,0" max="0.4,0.4,0" />
             <orientation method="uniform" min="0,0,0" max="360,0,0" />
-            <entity quantity="48" max_trials="100">
+            <entity quantity="50" max_trials="100">
                 <kilobot id="kb">
                     <controller config="listener"/> <dynamics2d friction="0.7" />
                 </kilobot>

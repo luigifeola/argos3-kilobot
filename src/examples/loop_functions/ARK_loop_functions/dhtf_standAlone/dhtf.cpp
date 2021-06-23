@@ -10,13 +10,16 @@ namespace
     const double kKiloDiameter = 0.033;
     double vArena_size = 0.5;
     double vDistance_threshold = vArena_size / 2.0 - 0.04;
+    const double kTask_radius = 0.06;
+    const int kHard_task_requirement = 4;
+    const int kSoft_task_requirement = 2;
 
     // avoid to choose corner areas
     const std::vector<int> vForbidden({0, 3, 12, 15});
 
     // wall avoidance stuff
     const CVector2 left_direction(1.0, 0.0);
-    const int proximity_bits = 8;
+    const int kProximity_bits = 8;
 
     int internal_counter = 0;
 }
@@ -60,7 +63,6 @@ void dhtfCALF::Init(TConfigurationNode &t_node)
 
     /* Read parameters from .argos*/
     TConfigurationNode &tModeNode = GetNode(t_node, "extra_parameters");
-    GetNodeAttribute(tModeNode, "timeout_const", kTimerMultiplier);
     GetNodeAttributeOrDefault(tModeNode, "adaptive", adaptive_walk, false);
 
     if (adaptive_walk)
@@ -68,9 +70,6 @@ void dhtfCALF::Init(TConfigurationNode &t_node)
 
     random_seed = GetSimulator().GetRandomSeed();
     //GetNodeAttribute(tModeNode, "random_seed", random_seed);
-    GetNodeAttribute(tModeNode, "reactivation_timer", kRespawnTimer);
-    GetNodeAttribute(tModeNode, "soft_requirement", vSoftRequiredKilobots);
-    GetNodeAttribute(tModeNode, "hard_requirement", vHardRequiredKilobots);
 }
 
 void dhtfCALF::SetupInitialKilobotStates()
@@ -153,6 +152,10 @@ void dhtfCALF::SetupVirtualEnvironments(TConfigurationNode &t_tree)
     TConfigurationNode &t_VirtualTaskNode = GetNode(tVirtualEnvironmentsNode, "VirtualTask");
     GetNodeAttribute(t_VirtualTaskNode, "desired_num_of_areas", desired_num_of_areas);
     GetNodeAttribute(t_VirtualTaskNode, "hard_tasks", hard_tasks);
+    GetNodeAttribute(t_VirtualTaskNode, "reactivation_timer", kRespawnTimer);
+    GetNodeAttribute(t_VirtualTaskNode, "soft_requirement", vSoftRequiredKilobots);
+    GetNodeAttribute(t_VirtualTaskNode, "hard_requirement", vHardRequiredKilobots);
+    GetNodeAttribute(t_VirtualTaskNode, "timeout_const", kTimerMultiplier);
 
     std::ostringstream entity_id;
     CRadians wall_angle = CRadians::TWO_PI / m_ArenaStructure.Wall_numbers;
@@ -194,9 +197,9 @@ void dhtfCALF::SetupVirtualEnvironments(TConfigurationNode &t_tree)
             tries += 1;
         } while (((rand_x * rand_x) + (rand_y * rand_y) > (m_ArenaStructure.Radius - 0.1) * (m_ArenaStructure.Radius - 0.1)) || !DistantEnoughTasks(CVector2(rand_x, rand_y)));
 
-        multiArea.push_back(new Area(i, HARD_TASK, CVector2(rand_x, rand_y), 0.06));
+        multiArea.push_back(new Area(i, HARD_TASK, CVector2(rand_x, rand_y), kTask_radius, vHardRequiredKilobots, kRespawnTimer, kTimerMultiplier));
 
-        multiArea.push_back(new Area(i + desired_num_of_areas / 2, SOFT_TASK, CVector2(-rand_x, -rand_y), 0.06));
+        multiArea.push_back(new Area(i + desired_num_of_areas / 2, SOFT_TASK, CVector2(-rand_x, -rand_y), kTask_radius, vSoftRequiredKilobots, kRespawnTimer, kTimerMultiplier));
     }
 
     hard_tasks_vec.clear();
@@ -222,13 +225,15 @@ void dhtfCALF::SetupVirtualEnvironments(TConfigurationNode &t_tree)
     {
         if (std::find(hard_tasks_vec.begin(), hard_tasks_vec.end(), multiArea.at(i)->id) != hard_tasks_vec.end())
         {
-            multiArea.at(i)->color = argos::CColor::RED;
             multiArea.at(i)->type = HARD_TASK;
+            multiArea.at(i)->color = argos::CColor::RED;
+            multiArea.at(i)->task_requirement = vHardRequiredKilobots;
         }
         else
         {
-            multiArea.at(i)->color = argos::CColor::BLUE;
             multiArea.at(i)->type = SOFT_TASK;
+            multiArea.at(i)->color = argos::CColor::BLUE;
+            multiArea.at(i)->task_requirement = vSoftRequiredKilobots;
         }
     }
 }
@@ -417,29 +422,40 @@ void dhtfCALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
     for (int i = 0; i < multiArea.size(); i++)
     {
 
-        if (multiArea[i]->completed || multiArea[i]->isCompleted(m_fTimeInSeconds))
+        Area *completed_task = new Area(1000, 0, CVector2(1, 1), 1.0, 0, 0.0, 0); // random values
+
+        if (multiArea[i]->completed || multiArea[i]->isCompleted(m_fTimeInSeconds, completed_task))
         {
-            if (std::fabs(m_fTimeInSeconds - multiArea[i]->completed_time) < 0.000001)
+            if (std::fabs(m_fTimeInSeconds - completed_task->completed_time) < 0.0000001)
             {
+
                 m_taskOutput
                     << std::noshowpos
                     << std::setw(8) << std::setprecision(4) << std::setfill('0')
-                    << multiArea[i]->completed_time << '\t'
+                    << completed_task->completed_time << '\t'
                     << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
-                    << multiArea[i]->id << '\t'
+                    << completed_task->id << '\t'
                     << std::internal << std::noshowpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
-                    << multiArea[i]->creation_time << '\t'
+                    << completed_task->creation_time << '\t'
                     << std::internal << std::noshowpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
-                    << multiArea[i]->completed_time << '\t'
+                    << completed_task->completed_time << '\t'
                     << std::noshowpos << std::setw(1) << std::setprecision(0)
-                    << (multiArea[i]->color == argos::CColor::RED ? 1 : 0) << '\t'
+                    << (completed_task->color == argos::CColor::RED ? 1 : 0) << '\t'
                     << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
-                    << multiArea[i]->kilobots_in_area.size() << '\t';
-                for (size_t k = 0; k < multiArea[i]->kilobots_in_area.size(); k++)
+                    << completed_task->kilobots_in_area.size() << '\t';
+                for (size_t k = 0; k < completed_task->kilobots_in_area.size(); k++)
                 {
-                    m_taskOutput << multiArea[i]->kilobots_in_area[k] << ",";
+                    m_taskOutput << completed_task->kilobots_in_area[k] << ",";
                 }
                 m_taskOutput << std::endl;
+
+                // /*Print completed area */
+                std::cout << "Area ID:" << completed_task->id << ", kilo_on_top: ";
+                for (auto kilobot : completed_task->kilobots_in_area)
+                {
+                    std::cout << kilobot << ", ";
+                }
+                std::cout << "\n";
             }
             /* Reactivation area check */
             if (!multiArea[i]->Respawn(m_fTimeInSeconds))
@@ -495,7 +511,7 @@ void dhtfCALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
 
         // std::cout << "collision angle: " << collision_angle << std::endl;
         // std::cout << "collision direction: " << collision_direction << std::endl;
-        proximity_vec = Proximity_sensor(collision_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), proximity_bits);
+        proximity_vec = Proximity_sensor(collision_direction, m_vecKilobotsOrientations[unKilobotID].GetValue(), kProximity_bits);
 
         proximity_sensor_dec = std::accumulate(proximity_vec.begin(), proximity_vec.end(), 0, [](int x, int y)
                                                { return (x << 1) + y; });
@@ -660,7 +676,7 @@ void dhtfCALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
         {
             bMessageToSend = true;
             tKilobotMessage.m_sData = (m_vecKilobotsTimeRequest[unKilobotID] & 0xFF); //requirement (timer) for the area where it is
-            std::cerr << "Timeout required is: " << m_vecKilobotsTimeRequest[unKilobotID] << "\n";
+            // std::cerr << "Timeout required is: " << m_vecKilobotsTimeRequest[unKilobotID] << "\n";
             // std::cout << "m_sData = " << std::bitset<10>(tKilobotMessage.m_sData) << std::endl;
         }
 
@@ -726,88 +742,88 @@ void dhtfCALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
         GetSimulator().GetMedium<CKilobotCommunicationMedium>("kilocomm").SendOHCMessageTo(c_kilobot_entity, NULL);
     }
 }
-// void dhtfCALF::PostExperiment()
-// {
-//     std::cout << "END\n";
-// }
-// void dhtfCALF::PostStep()
-// {
-//     // std::cout << "Time: " << m_fTimeInSeconds << std::endl;
-//     internal_counter += 1;
-//     if (internal_counter % m_unDataAcquisitionFrequency == 0 || internal_counter <= 1)
-//     {
-//         KiloLOG();
-//         AreaLOG();
-//     }
-// }
-// void dhtfCALF::AreaLOG()
-// {
-//     // std::cerr << "Logging arePosition\n";
-//     m_areaOutput
-//         << std::noshowpos << std::setw(4) << std::setprecision(0) << std::setfill('0')
-//         << m_fTimeInSeconds << '\t';
-//     for (size_t areaID = 0; areaID < multiArea.size(); areaID++)
-//     {
-//         m_areaOutput
-//             << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
-//             << multiArea[areaID].id << '\t'
-//             << std::internal << std::showpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
-//             << multiArea[areaID].position.GetX() << '\t'
-//             << std::internal << std::showpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
-//             << multiArea[areaID].position.GetY() << '\t'
-//             << std::noshowpos << std::setw(1) << std::setprecision(0)
-//             << (multiArea[areaID].color == argos::CColor::RED ? 1 : 0) << '\t'
-//             << (multiArea[areaID].completed == true ? 1 : 0) << '\t'
-//             << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
-//             << multiArea[areaID].contained;
-//         // << multiArea[areaID].
-//     }
-//     m_areaOutput << std::endl;
-// }
-// void dhtfCALF::KiloLOG()
-// {
-//     // std::cerr << "Logging kiloPosition\n";
+void dhtfCALF::PostExperiment()
+{
+    std::cout << "END\n";
+}
+void dhtfCALF::PostStep()
+{
+    // std::cout << "Time: " << m_fTimeInSeconds << std::endl;
+    internal_counter += 1;
+    if (internal_counter % m_unDataAcquisitionFrequency == 0 || internal_counter <= 1)
+    {
+        KiloLOG();
+        AreaLOG();
+    }
+}
+void dhtfCALF::AreaLOG()
+{
+    // std::cerr << "Logging arePosition\n";
+    m_areaOutput
+        << std::noshowpos << std::setw(4) << std::setprecision(0) << std::setfill('0')
+        << m_fTimeInSeconds << '\t';
+    for (size_t areaID = 0; areaID < multiArea.size(); areaID++)
+    {
+        m_areaOutput
+            << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
+            << multiArea[areaID]->id << '\t'
+            << std::internal << std::showpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
+            << multiArea[areaID]->position.GetX() << '\t'
+            << std::internal << std::showpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
+            << multiArea[areaID]->position.GetY() << '\t'
+            << std::noshowpos << std::setw(1) << std::setprecision(0)
+            << (multiArea[areaID]->color == argos::CColor::RED ? 1 : 0) << '\t'
+            << (multiArea[areaID]->completed == true ? 1 : 0) << '\t'
+            << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
+            << multiArea[areaID]->kilobots_in_area.size();
+    }
+    m_areaOutput << std::endl;
+}
+void dhtfCALF::KiloLOG()
+{
+    // std::cerr << "Logging kiloPosition\n";
 
-//     m_kiloOutput
-//         << std::noshowpos << std::setw(4) << std::setprecision(0) << std::setfill('0')
-//         << m_fTimeInSeconds;
-//     for (size_t kID = 0; kID < m_vecKilobotsPositions.size(); kID++)
-//     {
-//         m_kiloOutput
-//             // << kID << '\t'
-//             // << m_vecKilobotStates_ALF[kID] << '\t' //TODO: this should be the colour, but for now is the state
-//             // << m_vecKilobotsPositions[kID].GetX() << '\t'
-//             // << m_vecKilobotsPositions[kID].GetY() << '\t'
-//             // << m_vecKilobotsOrientations[kID] << '\t'
-//             // << m_vecKilobotStates_ALF[kID];
+    m_kiloOutput
+        << std::noshowpos << std::setw(4) << std::setprecision(0) << std::setfill('0')
+        << m_fTimeInSeconds;
+    for (size_t kID = 0; kID < m_vecKilobotsPositions.size(); kID++)
+    {
+        m_kiloOutput
+            // << kID << '\t'
+            // << m_vecKilobotStates_ALF[kID] << '\t' //TODO: this should be the colour, but for now is the state
+            // << m_vecKilobotsPositions[kID].GetX() << '\t'
+            // << m_vecKilobotsPositions[kID].GetY() << '\t'
+            // << m_vecKilobotsOrientations[kID] << '\t'
+            // << m_vecKilobotStates_ALF[kID];
 
-//             // << std::noshowpos
-//             << '\t'
-//             << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
-//             << kID << '\t'
-//             << std::noshowpos << std::setw(1) << std::setprecision(0)
-//             << m_vecKilobotStates_ALF[kID] << '\t' //TODO: this should be the colour, but for now is the state
-//             << std::internal << std::showpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
-//             << m_vecKilobotsPositions[kID].GetX() << '\t'
-//             << std::internal << std::showpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
-//             << m_vecKilobotsPositions[kID].GetY() << '\t'
-//             << std::internal << std::showpos << std::setw(6) << std::setprecision(4) << std::setfill('0') << std::fixed
-//             << m_vecKilobotsOrientations[kID].GetValue() << '\t'
-//             << std::noshowpos << std::setw(1) << std::setprecision(0)
-//             << m_vecKilobotStates_ALF[kID];
-//     }
-//     m_kiloOutput << std::endl;
-// }
+            // << std::noshowpos
+            << '\t'
+            << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
+            << kID << '\t'
+            << std::noshowpos << std::setw(1) << std::setprecision(0)
+            << m_vecKilobotStates_ALF[kID] << '\t' //TODO: this should be the colour, but for now is the state
+            << std::internal << std::showpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
+            << m_vecKilobotsPositions[kID].GetX() << '\t'
+            << std::internal << std::showpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
+            << m_vecKilobotsPositions[kID].GetY() << '\t'
+            << std::internal << std::showpos << std::setw(6) << std::setprecision(4) << std::setfill('0') << std::fixed
+            << m_vecKilobotsOrientations[kID].GetValue() << '\t'
+            << std::noshowpos << std::setw(1) << std::setprecision(0)
+            << m_vecKilobotStates_ALF[kID];
+    }
+    m_kiloOutput << std::endl;
+}
 
 CColor dhtfCALF::GetFloorColor(const CVector2 &vec_position_on_plane)
 {
     CColor cColor = CColor::WHITE;
 
-    if (SquareDistance(vec_position_on_plane, CVector2(0.0, 0.0)) < pow(vDistance_threshold + 0.005, 2) &&
-        SquareDistance(vec_position_on_plane, CVector2(0.0, 0.0)) > pow(vDistance_threshold - 0.005, 2))
-    {
-        cColor = CColor::ORANGE;
-    }
+    // /** Draw the threshold for wall avoidance */
+    // if (SquareDistance(vec_position_on_plane, CVector2(0.0, 0.0)) < pow(vDistance_threshold + 0.005, 2) &&
+    //     SquareDistance(vec_position_on_plane, CVector2(0.0, 0.0)) > pow(vDistance_threshold - 0.005, 2))
+    // {
+    //     cColor = CColor::ORANGE;
+    // }
     /* Draw areas until they are needed, once that task is completed the corresponding area disappears */
     for (int i = 0; i < multiArea.size(); i++)
     {

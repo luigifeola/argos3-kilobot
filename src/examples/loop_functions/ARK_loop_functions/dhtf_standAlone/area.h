@@ -24,9 +24,6 @@
 
 using namespace argos;
 
-#define SOFT_TASK_COMPLETED 2
-#define HARD_TASK_COMPLETED 4
-
 typedef enum
 {
     SOFT_TASK = 0,
@@ -43,24 +40,27 @@ public:
     double radius;                     /* Radius of the circle to plot */
     argos::CColor color;               /* Color used to represent the area */
     std::vector<int> kilobots_in_area; /* keep counts of how many kbs are in the area*/
+    int task_requirement;              /* how many robot are needed to complete the task */
     bool completed;                    /* Flag to understand if the task is accomplished or not */
     double respawn_timer;              /* Time needed to the area to respawn */
     double creation_time;              /* Time at which the area is created/respawned */
     double completed_time;             /* Time at which the area is completed */
-
-    int waiting_timer; /* Timer for which kilobots stay on area before leaving*/
+    int waiting_timer;                 /* Timer for which kilobots stay on area before leaving*/
 
     /* constructor */
     Area() : id(-1), type(0), position(CVector2(0, 0)), radius(0) {}
 
-    Area(uint id, uint8_t type, CVector2 position, double radius) : id(id), type(type), position(position), radius(radius)
+    Area(uint id, uint8_t type, CVector2 position, double radius, int t_requirement, double r_timer, int w_timer) : id(id), type(type),
+                                                                                                                    position(position),
+                                                                                                                    radius(radius),
+                                                                                                                    task_requirement(t_requirement),
+                                                                                                                    respawn_timer(r_timer),
+                                                                                                                    waiting_timer(w_timer)
     {
         this->creation_time = 0.0;
         this->completed = false;
         this->kilobots_in_area.clear();
 
-        this->respawn_timer = 40;
-
         if (type == HARD_TASK)
         {
             this->color = argos::CColor::RED;
@@ -69,11 +69,6 @@ public:
         {
             this->color = argos::CColor::RED;
         }
-
-        if (type == HARD_TASK)
-            this->waiting_timer = 60;
-        else
-            this->waiting_timer = 30;
     }
 
     /* destructor */
@@ -86,13 +81,13 @@ public:
     }
 
     // check if on top of the area there are the right amount of kilobots, so remove the area from the completable task
-    bool isCompleted(double kTime)
+    bool isCompleted(double kTime, Area *a_copy)
     {
-        if ((this->type == HARD_TASK && kilobots_in_area.size() >= HARD_TASK_COMPLETED) ||
-            (this->type == SOFT_TASK && kilobots_in_area.size() >= SOFT_TASK_COMPLETED))
+        if (kilobots_in_area.size() >= task_requirement)
         {
             this->completed_time = kTime;
             this->completed = true;
+            *a_copy = *this;
             this->kilobots_in_area.clear();
         }
 
@@ -116,6 +111,21 @@ public:
     bool operator!=(const Area *a)
     {
         return (this->id != a->id || this->completed_time != a->completed_time);
+    }
+
+    Area *operator=(const Area *copy)
+    {
+        if (this == copy)
+            return this;
+
+        this->type = copy->type;
+
+        this->color = copy->color;
+        this->task_requirement = copy->task_requirement;
+        this->respawn_timer = copy->respawn_timer;
+        this->waiting_timer = copy->waiting_timer;
+
+        return this;
     }
 
     void PrintArea()

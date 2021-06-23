@@ -2,6 +2,7 @@ build
 results
 results_brownian
 results_dhtf
+results_cre
 data_file.tsv
 data_file.txt
 *.tsv

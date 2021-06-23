@@ -85,15 +85,15 @@ public:
 
     virtual void Destroy();
 
-    // virtual void PostStep();
+    virtual void PostStep();
 
-    // virtual void PostExperiment();
+    virtual void PostExperiment();
 
-    // /** Log area pos, type, state (completed or not) */
-    // void AreaLOG();
+    /** Log area pos, type, state (completed or not) */
+    void AreaLOG();
 
-    // /** Log Kilobot pose and state */
-    // void KiloLOG();
+    /** Log Kilobot pose and state */
+    void KiloLOG();
 
     /** Get a Vector of all the Kilobots in the space */
     void
