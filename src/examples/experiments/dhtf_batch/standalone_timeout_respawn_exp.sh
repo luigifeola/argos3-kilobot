@@ -43,8 +43,8 @@ base_dir=`dirname $base_config_s`
 # echo base_dir $base_dir
 echo "$CONFIGURATION_FILE" | egrep "^$SHARED_DIR" &> /dev/null || exit 1
 
-numrobots="32"
-reactivation_timer="10 30 60"
+numrobots="48"
+reactivation_timer="10 30 60 120"
 desired_num_of_areas="16"
 hard_tasks="0"
 soft_requirement="2"
@@ -56,10 +56,10 @@ timeout="1 2 3 6 12 18 24"
 # experiment_length is in seconds #
 ###################################
 date_time=`date "+%Y-%m-%d"`
-# experiment_length="300"
-# RUNS=1
-experiment_length="1800"
-RUNS=100
+experiment_length="300"
+RUNS=1
+# experiment_length="1800"
+# RUNS=100
 
 # echo 1 $1
 # configs=`printf 'configs_nrob%d_timeout%03d_seed%03d.argos' $numrobots $timeout $hard_tasks`
@@ -69,7 +69,7 @@ RUNS=100
 
 for par1 in $timeout; do
     for par2 in $reactivation_timer; do
-        param_dir=$res_dir/"timeout_respawn_blue_exp_"$date_time"_robots#"$numrobots"_timeout#"$par1"_respawn#"$par2"_redAreas#"$hard_tasks"_"$experiment_length"#seconds"
+        param_dir=$res_dir/"TimeoutRespawnExp_"$date_time"_robots#"$numrobots"_timeout#"$par1"_respawn#"$par2"_redAreas#"$hard_tasks"_"$experiment_length"#seconds"
         
         #########################################################
         # #debug

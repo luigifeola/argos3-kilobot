@@ -69,7 +69,7 @@
                 reactivation_timer="60.0"
                 soft_requirement="2"
                 hard_requirement="4"
-                timeout_const="2">
+                timeout_const="1">
             </VirtualTask>
         </environments>
 
@@ -97,7 +97,7 @@
         <distribute>
             <position method="uniform" min="-0.4,-0.4,0" max="0.4,0.4,0" />
             <orientation method="uniform" min="0,0,0" max="360,0,0" />
-            <entity quantity="50" max_trials="100">
+            <entity quantity="5" max_trials="100">
                 <kilobot id="kb">
                     <controller config="listener"/> <dynamics2d friction="0.7" />
                 </kilobot>
