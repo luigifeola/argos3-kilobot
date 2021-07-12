@@ -300,10 +300,12 @@ void random_walk()
   case PERSISTENT:
     crw_exponent = 0.9;
     levy_exponent = 1.4;
+    // printf("kID=%d, PERSISTENT\n", kilo_uid);
     break;
   case BROWNIAN:
     crw_exponent = 0.0;
     levy_exponent = 2.0;
+    // printf("kID=%d, BROWNIAN\n", kilo_uid);
     break;
   default:
     break;

@@ -81,6 +81,8 @@ void dhtfCALF::SetupInitialKilobotStates()
     m_vecLastTimeMessaged.resize(m_tKilobotEntities.size());
     m_fMinTimeBetweenTwoMsg = Max<Real>(1.0, m_tKilobotEntities.size() * m_fTimeForAMessage / 3.0);
 
+    m_vecKilobotWalks_ALF.resize(m_tKilobotEntities.size());
+
     /* Compute the number of kilobots on the field*/
     for (UInt16 it = 0; it < m_tKilobotEntities.size(); it++)
     {
@@ -97,6 +99,7 @@ void dhtfCALF::SetupInitialKilobotState(CKilobotEntity &c_kilobot_entity)
 {
     UInt16 unKilobotID = GetKilobotId(c_kilobot_entity);
     m_vecKilobotStates_ALF[unKilobotID] = OUTSIDE_AREAS;
+    m_vecKilobotWalks_ALF[unKilobotID] = CONSTANT;
     m_vecLastTimeMessaged[unKilobotID] = -1000;
 
     /* Get a non-colliding random position within the circular arena */
@@ -203,7 +206,7 @@ void dhtfCALF::SetupVirtualEnvironments(TConfigurationNode &t_tree)
         multiArea.push_back(new Area(i + desired_num_of_areas / 2, SOFT_TASK, CVector2(-rand_x, -rand_y), kTask_radius, vSoftRequiredKilobots, kRespawnTimer, kTimerMultiplier));
     }
 
-    if(!region_division)
+    if (!region_division)
     {
         hard_tasks_vec.clear();
         while (hard_tasks_vec.size() < hard_tasks)
@@ -332,114 +335,6 @@ void dhtfCALF::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
     //         break;
     //     }
     // }
-
-    // switch (m_vecKilobotStates_ALF[unKilobotID])
-    // {
-    // case OUTSIDE_AREAS:
-    // {
-    //     /** WARNING: hard and soft tasks have the same time requirement */
-    //     /* Check if the kilobot is entered in a task area */
-    //     for (int i = 0; i < multiArea.size(); i++)
-    //     {
-    //         Real fDistance = Distance(m_vecKilobotsPositions[unKilobotID], multiArea[i].position);
-    //         if ((fDistance < (multiArea[i].radius * 1.0)) && (multiArea[i].completed == false)) //*1.0 is a threshold, to include the boarder increase it
-    //         {
-    //             m_vecKilobotStates_ALF[unKilobotID] = INSIDE_AREA;
-    //             // std::cout<< "inside area = "<< multiArea[i].id << std::endl;
-    //             /* Check the area color to understand the requirements of the task */
-    //             if (multiArea[i].color == argos::CColor::RED)
-    //             {
-    //                 m_vecKilobotsTimeRequest[unKilobotID] = kTimerMultiplier;
-    //             }
-    //             if (multiArea[i].color == argos::CColor::BLUE)
-    //             {
-    //                 m_vecKilobotsTimeRequest[unKilobotID] = kTimerMultiplier;
-    //             }
-
-    //             m_vecKilobotsPositionTask[unKilobotID] = i;
-    //             multiArea[i].contained += 1;
-    //             // std::cerr << "kID:" << unKilobotID << " entered in " << multiArea[i].id << " which contains:" << multiArea[i].contained << " robots\n";
-    //         }
-    //     }
-    //     break;
-    // }
-    // case INSIDE_AREA:
-    // {
-    //     /* Check if the kilobot timer for colaboratos is expired */
-    //     if (m_vecKilobotsColours[unKilobotID] == argos::CColor::RED)
-    //     {
-    //         m_vecKilobotStates_ALF[unKilobotID] = LEAVING;
-    //         multiArea[m_vecKilobotsPositionTask[unKilobotID]].contained -= 1;
-
-    //         m_elpsTimeoutOutput
-    //             << std::noshowpos
-    //             << std::setw(8) << std::setprecision(4) << std::setfill('0')
-    //             << m_fTimeInSeconds << '\t'
-    //             << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
-    //             << unKilobotID << '\t'
-    //             << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
-    //             << multiArea[m_vecKilobotsPositionTask[unKilobotID]].id << '\t'
-    //             << std::noshowpos << std::setw(1) << std::setprecision(0)
-    //             << (multiArea[m_vecKilobotsPositionTask[unKilobotID]].color == argos::CColor::RED ? 1 : 0)
-    //             << std::endl;
-
-    //         // std::cout
-    //         //     << std::noshowpos
-    //         //     << std::setw(8) << std::setprecision(4) << std::setfill('0')
-    //         //     << "time: " << m_fTimeInSeconds << '\t'
-    //         //     << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
-    //         //     << "areaID: " << multiArea[m_vecKilobotsPositionTask[unKilobotID]].id << '\t'
-    //         //     << std::noshowpos << std::setw(1) << std::setprecision(0)
-    //         //     << "color: " << (multiArea[m_vecKilobotsPositionTask[unKilobotID]].color == argos::CColor::RED ? "red" : "blue")
-    //         //     << std::endl;
-    //     }
-    //     /* Else check if the task has been completed */
-    //     else if (multiArea[m_vecKilobotsPositionTask[unKilobotID]].completed == true)
-    //     {
-    //         m_vecKilobotStates_ALF[unKilobotID] = OUTSIDE_AREAS;
-    //         multiArea[m_vecKilobotsPositionTask[unKilobotID]].contained = 0;
-    //         m_vecKilobotsPositionTask[unKilobotID] = -1;
-    //     }
-    //     else if (Distance(m_vecKilobotsPositions[unKilobotID], multiArea[m_vecKilobotsPositionTask[unKilobotID]].position) > multiArea[m_vecKilobotsPositionTask[unKilobotID]].radius)
-    //     {
-    //         m_vecKilobotStates_ALF[unKilobotID] = OUTSIDE_AREAS;
-    //         multiArea[m_vecKilobotsPositionTask[unKilobotID]].contained -= 1;
-    //         m_vecKilobotsPositionTask[unKilobotID] = -1;
-    //     }
-
-    //     break;
-    // }
-    // case LEAVING:
-    // {
-    //     /* Case in which the robot is inside an area but internal timeout is expired */
-    //     Real fDistance = Distance(m_vecKilobotsPositions[unKilobotID], multiArea[m_vecKilobotsPositionTask[unKilobotID]].position);
-    //     /* Check when the robot is back outside  */
-    //     if (fDistance > (multiArea[m_vecKilobotsPositionTask[unKilobotID]].radius) || multiArea[m_vecKilobotsPositionTask[unKilobotID]].completed == true)
-    //     {
-    //         m_vecKilobotStates_ALF[unKilobotID] = OUTSIDE_AREAS;
-    //         m_vecKilobotsPositionTask[unKilobotID] = -1;
-    //     }
-    //     break;
-    // }
-    // }
-
-    // // switch (m_vecKilobotStates_ALF[unKilobotID]) {
-    // //     case OUTSIDE_AREAS : {
-    // //         std::cout<<"Outside\n";
-    // //     break;
-    // //     }
-    // //     case INSIDE_AREA : {
-    // //         std::cout<<"Inside\n";
-    // //     break;
-    // //     }
-    // //     case LEAVING : {
-    // //         std::cout<<"Leaving\n";
-    // //     break;
-    // //     }
-    // //     default:
-    // //         std::cout<<"Error no state";
-    // //     break;
-    // // }
 }
 
 void dhtfCALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
@@ -559,6 +454,7 @@ void dhtfCALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
 
                 m_vecKilobotStates_ALF[unKilobotID] = INSIDE_AREA;
                 m_vecKilobotsTimeRequest[unKilobotID] = kTimerMultiplier;
+                m_vecKilobotWalks_ALF[unKilobotID] = (multiArea[i]->color == CColor::RED ? BROWNIAN : PERSISTENT);
                 found = true;
                 break;
             }
@@ -609,132 +505,6 @@ void dhtfCALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
     }
 
     // /********************************************/
-    // /********* ENVIRONMENT UPDATE ***************/
-    // /********************************************/
-
-    // /* Reactivation area check */
-    // for (int i = 0; i < multiArea.size(); i++)
-    // {
-    //     if ((multiArea[i].completed == true) &&
-    //         (m_fTimeInSeconds - multiArea[i].completitionTime >= kRespawnTimer))
-    //     {
-    //         std::cout << "m_fTimeInSeconds " << m_fTimeInSeconds
-    //                   << " multiArea[i].completitionTime " << multiArea[i].completitionTime
-    //                   << " kRespawnTimer " << kRespawnTimer
-    //                   << std::endl;
-    //         std::cout << "Respawn area " << multiArea[i].id << std::endl;
-    //         multiArea[i].completed = false;
-    //         multiArea[i].contained = 0;
-    //         multiArea[i].creationTime = m_fTimeInSeconds;
-    //     }
-    // }
-
-    // /* Task completeness check */
-    // for (int j = 0; j < multiArea.size(); j++)
-    // {
-    //     // std::cout << "Area " << multiArea[j].id << "contains " << multiArea[j].contained << "robots" << std::endl;
-    //     if (multiArea[j].completed == false)
-    //     {
-    //         if ((multiArea[j].color == argos::CColor::RED) && (multiArea[j].contained >= vHardRequiredKilobots))
-    //         {
-    //             multiArea[j].completed = true;
-    //             multiArea[j].completitionTime = m_fTimeInSeconds;
-    //             m_taskOutput
-    //                 << std::noshowpos
-    //                 << std::setw(8) << std::setprecision(4) << std::setfill('0')
-    //                 << multiArea[j].completitionTime << '\t'
-    //                 << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
-    //                 << multiArea[j].id << '\t'
-    //                 << std::internal << std::noshowpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
-    //                 << multiArea[j].creationTime << '\t'
-    //                 << std::internal << std::noshowpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
-    //                 << multiArea[j].completitionTime << '\t'
-    //                 << std::noshowpos << std::setw(1) << std::setprecision(0)
-    //                 << (multiArea[j].color == argos::CColor::RED ? 1 : 0) << '\t'
-    //                 << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
-    //                 << multiArea[j].contained << '\t';
-    //             for (size_t i = 0; i < m_vecKilobotsPositionTask.size(); i++)
-    //             {
-    //                 if (m_vecKilobotsPositionTask.at(i) == multiArea[j].id)
-    //                 {
-    //                     m_taskOutput << i << ",";
-    //                 }
-    //             }
-    //             m_taskOutput << std::endl;
-
-    //             // for (size_t i = 0; i < m_vecKilobotsPositionTask.size(); i++)
-    //             // {
-    //             //     std::cout << m_vecKilobotsPositionTask.at(i) << ",";
-    //             // }
-    //             std::cout << std::endl;
-    //             std::cout << m_fTimeInSeconds << "\tareaID " << multiArea[j].id << "\tRED task completed" << std::endl;
-    //         }
-    //         if ((multiArea[j].color == argos::CColor::BLUE) && (multiArea[j].contained >= vSoftRequiredKilobots))
-    //         {
-    //             multiArea[j].completed = true;
-    //             multiArea[j].completitionTime = m_fTimeInSeconds;
-    //             m_taskOutput
-    //                 << std::noshowpos
-    //                 << std::setw(8) << std::setprecision(4) << std::setfill('0')
-    //                 << multiArea[j].completitionTime << '\t'
-    //                 << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
-    //                 << multiArea[j].id << '\t'
-    //                 << std::internal << std::noshowpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
-    //                 << multiArea[j].creationTime << '\t'
-    //                 << std::internal << std::noshowpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
-    //                 << multiArea[j].completitionTime << '\t'
-    //                 << std::noshowpos << std::setw(1) << std::setprecision(0)
-    //                 << (multiArea[j].color == argos::CColor::RED ? 1 : 0) << '\t'
-    //                 << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
-    //                 << multiArea[j].contained << '\t';
-    //             for (size_t i = 0; i < m_vecKilobotsPositionTask.size(); i++)
-    //             {
-    //                 if (m_vecKilobotsPositionTask.at(i) == multiArea[j].id)
-    //                 {
-    //                     m_taskOutput << i << ",";
-    //                 }
-    //             }
-
-    //             m_taskOutput << std::endl;
-    //             // for (size_t i = 0; i < m_vecKilobotsPositionTask.size(); i++)
-    //             // {
-    //             //     std::cout << m_vecKilobotsPositionTask.at(i) << ",";
-    //             // }
-    //             // std::cout << std::endl;
-    //             std::cout << m_fTimeInSeconds << "\tareaID " << multiArea[j].id << "\tBLUE task completed" << std::endl;
-    //         }
-
-    //         // if (multiArea[j].completed == true)
-    //         // {
-    //         //     multiArea[j].completitionTime = m_fTimeInSeconds;
-    //         //     m_taskOutput
-    //         //         << std::noshowpos
-    //         //         << std::setw(8) << std::setprecision(4) << std::setfill('0')
-    //         //         << multiArea[j].completitionTime << '\t'
-    //         //         << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
-    //         //         << multiArea[j].id << '\t'
-    //         //         << std::internal << std::noshowpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
-    //         //         << multiArea[j].creationTime << '\t'
-    //         //         << std::internal << std::noshowpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
-    //         //         << multiArea[j].completitionTime << '\t'
-    //         //         << std::noshowpos << std::setw(1) << std::setprecision(0)
-    //         //         << (multiArea[j].color == argos::CColor::RED ? 1 : 0) << '\t'
-    //         //         << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
-    //         //         << multiArea[j].contained << '\t';
-    //         //     for (size_t i = 0; i < m_vecKilobotsPositionTask.size(); i++)
-    //         //     {
-    //         //         if (m_vecKilobotsPositionTask.at(i) == multiArea[j].id)
-    //         //         {
-    //         //             m_taskOutput << i << "-";
-    //         //         }
-    //         //     }
-
-    //         //     m_taskOutput << std::endl;
-    //         // }
-    //     }
-    // }
-
-    // /********************************************/
     // /********* SENDING MESSAGE ******************/
     // /********************************************/
     if (m_fTimeInSeconds - m_vecLastTimeMessaged[unKilobotID] < m_fMinTimeBetweenTwoMsg)
@@ -755,8 +525,17 @@ void dhtfCALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
         {
             bMessageToSend = true;
             tKilobotMessage.m_sData = (m_vecKilobotsTimeRequest[unKilobotID] & 0xFF); //requirement (timer) for the area where it is
-            // std::cerr << "Timeout required is: " << m_vecKilobotsTimeRequest[unKilobotID] << "\n";
-            // std::cout << "m_sData = " << std::bitset<10>(tKilobotMessage.m_sData) << std::endl;
+
+            if (adaptive_walk)
+            {
+                tKilobotMessage.m_sData = tKilobotMessage.m_sData | (m_vecKilobotWalks_ALF[unKilobotID] << 8);
+            }
+            // if (multiArea[m_vecKilobotsPositionTask[unKilobotID]]->color == CColor::BLUE && adaptive_walk)
+            //     tKilobotMessage.m_sData = tKilobotMessage.m_sData | (1 << 8);
+            // if (multiArea[m_vecKilobotsPositionTask[unKilobotID]]->color == CColor::RED && adaptive_walk)
+            //     tKilobotMessage.m_sData = tKilobotMessage.m_sData | (2 << 8);
+            // // std::cerr << "Timeout is " << request[unKilobotID] << "\n";
+            // // std::cout << "m_sData = " << std::bitset<10>(tKilobotMessage.m_sData) << std::endl;
         }
 
         //exit msg when inside

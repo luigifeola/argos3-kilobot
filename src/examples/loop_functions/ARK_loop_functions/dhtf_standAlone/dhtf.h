@@ -154,6 +154,13 @@ private:
         LEAVING = 2,       //elapsed timeout -> leaving the task
     } SRobotState;
 
+    typedef enum //kilobot walk
+    {
+        CONSTANT = 0,
+        PERSISTENT = 1,
+        BROWNIAN = 2,
+    } SRobotWalk;
+
     struct FloorColorData //contains components of area color
     {
         UInt8 R;
@@ -187,8 +194,9 @@ private:
     std::vector<argos::CColor> m_vecKilobotsColours;
     std::vector<CRadians> m_vecKilobotsOrientations;
     std::vector<SRobotState> m_vecKilobotStates_ALF;
-    std::vector<UInt8> m_vecKilobotsTimeRequest; //vector that determines waiting time
-    std::vector<int> m_vecKilobotsPositionTask;  // says in which area the KB is: -1 if walking, areaID if inside an area
+    std::vector<UInt8> m_vecKilobotsTimeRequest;   //vector that determines waiting time
+    std::vector<int> m_vecKilobotsPositionTask;    // says in which area the KB is: -1 if walking, areaID if inside an area
+    std::vector<SRobotWalk> m_vecKilobotWalks_ALF; //when adaptive, switch among persistent and brownian walk
 
     /* output LOG files */
     std::ofstream m_kiloOutput;

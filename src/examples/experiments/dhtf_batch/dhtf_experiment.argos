@@ -40,7 +40,7 @@
         label="ALF_dhtf_loop_function">
 
         <extra_parameters
-            adaptive="false">
+            adaptive="__ADAPTIVE__">
         </extra_parameters>
 
         <tracking
@@ -70,7 +70,7 @@
                 soft_requirement="__SOFTREQUIREMENT__"
                 hard_requirement="__HARDREQUIREMENT__"
                 timeout_const="__TIMEOUT__"
-                region_division="true">
+                region_division="__REGIONS__">
             </VirtualTask>
         </environments>
 

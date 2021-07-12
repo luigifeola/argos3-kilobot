@@ -50,6 +50,8 @@ hard_tasks="8"
 soft_requirement="2"
 hard_requirement="4"
 timeout="1 3 6 12 18 24 30 36 42 48 54 60"
+region_division="true"
+adaptive_walk="true"
 # timeout="1 2 3 6 12 18 24 30 36 42 48 54 60 90 180"
 
 ###################################
@@ -69,7 +71,7 @@ RUNS=100
 
 for par1 in $timeout; do
     for par2 in $reactivation_timer; do
-        param_dir=$res_dir/"Regions_"$date_time"_robots#"$numrobots"_timeout#"$par1"_respawn#"$par2"_NumAreas#"$desired_num_of_areas"_redAreas#"$hard_tasks"_"$experiment_length"#seconds"
+        param_dir=$res_dir/"Regions_AdaptiveWalk_"$date_time"_robots#"$numrobots"_timeout#"$par1"_respawn#"$par2"_NumAreas#"$desired_num_of_areas"_redAreas#"$hard_tasks"_"$experiment_length"#seconds"
         
         #########################################################
         # #debug
@@ -96,6 +98,8 @@ for par1 in $timeout; do
             sed -i "s|__REACTIVATIONTIMER__|$par2|g" $configs
             sed -i "s|__SOFTREQUIREMENT__|$soft_requirement|g" $configs
             sed -i "s|__HARDREQUIREMENT__|$hard_requirement|g" $configs
+            sed -i "s|__REGIONS__|$region_division|g" $configs
+            sed -i "s|__ADAPTIVE__|$adaptive_walk|g" $configs
             
             timeout_file="seed#${it}_elapsed_timeoutLOG.tsv"
             sed -i "s|__TIMEOUTOUTPUT__|$timeout_file|g" $configs
