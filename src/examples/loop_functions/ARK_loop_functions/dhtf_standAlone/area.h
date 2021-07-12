@@ -67,7 +67,7 @@ public:
         }
         else
         {
-            this->color = argos::CColor::RED;
+            this->color = argos::CColor::BLUE;
         }
     }
 

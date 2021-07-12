@@ -156,6 +156,7 @@ void dhtfCALF::SetupVirtualEnvironments(TConfigurationNode &t_tree)
     GetNodeAttribute(t_VirtualTaskNode, "soft_requirement", vSoftRequiredKilobots);
     GetNodeAttribute(t_VirtualTaskNode, "hard_requirement", vHardRequiredKilobots);
     GetNodeAttribute(t_VirtualTaskNode, "timeout_const", kTimerMultiplier);
+    GetNodeAttributeOrDefault(t_VirtualTaskNode, "region_division", region_division, false);
 
     std::ostringstream entity_id;
     CRadians wall_angle = CRadians::TWO_PI / m_ArenaStructure.Wall_numbers;
@@ -202,38 +203,41 @@ void dhtfCALF::SetupVirtualEnvironments(TConfigurationNode &t_tree)
         multiArea.push_back(new Area(i + desired_num_of_areas / 2, SOFT_TASK, CVector2(-rand_x, -rand_y), kTask_radius, vSoftRequiredKilobots, kRespawnTimer, kTimerMultiplier));
     }
 
-    hard_tasks_vec.clear();
-    while (hard_tasks_vec.size() < hard_tasks)
+    if(!region_division)
     {
-        UInt8 hardID;
-        do
+        hard_tasks_vec.clear();
+        while (hard_tasks_vec.size() < hard_tasks)
         {
-            hardID = c_rng->Uniform(CRange<UInt32>(0, desired_num_of_areas));
-        } while (std::find(hard_tasks_vec.begin(), hard_tasks_vec.end(), hardID) != hard_tasks_vec.end());
+            UInt8 hardID;
+            do
+            {
+                hardID = c_rng->Uniform(CRange<UInt32>(0, desired_num_of_areas));
+            } while (std::find(hard_tasks_vec.begin(), hard_tasks_vec.end(), hardID) != hard_tasks_vec.end());
 
-        hard_tasks_vec.push_back(hardID);
-    }
-
-    std::cout << "Hard task ids: ";
-    for (auto elem : hard_tasks_vec)
-    {
-        std::cout << elem << ", ";
-    }
-    std::cout << "\n";
-
-    for (int i = 0; i < multiArea.size(); i++)
-    {
-        if (std::find(hard_tasks_vec.begin(), hard_tasks_vec.end(), multiArea.at(i)->id) != hard_tasks_vec.end())
-        {
-            multiArea.at(i)->type = HARD_TASK;
-            multiArea.at(i)->color = argos::CColor::RED;
-            multiArea.at(i)->task_requirement = vHardRequiredKilobots;
+            hard_tasks_vec.push_back(hardID);
         }
-        else
+
+        std::cout << "Hard task ids: ";
+        for (auto elem : hard_tasks_vec)
         {
-            multiArea.at(i)->type = SOFT_TASK;
-            multiArea.at(i)->color = argos::CColor::BLUE;
-            multiArea.at(i)->task_requirement = vSoftRequiredKilobots;
+            std::cout << elem << ", ";
+        }
+        std::cout << "\n";
+
+        for (int i = 0; i < multiArea.size(); i++)
+        {
+            if (std::find(hard_tasks_vec.begin(), hard_tasks_vec.end(), multiArea.at(i)->id) != hard_tasks_vec.end())
+            {
+                multiArea.at(i)->type = HARD_TASK;
+                multiArea.at(i)->color = argos::CColor::RED;
+                multiArea.at(i)->task_requirement = vHardRequiredKilobots;
+            }
+            else
+            {
+                multiArea.at(i)->type = SOFT_TASK;
+                multiArea.at(i)->color = argos::CColor::BLUE;
+                multiArea.at(i)->task_requirement = vSoftRequiredKilobots;
+            }
         }
     }
 }
@@ -538,7 +542,7 @@ void dhtfCALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
                     //     << std::noshowpos << std::setw(1) << std::setprecision(0)
                     //     << (multiArea[i]->color == argos::CColor::RED ? 1 : 0)
                     //     << std::endl;
-                    std::cout << unKilobotID << " elapsed LOG\n";
+                    // std::cout << unKilobotID << " elapsed LOG\n";
                 }
 
                 m_vecKilobotStates_ALF[unKilobotID] = LEAVING;
@@ -836,10 +840,11 @@ void dhtfCALF::AreaLOG()
     // std::cerr << "Logging arePosition\n";
     m_areaOutput
         << std::noshowpos << std::setw(4) << std::setprecision(0) << std::setfill('0')
-        << m_fTimeInSeconds << '\t';
+        << m_fTimeInSeconds;
     for (size_t areaID = 0; areaID < multiArea.size(); areaID++)
     {
         m_areaOutput
+            << '\t'
             << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
             << multiArea[areaID]->id << '\t'
             << std::internal << std::showpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed

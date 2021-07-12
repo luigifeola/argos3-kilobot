@@ -168,6 +168,7 @@ private:
     int vSoftRequiredKilobots;       // # robots to complete soft tasks
     int vHardRequiredKilobots;       // # robots to complete hard tasks
     bool adaptive_walk;              //if true, trying to complete more RED tasks as possible (completed RED task -> brownian motion, BLUE task -> persistent motion)
+    bool region_division;            //if true, red and blue task are positioned respectively right and left
     double kTimerMultiplier;         //multiplicative constant for the timeout study
     double kRespawnTimer;            //once completed, an area will appear again after kRespawnTimer seconds
 
