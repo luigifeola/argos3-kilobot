@@ -64,10 +64,20 @@ void dhtfCALF::Init(TConfigurationNode &t_node)
     /* Read parameters from .argos*/
     TConfigurationNode &tModeNode = GetNode(t_node, "extra_parameters");
     GetNodeAttributeOrDefault(tModeNode, "adaptive", adaptive_walk, false);
+    GetNodeAttributeOrDefault(tModeNode, "adaptive_timeut", adaptive_timeout, false);
 
     if (adaptive_walk)
         std::cout << "Adaptive Walk\n";
 
+    if (adaptive_timeout)
+    {
+        std::cout << "Adaptive timeout\n";
+        m_vecKilobotsTimer = std::vector<int>(m_tKilobotEntities.size(), 6);
+        // for (auto elem : m_vecKilobotsTimer)
+        // {
+        //     std::cout << elem << std::endl;
+        // }
+    }
     random_seed = GetSimulator().GetRandomSeed();
     //GetNodeAttribute(tModeNode, "random_seed", random_seed);
 }
@@ -89,9 +99,12 @@ void dhtfCALF::SetupInitialKilobotStates()
         SetupInitialKilobotState(*m_tKilobotEntities[it]);
     }
 
+    if (!adaptive_timeout)
+    {
+        m_vecKilobotsTimer = std::vector<int>(m_tKilobotEntities.size(), kTimerMultiplier);
+    }
+
     /* Initialization of kilobots variables */
-    /** WARNING: m_vecKilobotsTimeRequest could be a private variable of the area task */
-    m_vecKilobotsTimeRequest = std::vector<UInt8>(m_tKilobotEntities.size(), 0);
     m_vecKilobotsPositionTask = std::vector<int>(m_tKilobotEntities.size(), -1);
 }
 
@@ -339,10 +352,16 @@ void dhtfCALF::UpdateKilobotState(CKilobotEntity &c_kilobot_entity)
 
 void dhtfCALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
 {
-    /** WARNING:  delete from .h m_vecKilobotsTimeRequest and m_vecKilobotsPositionTask*/
+    /** WARNING:  delete from .h  and m_vecKilobotsPositionTask*/
     UInt16 unKilobotID = GetKilobotId(c_kilobot_entity);
     m_tALFKilobotMessage tKilobotMessage, tEmptyMessage, tMessage;
     bool bMessageToSend = false;
+
+    // for (int kID = 0; kID < m_vecKilobotsTimer.size(); kID++)
+    // {
+    //     std::cout << "kID:" << kID << " t:" << m_vecKilobotsTimer[kID] << '\t';
+    // }
+    // std::cout << std::endl;
 
     bool found = false;
     for (int i = 0; i < multiArea.size(); i++)
@@ -372,6 +391,10 @@ void dhtfCALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
                 for (size_t k = 0; k < completed_task->kilobots_in_area.size(); k++)
                 {
                     m_taskOutput << completed_task->kilobots_in_area[k] << ",";
+
+                    //area completed -> decrement kilobot internal timeout
+                    if (adaptive_timeout && m_vecKilobotsTimer[completed_task->kilobots_in_area[k]] > 1)
+                        m_vecKilobotsTimer[completed_task->kilobots_in_area[k]] -= 1;
                 }
                 m_taskOutput << std::endl;
 
@@ -429,6 +452,8 @@ void dhtfCALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
                         << (multiArea[i]->color == argos::CColor::RED ? 1 : 0)
                         << std::endl;
 
+                    if (adaptive_timeout)
+                        m_vecKilobotsTimer[unKilobotID] += 1;
                     // std::cout
                     //     << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
                     //     << unKilobotID << '\t'
@@ -453,7 +478,6 @@ void dhtfCALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
                     multiArea[i]->kilobots_in_area.push_back(unKilobotID);
 
                 m_vecKilobotStates_ALF[unKilobotID] = INSIDE_AREA;
-                m_vecKilobotsTimeRequest[unKilobotID] = kTimerMultiplier;
                 m_vecKilobotWalks_ALF[unKilobotID] = (multiArea[i]->color == CColor::RED ? BROWNIAN : PERSISTENT);
                 found = true;
                 break;
@@ -524,8 +548,7 @@ void dhtfCALF::UpdateVirtualSensor(CKilobotEntity &c_kilobot_entity)
             ((int)m_vecKilobotStates_ALF[unKilobotID] == INSIDE_AREA))
         {
             bMessageToSend = true;
-            tKilobotMessage.m_sData = (m_vecKilobotsTimeRequest[unKilobotID] & 0xFF); //requirement (timer) for the area where it is
-
+            tKilobotMessage.m_sData = (m_vecKilobotsTimer[unKilobotID] & 0xFF); //requirement (timer) for the area where it is
             if (adaptive_walk)
             {
                 tKilobotMessage.m_sData = tKilobotMessage.m_sData | (m_vecKilobotWalks_ALF[unKilobotID] << 8);
@@ -659,14 +682,14 @@ void dhtfCALF::KiloLOG()
             << '\t'
             << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
             << kID << '\t'
-            << std::noshowpos << std::setw(1) << std::setprecision(0)
-            << m_vecKilobotStates_ALF[kID] << '\t' //TODO: this should be the colour, but for now is the state
             << std::internal << std::showpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
             << m_vecKilobotsPositions[kID].GetX() << '\t'
             << std::internal << std::showpos << std::setw(8) << std::setprecision(4) << std::setfill('0') << std::fixed
             << m_vecKilobotsPositions[kID].GetY() << '\t'
             << std::internal << std::showpos << std::setw(6) << std::setprecision(4) << std::setfill('0') << std::fixed
             << m_vecKilobotsOrientations[kID].GetValue() << '\t'
+            << std::noshowpos << std::setw(2) << std::setprecision(0) << std::setfill('0')
+            << m_vecKilobotsTimer[kID] << '\t'
             << std::noshowpos << std::setw(1) << std::setprecision(0)
             << m_vecKilobotStates_ALF[kID];
     }

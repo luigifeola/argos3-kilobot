@@ -176,7 +176,8 @@ private:
     int vHardRequiredKilobots;       // # robots to complete hard tasks
     bool adaptive_walk;              //if true, trying to complete more RED tasks as possible (completed RED task -> brownian motion, BLUE task -> persistent motion)
     bool region_division;            //if true, red and blue task are positioned respectively right and left
-    double kTimerMultiplier;         //multiplicative constant for the timeout study
+    bool adaptive_timeout;           //if true, timeout is incremented/decremented respectively when the internal timeout is elapsed or when an area is completed
+    int kTimerMultiplier;            //multiplicative constant for the timeout study
     double kRespawnTimer;            //once completed, an area will appear again after kRespawnTimer seconds
 
     /************************************/
@@ -191,10 +192,10 @@ private:
 
     /*Kilobots properties*/
     std::vector<CVector2> m_vecKilobotsPositions;
+    std::vector<int> m_vecKilobotsTimer; //vector that determines each kilo waiting time
     std::vector<argos::CColor> m_vecKilobotsColours;
     std::vector<CRadians> m_vecKilobotsOrientations;
     std::vector<SRobotState> m_vecKilobotStates_ALF;
-    std::vector<UInt8> m_vecKilobotsTimeRequest;   //vector that determines waiting time
     std::vector<int> m_vecKilobotsPositionTask;    // says in which area the KB is: -1 if walking, areaID if inside an area
     std::vector<SRobotWalk> m_vecKilobotWalks_ALF; //when adaptive, switch among persistent and brownian walk
 

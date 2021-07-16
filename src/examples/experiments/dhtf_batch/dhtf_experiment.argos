@@ -40,7 +40,8 @@
         label="ALF_dhtf_loop_function">
 
         <extra_parameters
-            adaptive="__ADAPTIVE__">
+            adaptive="__ADAPTIVE__"
+            adaptive_timeut="__ADAPTIVETIME__">
         </extra_parameters>
 
         <tracking
