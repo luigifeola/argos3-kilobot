@@ -29,7 +29,7 @@ if [ ! -e $base_config_c ]; then
     fi
 fi
 
-res_dir=$wdir/"results_dhtf/standalone_circular_timeout_respawn_exp"
+res_dir=$wdir/"results_dhtf/standalone_newWalkParam"
 if [[ ! -e $res_dir ]]; then
     cmake -E make_directory $res_dir
 # else
@@ -50,8 +50,8 @@ hard_tasks="8"
 soft_requirement="2"
 hard_requirement="4"
 timeout="1 3 6 12 18 24 30 36 42 48 54 60"
-region_division="true"
-adaptive_walk="true"
+region_division="false"
+adaptive_walk="false"
 # timeout="1 2 3 6 12 18 24 30 36 42 48 54 60 90 180"
 
 ###################################
@@ -71,7 +71,7 @@ RUNS=100
 
 for par1 in $timeout; do
     for par2 in $reactivation_timer; do
-        param_dir=$res_dir/"Regions_AdaptiveWalk_"$date_time"_robots#"$numrobots"_timeout#"$par1"_respawn#"$par2"_NumAreas#"$desired_num_of_areas"_redAreas#"$hard_tasks"_"$experiment_length"#seconds"
+        param_dir=$res_dir/"Mixed_Persistent_"$date_time"_robots#"$numrobots"_timeout#"$par1"_respawn#"$par2"_NumAreas#"$desired_num_of_areas"_redAreas#"$hard_tasks"_"$experiment_length"#seconds"
         
         #########################################################
         # #debug

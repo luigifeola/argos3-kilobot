@@ -60,13 +60,13 @@ uint16_t backup_state = RANDOM_WALKING;
 motion_t backup_motion = STOP;
 
 /***********WALK PARAMETERS***********/
-adaptive_walk current_walk = CONSTANT;  //start with a meaningless value
-const float std_motion_steps = 20 * 16; // variance of the gaussian used to compute forward motion
-float levy_exponent = 2.0;              // 2 is brownian like motion (alpha)
-float crw_exponent = 0.0;               // higher more straight (rho)
-uint32_t turning_ticks = 0;             // keep count of ticks of turning
-const uint8_t max_turning_ticks = 80;   /* constant to allow a maximum rotation of 180 degrees with \omega=\pi/5 */
-unsigned int straight_ticks = 0;        // keep count of ticks of going straight
+adaptive_walk current_walk = CONSTANT; //start with a meaningless value
+const float std_motion_steps = 5 * 16; // variance of the gaussian used to compute forward motion
+float levy_exponent = 1.4;             // 2 is brownian like motion (alpha)
+float crw_exponent = 0.9;              // higher more straight (rho)
+uint32_t turning_ticks = 0;            // keep count of ticks of turning
+const uint8_t max_turning_ticks = 120; /* constant to allow a maximum rotation of 180 degrees with \omega=\pi/5 */
+unsigned int straight_ticks = 0;       // keep count of ticks of going straight
 const uint16_t max_straight_ticks = 320;
 uint32_t last_motion_ticks = 0;
 
